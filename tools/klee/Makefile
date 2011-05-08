@@ -9,14 +9,22 @@
 
 LEVEL=../..
 TOOLNAME = klee
-USEDLIBS = kleeCore.a kleeModule.a kleaverSolver.a kleaverExpr.a kleeSupport.a kleeBasic.a
+
+include $(LEVEL)/Makefile.config
+
+STP_LIBS := stp_c_interface.a stp_AST.a stp_bitvec.a stp_constantbv.a stp_sat.a \
+        stp_simplifier.a
+USEDLIBS = kleeCore.a kleeModule.a kleaverSolver.a kleaverExpr.a kleeSupport.a kleeBasic.a cloud9worker.a  cloud9instrum.a cloud9common.a
+ifeq ($(ENABLE_EXT_STP),0)
+  USEDLIBS += $(STP_LIBS)
+endif
+
 LINK_COMPONENTS = jit bitreader bitwriter ipo linker engine
 
 include $(LEVEL)/Makefile.common
 
-ifeq ($(ENABLE_STPLOG), 1)
-	LIBS += -lstplog
-endif
-
-LIBS += -lstp 
+LIBS += -lboost_thread-mt -lboost_system-mt
 #-ltcmalloc
+ifeq ($(ENABLE_EXT_STP),1)
+  LIBS += -lstp
+endif
