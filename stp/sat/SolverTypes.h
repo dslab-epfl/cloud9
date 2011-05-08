@@ -68,7 +68,7 @@ const Lit lit_Error(var_Undef, true );  // }
 class Clause {
     uint    size_etc;
     union { float act; uint abst; } apa;
-    Lit     data[0];
+    Lit     data[1];
 public:
     // NOTE: This constructor cannot be used directly (doesn't allocate enough memory).
     template<class V>
@@ -82,7 +82,12 @@ public:
     friend Clause* Clause_new(const V& ps, bool learnt = false) {
         assert(sizeof(Lit)      == sizeof(uint));
         assert(sizeof(float)    == sizeof(uint));
-        void*   mem = xmalloc<char>(sizeof(Clause) + sizeof(uint)*(ps.size()));
+
+        size_t aux_size = 0;
+        if (ps.size() > 0)
+          aux_size = sizeof(uint)*(ps.size() - 1);
+
+        void*   mem = xmalloc<char>(sizeof(Clause) + aux_size);
         return new (mem) Clause(ps, learnt); }
 
     int       size        ()      const { return size_etc >> 3; }
@@ -123,5 +128,5 @@ class TrailPos {
     bool operator <   (TrailPos other) const { return tp <  other.tp; }
 };
 
-};
+}
 #endif

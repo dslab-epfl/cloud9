@@ -6,10 +6,32 @@
  * LICENSE: Please view LICENSE file in the home dir of this Program
  ********************************************************************/
 // -*- c++ -*-
+
+#include "cloud9/instrum/Timing.h"
+#include "cloud9/Logger.h"
+
 #include "AST.h"
+
 #include "ASTUtil.h"
 #include "../simplifier/bvsolver.h"
+
+#include "cloud9/instrum/InstrumentationManager.h"
+#include "DIMACSSerializer.h"
+
+#include "llvm/Support/CommandLine.h"
+
 #include <math.h>
+
+using cloud9::instrum::Timer;
+using namespace cloud9;
+
+using namespace llvm;
+
+namespace {
+static cl::opt<bool> DumpSAT("dump-sat",
+    cl::desc("Dump the SAT formulas generated during constraint solving in DIMACS format"),
+    cl::init(false));
+}
 
 
 namespace BEEV {
@@ -17,7 +39,7 @@ namespace BEEV {
    * lookup or create new MINISAT Vars from the global MAP
    * _ASTNode_to_SATVar.
    */
-  const MINISAT::Var BeevMgr::LookupOrCreateSATVar(MINISAT::Solver& newS, const ASTNode& n) {  
+  MINISAT::Var BeevMgr::LookupOrCreateSATVar(MINISAT::Solver& newS, const ASTNode& n) {  
     ASTtoSATMap::iterator it;  
     MINISAT::Var v;
     
@@ -47,6 +69,7 @@ namespace BEEV {
  bool BeevMgr::toSATandSolve(MINISAT::Solver& newS, BeevMgr::ClauseList& cll)
  {
     CountersAndStats("SAT Solver");
+    DIMACSSerializer dimacs;
 
     //iterate through the list (conjunction) of ASTclauses cll
     BeevMgr::ClauseList::const_iterator i = cll.begin(), iend = cll.end();
@@ -61,6 +84,7 @@ namespace BEEV {
     for(; i!=iend; i++) {    
       //Clause for the SATSolver
       MINISAT::vec<MINISAT::Lit> satSolverClause;
+      DIMACSSerializer::Clause dimacsClause;
       
       //now iterate through the internals of the ASTclause itself
       ASTVec::const_iterator j = (*i)->begin(), jend = (*i)->end();
@@ -75,8 +99,16 @@ namespace BEEV {
 	MINISAT::Var v = LookupOrCreateSATVar(newS,n);
 	MINISAT::Lit l(v, negate);
 	satSolverClause.push(l);
+
+	if (DumpSAT)
+	  dimacsClause.push_back(std::make_pair(v+1, negate));
+
       }
       newS.addClause(satSolverClause);
+
+      if (DumpSAT)
+        dimacs.addClause(dimacsClause);
+
       // clause printing.
       // (printClause<MINISAT::vec<MINISAT::Lit> >)(satSolverClause);
       // cout << " 0 ";
@@ -101,11 +133,38 @@ namespace BEEV {
       PrintStats(newS.stats);
       return false;
     }
-    
+
     //PrintActivityLevels_Of_SATVars("Before SAT:",newS);
     //ChangeActivityLevels_Of_SATVars(newS);
-    //PrintActivityLevels_Of_SATVars("Before SAT and after initial bias:",newS); 
+    //PrintActivityLevels_Of_SATVars("Before SAT and after initial bias:",newS);
+
+    static unsigned int counter = 0;
+    static char fName[256];
+
+    if (DumpSAT) {
+      sprintf(fName, "sat%05d.cnf", counter);
+
+      dimacs.setVarCount(newS.nVars());
+      dimacs.serialize(fName);
+    }
+
+    Timer t;
+    t.start();
     newS.solve();
+    t.stop();
+
+    cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::SATSolve, t);
+
+    if (DumpSAT) {
+      ostringstream os;
+      os << t;
+      os.flush();
+
+      dimacs.setDescription(os.str());
+      dimacs.serialize(fName);
+    }
+
+    counter++;
     //PrintActivityLevels_Of_SATVars("After SAT",newS);
 
     PrintStats(newS.stats);
@@ -121,15 +180,16 @@ namespace BEEV {
       return;
     double  cpu_time = MINISAT::cpuTime();
     MINISAT::int64   mem_used = MINISAT::memUsed();
-    reportf("restarts              : %"I64_fmt"\n", s.starts);
-    reportf("conflicts             : %-12"I64_fmt"   (%.0f /sec)\n", s.conflicts   , s.conflicts   /cpu_time);
-    reportf("decisions             : %-12"I64_fmt"   (%.0f /sec)\n", s.decisions   , s.decisions   /cpu_time);
-    reportf("propagations          : %-12"I64_fmt"   (%.0f /sec)\n", s.propagations, s.propagations/cpu_time);
-    reportf("conflict literals     : %-12"I64_fmt"   (%4.2f %% deleted)\n", 
-	    s.tot_literals, 
-	    (s.max_literals - s.tot_literals)*100 / (double)s.max_literals);
-    if (mem_used != 0) reportf("Memory used           : %.2f MB\n", mem_used / 1048576.0);
-    reportf("CPU time              : %g s\n", cpu_time);
+    printf("restarts              : %"I64_fmt"\n", s.starts);
+    printf("conflicts             : %-12"I64_fmt"   (%.0f /sec)\n", s.conflicts   , s.conflicts   /cpu_time);
+    printf("decisions             : %-12"I64_fmt"   (%.0f /sec)\n", s.decisions   , s.decisions   /cpu_time);
+    printf("propagations          : %-12"I64_fmt"   (%.0f /sec)\n", s.propagations, s.propagations/cpu_time);
+    printf("conflict literals     : %-12"I64_fmt"   (%4.2f %% deleted)\n", 
+           s.tot_literals, 
+           (s.max_literals - s.tot_literals)*100 / (double)s.max_literals);
+    if (mem_used != 0) printf("Memory used           : %.2f MB\n", mem_used / 1048576.0);
+    printf("CPU time              : %g s\n", cpu_time);
+    fflush(stdout);
   }
   
   // Prints Satisfying assignment directly, for debugging.
@@ -1382,4 +1442,4 @@ namespace BEEV {
       }
     }
   }
-}; //end of namespace BEEV
+} //end of namespace BEEV
