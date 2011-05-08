@@ -1,0 +1,11 @@
+
+Very quick way to compile to LLVM:
+
+	tar xf xyz.tar.gz
+	cd xyz
+	mkdir obj-llvm
+	cd obj-llvm
+	../configure CFLAGS="-g"
+	$CLOUD9_ROOT/prepare
+	make -j 2
+

@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# Transform libtool to compile to LLVM
+#
+echo
+echo "WARNING: This is an older version of the script. Use \"${0/prepare_libtool/prepare}\" for quicker results. :)"
+echo
+
+export KLEE_GCC="/home/sun/esd-work/git/cloud9/scripts/klee-gcc" 
+if [ -f libtool ]
+then
+	sed -i "s|AR=\"ar\"|AR=\"llvm-ar\"|" libtool
+	sed -i "s|LTCC=\"gcc\"|LTCC=\""$KLEE_GCC"\"|" libtool
+	sed -i "s|CC=\"gcc\"|CC=\""$KLEE_GCC"\"|" libtool
+	sed -i "s|CC=\"g++\"|CC=\""$KLEE_GCC"\"|" libtool
+	sed -i "s|NM=\"/usr/bin/nm -B\"|NM=\"llvm-nm -B\"|" libtool
+	echo -e "Libtool patched..."
+fi
+echo -e "Now: "
+echo -e "  1. Check LIBS variables in makefiles:"
+grep "^LIBS" ../* -R -n | grep "Makefile:" | sed 's/^/\t/'
+echo -e "2. Edit any Makefiles with nm and/or ar..."
+echo -e "3. Run make to start compiling:"
+echo -e "   make CC=$KLEE_GCC CXX=$KLEE_GCC"

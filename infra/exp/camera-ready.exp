@@ -1,0 +1,167 @@
+base64 1 dslab-worf.epfl.ch 1 basename 1 dslab-worf.epfl.ch 1 cat 1 dslab-worf.epfl.ch 1 chcon 1 dslab-worf.epfl.ch 1 chgrp 1 dslab-worf.epfl.ch 1 chmod 1 dslab-worf.epfl.ch 1 chown 1 dslab-worf.epfl.ch 1 chroot 1 dslab-worf.epfl.ch 1 cksum 1 dslab-worf.epfl.ch 1 comm 1 dslab-worf.epfl.ch 1 cp 1 dslab-worf.epfl.ch 1 csplit 1 dslab-worf.epfl.ch 1 cut 1 dslab-worf.epfl.ch 1 date 1 dslab-worf.epfl.ch 1 dd 1 dslab-worf.epfl.ch 1 df 1 dslab-worf.epfl.ch 1 dir 1 dslab-worf.epfl.ch 1 dircolors 1 dslab-worf.epfl.ch 1 dirname 1 dslab-worf.epfl.ch 1 du 1 dslab-worf.epfl.ch 1 echo 1 dslab-worf.epfl.ch 1 env 1 dslab-worf.epfl.ch 1 expand 1 dslab-worf.epfl.ch 1 expr 1 dslab-worf.epfl.ch 1 factor 1 dslab-worf.epfl.ch 1 false 1 dslab-worf.epfl.ch 1 fmt 1 dslab-worf.epfl.ch 1 fold 1 dslab-worf.epfl.ch 1 ginstall 1 dslab-worf.epfl.ch 1 head 1 dslab-worf.epfl.ch 1 hostid 1 dslab-worf.epfl.ch 1 id 1 dslab-worf.epfl.ch 1 join 1 dslab-worf.epfl.ch 1 kill 1 dslab-worf.epfl.ch 1 link 1 dslab-worf.epfl.ch 1 ln 1 dslab-worf.epfl.ch 1 logname 1 dslab-worf.epfl.ch 1 ls 1 dslab-worf.epfl.ch 1 md5sum 1 dslab-worf.epfl.ch 1 mkdir 1 dslab-worf.epfl.ch 1 mkfifo 1 dslab-worf.epfl.ch 1 mknod 1 dslab-worf.epfl.ch 1 mktemp 1 dslab-worf.epfl.ch 1 mv 1 dslab-worf.epfl.ch 1 nice 1 dslab-worf.epfl.ch 1 nl 1 dslab-worf.epfl.ch 1 nohup 1 dslab-worf.epfl.ch 1 od 1 dslab-worf.epfl.ch 1 paste 1 dslab-picard.epfl.ch 1 pathchk 1 dslab-picard.epfl.ch 1 pinky 1 dslab-picard.epfl.ch 1 pr 1 dslab-picard.epfl.ch 1 printenv 1 dslab-picard.epfl.ch 1 printf 1 dslab-picard.epfl.ch 1 ptx 1 dslab-picard.epfl.ch 1 pwd 1 dslab-picard.epfl.ch 1 readlink 1 dslab-picard.epfl.ch 1 rm 1 dslab-picard.epfl.ch 1 rmdir 1 dslab-picard.epfl.ch 1 runcon 1 dslab-picard.epfl.ch 1 seq 1 dslab-picard.epfl.ch 1 setuidgid 1 dslab-picard.epfl.ch 1 sha1sum 1 dslab-picard.epfl.ch 1 sha224sum 1 dslab-picard.epfl.ch 1 sha256sum 1 dslab-picard.epfl.ch 1 sha384sum 1 dslab-picard.epfl.ch 1 sha512sum 1 dslab-picard.epfl.ch 1 shred 1 dslab-picard.epfl.ch 1 shuf 1 dslab-picard.epfl.ch 1 sleep 1 dslab-picard.epfl.ch 1 sort 1 dslab-picard.epfl.ch 1 split 1 dslab-picard.epfl.ch 1
+stat 1 dslab-worf.epfl.ch 1 stty 1 dslab-worf.epfl.ch 1 su 1 dslab-worf.epfl.ch 1 sum 1 dslab-worf.epfl.ch 1 sync 1 dslab-worf.epfl.ch 1 tac 1 dslab-worf.epfl.ch 1 tail 1 dslab-worf.epfl.ch 1 tee 1 dslab-worf.epfl.ch 1 test 1 dslab-worf.epfl.ch 1 touch 1 dslab-worf.epfl.ch 1 tr 1 dslab-worf.epfl.ch 1 true 1 dslab-worf.epfl.ch 1 tsort 1 dslab-worf.epfl.ch 1 tty 1 dslab-worf.epfl.ch 1 uname 1 dslab-worf.epfl.ch 1 unexpand 1 dslab-worf.epfl.ch 1 uniq 1 dslab-worf.epfl.ch 1 unlink 1 dslab-worf.epfl.ch 1 uptime 1 dslab-worf.epfl.ch 1 users 1 dslab-worf.epfl.ch 1 vdir 1 dslab-worf.epfl.ch 1 wc 1 dslab-worf.epfl.ch 1 who 1 dslab-worf.epfl.ch 1 whoami 1 dslab-worf.epfl.ch 1 yes 1 dslab-worf.epfl.ch 1 base64 2 dslab-worf.epfl.ch 2 basename 2 dslab-worf.epfl.ch 2 cat 2 dslab-worf.epfl.ch 2 chcon 2 dslab-worf.epfl.ch 2 chgrp 2 dslab-worf.epfl.ch 2 chmod 2 dslab-worf.epfl.ch 2 chown 2 dslab-worf.epfl.ch 2 chroot 2 dslab-worf.epfl.ch 2 cksum 2 dslab-worf.epfl.ch 2 comm 2 dslab-worf.epfl.ch 2 cp 2 dslab-worf.epfl.ch 2 csplit 2 dslab-picard.epfl.ch 2 cut 2 dslab-picard.epfl.ch 2 date 2 dslab-picard.epfl.ch 2 dd 2 dslab-picard.epfl.ch 2 df 2 dslab-picard.epfl.ch 2 dir 2 dslab-picard.epfl.ch 2 dircolors 2 dslab-picard.epfl.ch 2 dirname 2 dslab-picard.epfl.ch 2 du 2 dslab-picard.epfl.ch 2 echo 2 dslab-picard.epfl.ch 2 env 2 dslab-picard.epfl.ch 2 expand 2 dslab-picard.epfl.ch 2
+expr 2 dslab-worf.epfl.ch 2 factor 2 dslab-worf.epfl.ch 2 false 2 dslab-worf.epfl.ch 2 fmt 2 dslab-worf.epfl.ch 2 fold 2 dslab-worf.epfl.ch 2 ginstall 2 dslab-worf.epfl.ch 2 head 2 dslab-worf.epfl.ch 2 hostid 2 dslab-worf.epfl.ch 2 id 2 dslab-worf.epfl.ch 2 join 2 dslab-worf.epfl.ch 2 kill 2 dslab-worf.epfl.ch 2 link 2 dslab-worf.epfl.ch 2 ln 2 dslab-worf.epfl.ch 2 logname 2 dslab-worf.epfl.ch 2 ls 2 dslab-worf.epfl.ch 2 md5sum 2 dslab-worf.epfl.ch 2 mkdir 2 dslab-worf.epfl.ch 2 mkfifo 2 dslab-worf.epfl.ch 2 mknod 2 dslab-worf.epfl.ch 2 mktemp 2 dslab-worf.epfl.ch 2 mv 2 dslab-worf.epfl.ch 2 nice 2 dslab-worf.epfl.ch 2 nl 2 dslab-worf.epfl.ch 2 nohup 2 dslab-worf.epfl.ch 2 od 2 dslab-picard.epfl.ch 2 paste 2 dslab-picard.epfl.ch 2 pathchk 2 dslab-picard.epfl.ch 2 pinky 2 dslab-picard.epfl.ch 2 pr 2 dslab-picard.epfl.ch 2 printenv 2 dslab-picard.epfl.ch 2 printf 2 dslab-picard.epfl.ch 2 ptx 2 dslab-picard.epfl.ch 2 pwd 2 dslab-picard.epfl.ch 2 readlink 2 dslab-picard.epfl.ch 2 rm 2 dslab-picard.epfl.ch 2 rmdir 2 dslab-picard.epfl.ch 2
+runcon 2 dslab-worf.epfl.ch 2 seq 2 dslab-worf.epfl.ch 2 setuidgid 2 dslab-worf.epfl.ch 2 sha1sum 2 dslab-worf.epfl.ch 2 sha224sum 2 dslab-worf.epfl.ch 2 sha256sum 2 dslab-worf.epfl.ch 2 sha384sum 2 dslab-worf.epfl.ch 2 sha512sum 2 dslab-worf.epfl.ch 2 shred 2 dslab-worf.epfl.ch 2 shuf 2 dslab-worf.epfl.ch 2 sleep 2 dslab-worf.epfl.ch 2 sort 2 dslab-worf.epfl.ch 2 split 2 dslab-worf.epfl.ch 2 stat 2 dslab-worf.epfl.ch 2 stty 2 dslab-worf.epfl.ch 2 su 2 dslab-worf.epfl.ch 2 sum 2 dslab-worf.epfl.ch 2 sync 2 dslab-worf.epfl.ch 2 tac 2 dslab-worf.epfl.ch 2 tail 2 dslab-worf.epfl.ch 2 tee 2 dslab-worf.epfl.ch 2 test 2 dslab-worf.epfl.ch 2 touch 2 dslab-worf.epfl.ch 2 tr 2 dslab-worf.epfl.ch 2 true 2 dslab-picard.epfl.ch 2 tsort 2 dslab-picard.epfl.ch 2 tty 2 dslab-picard.epfl.ch 2 uname 2 dslab-picard.epfl.ch 2 unexpand 2 dslab-picard.epfl.ch 2 uniq 2 dslab-picard.epfl.ch 2 unlink 2 dslab-picard.epfl.ch 2 uptime 2 dslab-picard.epfl.ch 2 users 2 dslab-picard.epfl.ch 2 vdir 2 dslab-picard.epfl.ch 2 wc 2 dslab-picard.epfl.ch 2 who 2 dslab-picard.epfl.ch 2
+whoami 2 dslab-worf.epfl.ch 2 yes 2 dslab-worf.epfl.ch 2 base64 4 dslab-worf.epfl.ch 4 basename 4 dslab-worf.epfl.ch 4 cat 4 dslab-worf.epfl.ch 4 chcon 4 dslab-worf.epfl.ch 4 chgrp 4 dslab-worf.epfl.ch 4 chmod 4 dslab-worf.epfl.ch 4 chown 4 dslab-worf.epfl.ch 4 chroot 4 dslab-worf.epfl.ch 4 cksum 4 dslab-worf.epfl.ch 4 comm 4 dslab-worf.epfl.ch 4 cp 4 dslab-worf.epfl.ch 4 csplit 4 dslab-picard.epfl.ch 4 cut 4 dslab-picard.epfl.ch 4 date 4 dslab-picard.epfl.ch 4 dd 4 dslab-picard.epfl.ch 4 df 4 dslab-picard.epfl.ch 4 dir 4 dslab-picard.epfl.ch 4
+dircolors 4 dslab-worf.epfl.ch 4 dirname 4 dslab-worf.epfl.ch 4 du 4 dslab-worf.epfl.ch 4 echo 4 dslab-worf.epfl.ch 4 env 4 dslab-worf.epfl.ch 4 expand 4 dslab-worf.epfl.ch 4 expr 4 dslab-worf.epfl.ch 4 factor 4 dslab-worf.epfl.ch 4 false 4 dslab-worf.epfl.ch 4 fmt 4 dslab-worf.epfl.ch 4 fold 4 dslab-worf.epfl.ch 4 ginstall 4 dslab-worf.epfl.ch 4 head 4 dslab-picard.epfl.ch 4 hostid 4 dslab-picard.epfl.ch 4 id 4 dslab-picard.epfl.ch 4 join 4 dslab-picard.epfl.ch 4 kill 4 dslab-picard.epfl.ch 4 link 4 dslab-picard.epfl.ch 4
+ln 4 dslab-worf.epfl.ch 4 logname 4 dslab-worf.epfl.ch 4 ls 4 dslab-worf.epfl.ch 4 md5sum 4 dslab-worf.epfl.ch 4 mkdir 4 dslab-worf.epfl.ch 4 mkfifo 4 dslab-worf.epfl.ch 4 mknod 4 dslab-worf.epfl.ch 4 mktemp 4 dslab-worf.epfl.ch 4 mv 4 dslab-worf.epfl.ch 4 nice 4 dslab-worf.epfl.ch 4 nl 4 dslab-worf.epfl.ch 4 nohup 4 dslab-worf.epfl.ch 4 od 4 dslab-picard.epfl.ch 4 paste 4 dslab-picard.epfl.ch 4 pathchk 4 dslab-picard.epfl.ch 4 pinky 4 dslab-picard.epfl.ch 4 pr 4 dslab-picard.epfl.ch 4 printenv 4 dslab-picard.epfl.ch 4
+printf 4 dslab-worf.epfl.ch 4 ptx 4 dslab-worf.epfl.ch 4 pwd 4 dslab-worf.epfl.ch 4 readlink 4 dslab-worf.epfl.ch 4 rm 4 dslab-worf.epfl.ch 4 rmdir 4 dslab-worf.epfl.ch 4 runcon 4 dslab-worf.epfl.ch 4 seq 4 dslab-worf.epfl.ch 4 setuidgid 4 dslab-worf.epfl.ch 4 sha1sum 4 dslab-worf.epfl.ch 4 sha224sum 4 dslab-worf.epfl.ch 4 sha256sum 4 dslab-worf.epfl.ch 4 sha384sum 4 dslab-picard.epfl.ch 4 sha512sum 4 dslab-picard.epfl.ch 4 shred 4 dslab-picard.epfl.ch 4 shuf 4 dslab-picard.epfl.ch 4 sleep 4 dslab-picard.epfl.ch 4 sort 4 dslab-picard.epfl.ch 4
+split 4 dslab-worf.epfl.ch 4 stat 4 dslab-worf.epfl.ch 4 stty 4 dslab-worf.epfl.ch 4 su 4 dslab-worf.epfl.ch 4 sum 4 dslab-worf.epfl.ch 4 sync 4 dslab-worf.epfl.ch 4 tac 4 dslab-worf.epfl.ch 4 tail 4 dslab-worf.epfl.ch 4 tee 4 dslab-worf.epfl.ch 4 test 4 dslab-worf.epfl.ch 4 touch 4 dslab-worf.epfl.ch 4 tr 4 dslab-worf.epfl.ch 4 true 4 dslab-picard.epfl.ch 4 tsort 4 dslab-picard.epfl.ch 4 tty 4 dslab-picard.epfl.ch 4 uname 4 dslab-picard.epfl.ch 4 unexpand 4 dslab-picard.epfl.ch 4 uniq 4 dslab-picard.epfl.ch 4
+unlink 4 dslab-worf.epfl.ch 4 uptime 4 dslab-worf.epfl.ch 4 users 4 dslab-worf.epfl.ch 4 vdir 4 dslab-worf.epfl.ch 4 wc 4 dslab-worf.epfl.ch 4 who 4 dslab-worf.epfl.ch 4 whoami 4 dslab-worf.epfl.ch 4 yes 4 dslab-worf.epfl.ch 4 base64 8 dslab-worf.epfl.ch 8 basename 8 dslab-worf.epfl.ch 8 cat 8 dslab-picard.epfl.ch 8 chcon 8 dslab-picard.epfl.ch 8 chgrp 8 dslab-picard.epfl.ch 8
+chmod 8 dslab-worf.epfl.ch 8 chown 8 dslab-worf.epfl.ch 8 chroot 8 dslab-worf.epfl.ch 8 cksum 8 dslab-worf.epfl.ch 8 comm 8 dslab-worf.epfl.ch 8 cp 8 dslab-worf.epfl.ch 8 csplit 8 dslab-picard.epfl.ch 8 cut 8 dslab-picard.epfl.ch 8 date 8 dslab-picard.epfl.ch 8
+dd 8 dslab-worf.epfl.ch 8 df 8 dslab-worf.epfl.ch 8 dir 8 dslab-worf.epfl.ch 8 dircolors 8 dslab-worf.epfl.ch 8 dirname 8 dslab-worf.epfl.ch 8 du 8 dslab-worf.epfl.ch 8 echo 8 dslab-picard.epfl.ch 8 env 8 dslab-picard.epfl.ch 8 expand 8 dslab-picard.epfl.ch 8
+expr 8 dslab-worf.epfl.ch 8 factor 8 dslab-worf.epfl.ch 8 false 8 dslab-worf.epfl.ch 8 fmt 8 dslab-worf.epfl.ch 8 fold 8 dslab-worf.epfl.ch 8 ginstall 8 dslab-worf.epfl.ch 8 head 8 dslab-picard.epfl.ch 8 hostid 8 dslab-picard.epfl.ch 8 id 8 dslab-picard.epfl.ch 8
+join 8 dslab-worf.epfl.ch 8 kill 8 dslab-worf.epfl.ch 8 link 8 dslab-worf.epfl.ch 8 ln 8 dslab-worf.epfl.ch 8 logname 8 dslab-worf.epfl.ch 8 ls 8 dslab-worf.epfl.ch 8 md5sum 8 dslab-picard.epfl.ch 8 mkdir 8 dslab-picard.epfl.ch 8 mkfifo 8 dslab-picard.epfl.ch 8
+mknod 8 dslab-worf.epfl.ch 8 mktemp 8 dslab-worf.epfl.ch 8 mv 8 dslab-worf.epfl.ch 8 nice 8 dslab-worf.epfl.ch 8 nl 8 dslab-worf.epfl.ch 8 nohup 8 dslab-worf.epfl.ch 8 od 8 dslab-picard.epfl.ch 8 paste 8 dslab-picard.epfl.ch 8 pathchk 8 dslab-picard.epfl.ch 8
+pinky 8 dslab-worf.epfl.ch 8 pr 8 dslab-worf.epfl.ch 8 printenv 8 dslab-worf.epfl.ch 8 printf 8 dslab-worf.epfl.ch 8 ptx 8 dslab-worf.epfl.ch 8 pwd 8 dslab-worf.epfl.ch 8 readlink 8 dslab-picard.epfl.ch 8 rm 8 dslab-picard.epfl.ch 8 rmdir 8 dslab-picard.epfl.ch 8
+runcon 8 dslab-worf.epfl.ch 8 seq 8 dslab-worf.epfl.ch 8 setuidgid 8 dslab-worf.epfl.ch 8 sha1sum 8 dslab-worf.epfl.ch 8 sha224sum 8 dslab-worf.epfl.ch 8 sha256sum 8 dslab-worf.epfl.ch 8 sha384sum 8 dslab-picard.epfl.ch 8 sha512sum 8 dslab-picard.epfl.ch 8 shred 8 dslab-picard.epfl.ch 8
+shuf 8 dslab-worf.epfl.ch 8 sleep 8 dslab-worf.epfl.ch 8 sort 8 dslab-worf.epfl.ch 8 split 8 dslab-worf.epfl.ch 8 stat 8 dslab-worf.epfl.ch 8 stty 8 dslab-worf.epfl.ch 8 su 8 dslab-picard.epfl.ch 8 sum 8 dslab-picard.epfl.ch 8 sync 8 dslab-picard.epfl.ch 8
+tac 8 dslab-worf.epfl.ch 8 tail 8 dslab-worf.epfl.ch 8 tee 8 dslab-worf.epfl.ch 8 test 8 dslab-worf.epfl.ch 8 touch 8 dslab-worf.epfl.ch 8 tr 8 dslab-worf.epfl.ch 8 true 8 dslab-picard.epfl.ch 8 tsort 8 dslab-picard.epfl.ch 8 tty 8 dslab-picard.epfl.ch 8
+uname 8 dslab-worf.epfl.ch 8 unexpand 8 dslab-worf.epfl.ch 8 uniq 8 dslab-worf.epfl.ch 8 unlink 8 dslab-worf.epfl.ch 8 uptime 8 dslab-worf.epfl.ch 8 users 8 dslab-worf.epfl.ch 8 vdir 8 dslab-picard.epfl.ch 8 wc 8 dslab-picard.epfl.ch 8 who 8 dslab-picard.epfl.ch 8
+whoami 8 dslab-worf.epfl.ch 8 yes 8 dslab-worf.epfl.ch 8 base64 12 dslab-worf.epfl.ch 12 basename 12 dslab-worf.epfl.ch 12 cat 12 dslab-picard.epfl.ch 12 chcon 12 dslab-picard.epfl.ch 12
+chgrp 12 dslab-worf.epfl.ch 12 chmod 12 dslab-worf.epfl.ch 12 chown 12 dslab-worf.epfl.ch 12 chroot 12 dslab-worf.epfl.ch 12 cksum 12 dslab-picard.epfl.ch 12 comm 12 dslab-picard.epfl.ch 12
+cp 12 dslab-worf.epfl.ch 12 csplit 12 dslab-worf.epfl.ch 12 cut 12 dslab-worf.epfl.ch 12 date 12 dslab-worf.epfl.ch 12 dd 12 dslab-picard.epfl.ch 12 df 12 dslab-picard.epfl.ch 12
+dir 12 dslab-worf.epfl.ch 12 dircolors 12 dslab-worf.epfl.ch 12 dirname 12 dslab-worf.epfl.ch 12 du 12 dslab-worf.epfl.ch 12 echo 12 dslab-picard.epfl.ch 12 env 12 dslab-picard.epfl.ch 12
+expand 12 dslab-worf.epfl.ch 12 expr 12 dslab-worf.epfl.ch 12 factor 12 dslab-worf.epfl.ch 12 false 12 dslab-worf.epfl.ch 12 fmt 12 dslab-picard.epfl.ch 12 fold 12 dslab-picard.epfl.ch 12
+ginstall 12 dslab-worf.epfl.ch 12 head 12 dslab-worf.epfl.ch 12 hostid 12 dslab-worf.epfl.ch 12 id 12 dslab-worf.epfl.ch 12 join 12 dslab-picard.epfl.ch 12 kill 12 dslab-picard.epfl.ch 12
+link 12 dslab-worf.epfl.ch 12 ln 12 dslab-worf.epfl.ch 12 logname 12 dslab-worf.epfl.ch 12 ls 12 dslab-worf.epfl.ch 12 md5sum 12 dslab-picard.epfl.ch 12 mkdir 12 dslab-picard.epfl.ch 12
+mkfifo 12 dslab-worf.epfl.ch 12 mknod 12 dslab-worf.epfl.ch 12 mktemp 12 dslab-worf.epfl.ch 12 mv 12 dslab-worf.epfl.ch 12 nice 12 dslab-picard.epfl.ch 12 nl 12 dslab-picard.epfl.ch 12
+nohup 12 dslab-worf.epfl.ch 12 od 12 dslab-worf.epfl.ch 12 paste 12 dslab-worf.epfl.ch 12 pathchk 12 dslab-worf.epfl.ch 12 pinky 12 dslab-picard.epfl.ch 12 pr 12 dslab-picard.epfl.ch 12
+printenv 12 dslab-worf.epfl.ch 12 printf 12 dslab-worf.epfl.ch 12 ptx 12 dslab-worf.epfl.ch 12 pwd 12 dslab-worf.epfl.ch 12 readlink 12 dslab-picard.epfl.ch 12 rm 12 dslab-picard.epfl.ch 12
+rmdir 12 dslab-worf.epfl.ch 12 runcon 12 dslab-worf.epfl.ch 12 seq 12 dslab-worf.epfl.ch 12 setuidgid 12 dslab-worf.epfl.ch 12 sha1sum 12 dslab-picard.epfl.ch 12 sha224sum 12 dslab-picard.epfl.ch 12
+sha256sum 12 dslab-worf.epfl.ch 12 sha384sum 12 dslab-worf.epfl.ch 12 sha512sum 12 dslab-worf.epfl.ch 12 shred 12 dslab-worf.epfl.ch 12 shuf 12 dslab-picard.epfl.ch 12 sleep 12 dslab-picard.epfl.ch 12
+sort 12 dslab-worf.epfl.ch 12 split 12 dslab-worf.epfl.ch 12 stat 12 dslab-worf.epfl.ch 12 stty 12 dslab-worf.epfl.ch 12 su 12 dslab-picard.epfl.ch 12 sum 12 dslab-picard.epfl.ch 12
+sync 12 dslab-worf.epfl.ch 12 tac 12 dslab-worf.epfl.ch 12 tail 12 dslab-worf.epfl.ch 12 tee 12 dslab-worf.epfl.ch 12 test 12 dslab-picard.epfl.ch 12 touch 12 dslab-picard.epfl.ch 12
+tr 12 dslab-worf.epfl.ch 12 true 12 dslab-worf.epfl.ch 12 tsort 12 dslab-worf.epfl.ch 12 tty 12 dslab-worf.epfl.ch 12 uname 12 dslab-picard.epfl.ch 12 unexpand 12 dslab-picard.epfl.ch 12
+uniq 12 dslab-worf.epfl.ch 12 unlink 12 dslab-worf.epfl.ch 12 uptime 12 dslab-worf.epfl.ch 12 users 12 dslab-worf.epfl.ch 12 vdir 12 dslab-picard.epfl.ch 12 wc 12 dslab-picard.epfl.ch 12
+who 12 dslab-worf.epfl.ch 12 whoami 12 dslab-worf.epfl.ch 12 yes 12 dslab-worf.epfl.ch 12 base64 24 dslab-picard.epfl.ch 24
+basename 24 dslab-worf.epfl.ch 24 cat 24 dslab-worf.epfl.ch 24 chcon 24 dslab-picard.epfl.ch 24
+chgrp 24 dslab-worf.epfl.ch 24 chmod 24 dslab-worf.epfl.ch 24 chown 24 dslab-picard.epfl.ch 24
+chroot 24 dslab-worf.epfl.ch 24 cksum 24 dslab-worf.epfl.ch 24 comm 24 dslab-picard.epfl.ch 24
+cp 24 dslab-worf.epfl.ch 24 csplit 24 dslab-worf.epfl.ch 24 cut 24 dslab-picard.epfl.ch 24
+date 24 dslab-worf.epfl.ch 24 dd 24 dslab-worf.epfl.ch 24 df 24 dslab-picard.epfl.ch 24
+dir 24 dslab-worf.epfl.ch 24 dircolors 24 dslab-worf.epfl.ch 24 dirname 24 dslab-picard.epfl.ch 24
+du 24 dslab-worf.epfl.ch 24 echo 24 dslab-worf.epfl.ch 24 env 24 dslab-picard.epfl.ch 24
+expand 24 dslab-worf.epfl.ch 24 expr 24 dslab-worf.epfl.ch 24 factor 24 dslab-picard.epfl.ch 24
+false 24 dslab-worf.epfl.ch 24 fmt 24 dslab-worf.epfl.ch 24 fold 24 dslab-picard.epfl.ch 24
+ginstall 24 dslab-worf.epfl.ch 24 head 24 dslab-worf.epfl.ch 24 hostid 24 dslab-picard.epfl.ch 24
+id 24 dslab-worf.epfl.ch 24 join 24 dslab-worf.epfl.ch 24 kill 24 dslab-picard.epfl.ch 24
+link 24 dslab-worf.epfl.ch 24 ln 24 dslab-worf.epfl.ch 24 logname 24 dslab-picard.epfl.ch 24
+ls 24 dslab-worf.epfl.ch 24 md5sum 24 dslab-worf.epfl.ch 24 mkdir 24 dslab-picard.epfl.ch 24
+mkfifo 24 dslab-worf.epfl.ch 24 mknod 24 dslab-worf.epfl.ch 24 mktemp 24 dslab-picard.epfl.ch 24
+mv 24 dslab-worf.epfl.ch 24 nice 24 dslab-worf.epfl.ch 24 nl 24 dslab-picard.epfl.ch 24
+nohup 24 dslab-worf.epfl.ch 24 od 24 dslab-worf.epfl.ch 24 paste 24 dslab-picard.epfl.ch 24
+pathchk 24 dslab-worf.epfl.ch 24 pinky 24 dslab-worf.epfl.ch 24 pr 24 dslab-picard.epfl.ch 24
+printenv 24 dslab-worf.epfl.ch 24 printf 24 dslab-worf.epfl.ch 24 ptx 24 dslab-picard.epfl.ch 24
+pwd 24 dslab-worf.epfl.ch 24 readlink 24 dslab-worf.epfl.ch 24 rm 24 dslab-picard.epfl.ch 24
+rmdir 24 dslab-worf.epfl.ch 24 runcon 24 dslab-worf.epfl.ch 24 seq 24 dslab-picard.epfl.ch 24
+setuidgid 24 dslab-worf.epfl.ch 24 sha1sum 24 dslab-worf.epfl.ch 24 sha224sum 24 dslab-picard.epfl.ch 24
+sha256sum 24 dslab-worf.epfl.ch 24 sha384sum 24 dslab-worf.epfl.ch 24 sha512sum 24 dslab-picard.epfl.ch 24
+shred 24 dslab-worf.epfl.ch 24 shuf 24 dslab-worf.epfl.ch 24 sleep 24 dslab-picard.epfl.ch 24
+sort 24 dslab-worf.epfl.ch 24 split 24 dslab-worf.epfl.ch 24 stat 24 dslab-picard.epfl.ch 24
+stty 24 dslab-worf.epfl.ch 24 su 24 dslab-worf.epfl.ch 24 sum 24 dslab-picard.epfl.ch 24
+sync 24 dslab-worf.epfl.ch 24 tac 24 dslab-worf.epfl.ch 24 tail 24 dslab-picard.epfl.ch 24
+tee 24 dslab-worf.epfl.ch 24 test 24 dslab-worf.epfl.ch 24 touch 24 dslab-picard.epfl.ch 24
+tr 24 dslab-worf.epfl.ch 24 true 24 dslab-worf.epfl.ch 24 tsort 24 dslab-picard.epfl.ch 24
+tty 24 dslab-worf.epfl.ch 24 uname 24 dslab-worf.epfl.ch 24 unexpand 24 dslab-picard.epfl.ch 24
+uniq 24 dslab-worf.epfl.ch 24 unlink 24 dslab-worf.epfl.ch 24 uptime 24 dslab-picard.epfl.ch 24
+users 24 dslab-worf.epfl.ch 24 vdir 24 dslab-worf.epfl.ch 24 wc 24 dslab-picard.epfl.ch 24
+who 24 dslab-worf.epfl.ch 24 whoami 24 dslab-worf.epfl.ch 24 yes 24 dslab-picard.epfl.ch 24
+base64 48 dslab-worf.epfl.ch 48
+basename 48 dslab-worf.epfl.ch 48
+cat 48 dslab-worf.epfl.ch 48
+chcon 48 dslab-worf.epfl.ch 48
+chgrp 48 dslab-worf.epfl.ch 48
+chmod 48 dslab-worf.epfl.ch 48
+chown 48 dslab-worf.epfl.ch 48
+chroot 48 dslab-worf.epfl.ch 48
+cksum 48 dslab-worf.epfl.ch 48
+comm 48 dslab-worf.epfl.ch 48
+cp 48 dslab-worf.epfl.ch 48
+csplit 48 dslab-worf.epfl.ch 48
+cut 48 dslab-worf.epfl.ch 48
+date 48 dslab-worf.epfl.ch 48
+dd 48 dslab-worf.epfl.ch 48
+df 48 dslab-worf.epfl.ch 48
+dir 48 dslab-worf.epfl.ch 48
+dircolors 48 dslab-worf.epfl.ch 48
+dirname 48 dslab-worf.epfl.ch 48
+du 48 dslab-worf.epfl.ch 48
+echo 48 dslab-worf.epfl.ch 48
+env 48 dslab-worf.epfl.ch 48
+expand 48 dslab-worf.epfl.ch 48
+expr 48 dslab-worf.epfl.ch 48
+factor 48 dslab-worf.epfl.ch 48
+false 48 dslab-worf.epfl.ch 48
+fmt 48 dslab-worf.epfl.ch 48
+fold 48 dslab-worf.epfl.ch 48
+ginstall 48 dslab-worf.epfl.ch 48
+head 48 dslab-worf.epfl.ch 48
+hostid 48 dslab-worf.epfl.ch 48
+id 48 dslab-worf.epfl.ch 48
+join 48 dslab-worf.epfl.ch 48
+kill 48 dslab-worf.epfl.ch 48
+link 48 dslab-worf.epfl.ch 48
+ln 48 dslab-worf.epfl.ch 48
+logname 48 dslab-worf.epfl.ch 48
+ls 48 dslab-worf.epfl.ch 48
+md5sum 48 dslab-worf.epfl.ch 48
+mkdir 48 dslab-worf.epfl.ch 48
+mkfifo 48 dslab-worf.epfl.ch 48
+mknod 48 dslab-worf.epfl.ch 48
+mktemp 48 dslab-worf.epfl.ch 48
+mv 48 dslab-worf.epfl.ch 48
+nice 48 dslab-worf.epfl.ch 48
+nl 48 dslab-worf.epfl.ch 48
+nohup 48 dslab-worf.epfl.ch 48
+od 48 dslab-worf.epfl.ch 48
+paste 48 dslab-worf.epfl.ch 48
+pathchk 48 dslab-worf.epfl.ch 48
+pinky 48 dslab-worf.epfl.ch 48
+pr 48 dslab-worf.epfl.ch 48
+printenv 48 dslab-worf.epfl.ch 48
+printf 48 dslab-worf.epfl.ch 48
+ptx 48 dslab-worf.epfl.ch 48
+pwd 48 dslab-worf.epfl.ch 48
+readlink 48 dslab-worf.epfl.ch 48
+rm 48 dslab-worf.epfl.ch 48
+rmdir 48 dslab-worf.epfl.ch 48
+runcon 48 dslab-worf.epfl.ch 48
+seq 48 dslab-worf.epfl.ch 48
+setuidgid 48 dslab-worf.epfl.ch 48
+sha1sum 48 dslab-worf.epfl.ch 48
+sha224sum 48 dslab-worf.epfl.ch 48
+sha256sum 48 dslab-worf.epfl.ch 48
+sha384sum 48 dslab-worf.epfl.ch 48
+sha512sum 48 dslab-worf.epfl.ch 48
+shred 48 dslab-worf.epfl.ch 48
+shuf 48 dslab-worf.epfl.ch 48
+sleep 48 dslab-worf.epfl.ch 48
+sort 48 dslab-worf.epfl.ch 48
+split 48 dslab-worf.epfl.ch 48
+stat 48 dslab-worf.epfl.ch 48
+stty 48 dslab-worf.epfl.ch 48
+su 48 dslab-worf.epfl.ch 48
+sum 48 dslab-worf.epfl.ch 48
+sync 48 dslab-worf.epfl.ch 48
+tac 48 dslab-worf.epfl.ch 48
+tail 48 dslab-worf.epfl.ch 48
+tee 48 dslab-worf.epfl.ch 48
+test 48 dslab-worf.epfl.ch 48
+touch 48 dslab-worf.epfl.ch 48
+tr 48 dslab-worf.epfl.ch 48
+true 48 dslab-worf.epfl.ch 48
+tsort 48 dslab-worf.epfl.ch 48
+tty 48 dslab-worf.epfl.ch 48
+uname 48 dslab-worf.epfl.ch 48
+unexpand 48 dslab-worf.epfl.ch 48
+uniq 48 dslab-worf.epfl.ch 48
+unlink 48 dslab-worf.epfl.ch 48
+uptime 48 dslab-worf.epfl.ch 48
+users 48 dslab-worf.epfl.ch 48
+vdir 48 dslab-worf.epfl.ch 48
+wc 48 dslab-worf.epfl.ch 48
+who 48 dslab-worf.epfl.ch 48
+whoami 48 dslab-worf.epfl.ch 48
+yes 48 dslab-worf.epfl.ch 48
+

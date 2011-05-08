@@ -1,0 +1,4 @@
+  --c9-use-global-cov --posix-runtime --libc=uclibc --init-env 
+  --simplify-sym-indices --disable-inlining --optimize
+  --use-cex-cache --allow-external-sym-calls --only-output-states-covering-new
+  --max-instruction-time=3600. --max-memory-inhibit=false
