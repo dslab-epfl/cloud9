@@ -11,7 +11,7 @@
 #define KLEE_KINSTITERATOR_H
 
 namespace klee {
-  class KInstruction;
+  struct KInstruction;
 
   class KInstIterator {
     KInstruction **it;
@@ -41,6 +41,8 @@ namespace klee {
 
     operator KInstruction*() const { return it ? *it : 0;}
     operator bool() const { return it != 0; }
+
+    unsigned long hash() const {return (unsigned long) (it);}
 
     KInstruction *operator ->() const { return *it; }
   };

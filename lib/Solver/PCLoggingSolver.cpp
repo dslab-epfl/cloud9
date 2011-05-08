@@ -46,6 +46,7 @@ class PCLoggingSolver : public SolverImpl {
     printer->printQuery(os, query.constraints, query.expr,
                         evalExprsBegin, evalExprsEnd,
                         evalArraysBegin, evalArraysEnd);
+    os.flush();
     
     startTime = getWallTime();
   }

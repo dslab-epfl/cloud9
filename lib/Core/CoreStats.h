@@ -20,8 +20,10 @@ namespace stats {
   extern Statistic instructions;
   extern Statistic instructionTime;
   extern Statistic instructionRealTime;
-  extern Statistic coveredInstructions;
-  extern Statistic uncoveredInstructions;  
+  extern Statistic locallyCoveredInstructions;
+  extern Statistic globallyCoveredInstructions;
+  extern Statistic locallyUncoveredInstructions;
+  extern Statistic globallyUncoveredInstructions;
   extern Statistic trueBranches;
   extern Statistic falseBranches;
   extern Statistic forkTime;
@@ -36,12 +38,12 @@ namespace stats {
 
   /// Instruction level statistic for tracking number of reachable
   /// uncovered instructions.
-  extern Statistic reachableUncovered;
+  extern Statistic reachableGloballyUncovered;
 
   /// Instruction level statistic tracking the minimum intraprocedural
   /// distance to an uncovered instruction; this is only periodically
   /// updated.
-  extern Statistic minDistToUncovered;
+  extern Statistic minDistToGloballyUncovered;
 
   /// Instruction level statistic tracking the minimum intraprocedural
   /// distance to a function return.

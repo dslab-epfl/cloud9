@@ -9,6 +9,7 @@
 
 #include "Passes.h"
 
+#include "klee/Config/config.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Function.h"
@@ -16,6 +17,9 @@
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
+#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+#include "llvm/LLVMContext.h"
+#endif
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Type.h"
@@ -57,8 +61,13 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
         // FIXME: This is much more target dependent than just the word size,
         // however this works for x86-32 and x86-64.
       case Intrinsic::vacopy: { // (dst, src) -> *((i8**) dst) = *((i8**) src)
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
         Value *dst = ii->getOperand(1);
         Value *src = ii->getOperand(2);
+#else
+        Value *dst = ii->getArgOperand(0);
+        Value *src = ii->getArgOperand(1);
+#endif
 
         if (WordSize == 4) {
           Type *i8pp = PointerType::getUnqual(PointerType::getUnqual(Type::getInt8Ty(getGlobalContext())));
@@ -85,6 +94,7 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
         break;
       }
 
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
       case Intrinsic::dbg_stoppoint: {
         // We can remove this stoppoint if the next instruction is
         // sure to be another stoppoint. This is nice for cleanliness
@@ -117,12 +127,21 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
       case Intrinsic::dbg_region_start:
       case Intrinsic::dbg_region_end:
       case Intrinsic::dbg_func_start:
+#else
+      case Intrinsic::dbg_value:
+#endif
       case Intrinsic::dbg_declare:
         // Remove these regardless of lower intrinsics flag. This can
         // be removed once IntrinsicLowering is fixed to not have bad
         // caches.
         ii->eraseFromParent();
         dirty = true;
+        break;
+      case Intrinsic::memory_barrier:
+      case Intrinsic::atomic_swap:
+      case Intrinsic::atomic_cmp_swap:
+      case Intrinsic::atomic_load_add:
+      case Intrinsic::atomic_load_sub:
         break;
                     
       default:

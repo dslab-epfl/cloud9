@@ -21,6 +21,13 @@
 #include "klee/util/ExprUtil.h"
 #include "klee/Internal/Support/Timer.h"
 
+#include "llvm/System/Process.h"
+
+#include "cloud9/instrum/Timing.h"
+#include "cloud9/instrum/InstrumentationManager.h"
+#include "cloud9/Logger.h"
+
+
 #define vc_bvBoolExtract IAMTHESPAWNOFSATAN
 
 #include <cassert>
@@ -34,7 +41,13 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <iostream>
+#include <fstream>
+
 using namespace klee;
+using namespace llvm;
+
+using cloud9::instrum::Timer;
 
 /***/
 
@@ -420,7 +433,7 @@ private:
   bool useForkedSTP;
 
 public:
-  STPSolverImpl(STPSolver *_solver, bool _useForkedSTP);
+  STPSolverImpl(STPSolver *_solver, bool _useForkedSTP, bool _optimizeDivides = true);
   ~STPSolverImpl();
 
   char *getConstraintLog(const Query&);
@@ -443,16 +456,25 @@ static void stp_error_handler(const char* err_msg) {
   abort();
 }
 
-STPSolverImpl::STPSolverImpl(STPSolver *_solver, bool _useForkedSTP) 
+STPSolverImpl::STPSolverImpl(STPSolver *_solver, bool _useForkedSTP, bool _optimizeDivides)
   : solver(_solver),
     vc(vc_createValidityChecker()),
-    builder(new STPBuilder(vc)),
+    builder(new STPBuilder(vc, _optimizeDivides)),
     timeout(0.0),
     useForkedSTP(_useForkedSTP)
 {
   assert(vc && "unable to create validity checker");
   assert(builder && "unable to create STPBuilder");
 
+#ifdef HAVE_EXT_STP
+  // In newer versions of STP, a memory management mechanism has been
+  // introduced that automatically invalidates certain C interface
+  // pointers at vc_Destroy time.  This caused double-free errors
+  // due to the ExprHandle destructor also attempting to invalidate
+  // the pointers using vc_DeleteExpr.  By setting EXPRDELETE to 0
+  // we restore the old behaviour.
+  vc_setInterfaceFlags(vc, EXPRDELETE, 0);
+#endif
   vc_registerErrorHandler(::stp_error_handler);
 
   if (useForkedSTP) {
@@ -472,8 +494,8 @@ STPSolverImpl::~STPSolverImpl() {
 
 /***/
 
-STPSolver::STPSolver(bool useForkedSTP) 
-  : Solver(new STPSolverImpl(this, useForkedSTP))
+STPSolver::STPSolver(bool useForkedSTP, bool optimizeDivides)
+  : Solver(new STPSolverImpl(this, useForkedSTP, optimizeDivides))
 {
 }
 
@@ -587,7 +609,36 @@ static bool runAndGetCexForked(::VC vc,
   fflush(stderr);
   int pid = fork();
   if (pid==-1) {
-    fprintf(stderr, "error: fork failed (for STP)");
+    
+
+    if(errno == EAGAIN)
+      fprintf(stderr, "error: fork failed (for STP) - reached system limit (EAGAIN)\n");
+    else
+      if(errno == ENOMEM) {
+    	  unsigned mbs = sys::Process::GetTotalMemoryUsage() >> 20;
+    	  fprintf(stderr, "error: fork failed (for STP) - cannot allocate kernel structures (ENOMEM) - Klee mem = %u\n", mbs);
+      }
+      else
+    	  fprintf(stderr, "error: fork failed (for STP) - unknown errno = %d\n", errno);
+
+    std::string line;
+    std::ifstream *f;
+    f = new std::ifstream("/proc/meminfo");
+    if (!f) {
+      fprintf(stderr, "out of memory");
+    } else if (!f->good()) {
+      fprintf(stderr, "error opening /proc/meminfo");
+      delete f;
+      f = NULL;
+    }
+    
+    std::getline(*f, line);
+    fprintf(stderr,  "%s\n", line.c_str());
+    std::getline(*f, line);
+    fprintf(stderr, "%s\n", line.c_str());
+    
+    f->close();
+
     return false;
   }
 
@@ -692,7 +743,13 @@ STPSolverImpl::computeInitialValues(const Query &query,
     success = runAndGetCexForked(vc, builder, stp_e, objects, values, 
                                  hasSolution, timeout);
   } else {
+    Timer t;
+    t.start();
     runAndGetCex(vc, builder, stp_e, objects, values, hasSolution);
+    t.stop();
+    cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::SMTSolve, t);
+
+    //CLOUD9_DEBUG("SMT solving complete: " << t);
     success = true;
   }
   

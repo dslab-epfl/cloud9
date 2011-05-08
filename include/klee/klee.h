@@ -10,6 +10,10 @@
 #ifndef __KLEE_H__
 #define __KLEE_H__
 
+#include <stdint.h>
+#include <stddef.h>
+#include <stdarg.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,7 +23,7 @@ extern "C" {
      objects do not overlap. These memory objects will also
      (obviously) not correctly interact with external function
      calls. */
-  void klee_define_fixed_object(void *addr, unsigned nbytes);
+  void klee_define_fixed_object(void *addr, size_t nbytes);
 
   /// klee_make_symbolic - Make the contents of the object pointer to by \arg
   /// addr symbolic. 
@@ -29,7 +33,9 @@ extern "C" {
   /// be the entire contents of the object.
   /// \arg name - An optional name, used for identifying the object in messages,
   /// output files, etc.
-  void klee_make_symbolic(void *addr, unsigned nbytes, const char *name);
+  void klee_make_symbolic(void *addr, size_t nbytes, const char *name);
+
+  void klee_event(unsigned int type, long int value);
 
   /// klee_range - Construct a symbolic value in the signed interval
   /// [begin,end).
@@ -67,7 +73,7 @@ extern "C" {
 			 const char *suffix);
   
   /* called by checking code to get size of memory. */
-  unsigned klee_get_obj_size(void *ptr);
+  size_t klee_get_obj_size(void *ptr);
   
   /* print the tree associated w/ a given expression. */
   void klee_print_expr(const char *msg, ...);
@@ -75,7 +81,7 @@ extern "C" {
   /* NB: this *does not* fork n times and return [0,n) in children.
    * It makes n be symbolic and returns: caller must compare N times.
    */
-  unsigned klee_choose(unsigned n);
+  uintptr_t klee_choose(uintptr_t n);
   
   /* special klee assert macro. this assert should be used when path consistency
    * across platforms is desired (e.g., in tests).
@@ -91,21 +97,30 @@ extern "C" {
    * and writing tests but can also be used to enable prints in replay
    * mode.
    */
-  unsigned klee_is_symbolic(unsigned n);
+  unsigned klee_is_symbolic(uintptr_t n);
 
 
   /* The following intrinsics are primarily intended for internal use
      and may have peculiar semantics. */
 
-  void klee_assume(unsigned condition);
+  void klee_assume(uintptr_t condition);
   void klee_warning(const char *message);
   void klee_warning_once(const char *message);
-  void klee_prefer_cex(void *object, unsigned condition);
+  void klee_prefer_cex(void *object, uintptr_t condition);
   void klee_mark_global(void *object);
 
   /* Return a possible constant value for the input expression. This
      allows programs to forcibly concretize values on their own. */
-  unsigned klee_get_value(unsigned expr);
+#define KLEE_GET_VALUE_PROTO(suffix, type)	type klee_get_value##suffix(type expr)
+
+  KLEE_GET_VALUE_PROTO(f, float);
+  KLEE_GET_VALUE_PROTO(d, double);
+  KLEE_GET_VALUE_PROTO(l, long);
+  KLEE_GET_VALUE_PROTO(ll, long long);
+  KLEE_GET_VALUE_PROTO(_i32, int32_t);
+  KLEE_GET_VALUE_PROTO(_i64, int64_t);
+
+#undef KLEE_GET_VALUE_PROTO
 
   /* Ensure that memory in the range [address, address+size) is
      accessible to the program. If some byte in the range is not
@@ -114,7 +129,7 @@ extern "C" {
   
      The current implementation requires both address and size to be
      constants and that the range lie within a single object. */
-  void klee_check_memory_access(const void *address, unsigned size);
+  void klee_check_memory_access(const void *address, size_t size);
 
   /* Enable/disable forking. */
   void klee_set_forking(unsigned enable);
@@ -126,6 +141,51 @@ extern "C" {
      to undo.  Be aware that some special functions, such as exit(),
      may not always work. */
   void klee_alias_function(const char* fn_name, const char* new_fn_name);
+
+  /* Print stack trace. */
+  void klee_stack_trace(void);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Shared Memory Management
+  //////////////////////////////////////////////////////////////////////////////
+
+  /* Marks a private memory object shared between processes (if they know
+   * the address) */
+  void klee_make_shared(void *addr, size_t nbytes);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Thread Scheduling Management
+  //////////////////////////////////////////////////////////////////////////////
+
+  void klee_thread_create(uint64_t tid, void *(*start_routine)(void*), void *arg);
+  void klee_thread_terminate() __attribute__ ((__noreturn__));
+
+  int klee_process_fork(int32_t pid);
+  void klee_process_terminate() __attribute__ ((__noreturn__));
+
+  void klee_get_context(uint64_t *tid, int32_t *pid);
+
+  uint64_t klee_get_wlist(void);
+
+  void klee_thread_preempt(int yield);
+
+  void klee_thread_sleep(uint64_t wlist);
+
+  void klee_thread_notify(uint64_t wlist, int all);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Misc
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t klee_get_time(void);
+  void klee_set_time(uint64_t value);
+
+  uintptr_t klee_branch(uintptr_t expr, int reason);
+  int klee_fork(int reason);
+
+  // Because of limited support for calling external variadic functions,
+  // klee_debug accepts either a set of 32-bit integers, or a single 64-bit value (char*).
+  void klee_debug(const char *format, ...);
 
 #ifdef __cplusplus
 }

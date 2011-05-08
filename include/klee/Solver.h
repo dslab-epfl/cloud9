@@ -64,7 +64,7 @@ namespace klee {
     SolverImpl *impl;
 
   public:
-    Solver(SolverImpl *_impl) : impl(_impl) {};
+    Solver(SolverImpl *_impl) : impl(_impl) {}
     virtual ~Solver();
 
     /// evaluate - Determine the full validity of an expression in particular
@@ -157,7 +157,9 @@ namespace klee {
     ///
     /// \param useForkedSTP - Whether STP should be run in a separate process
     /// (required for using timeouts).
-    STPSolver(bool useForkedSTP);
+    /// \param optimizeDivides - Whether constant division operations should
+    /// be optimized into add/shift/multiply operations.
+    STPSolver(bool useForkedSTP, bool optimizeDivides = true);
 
     
     

@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "klee/Config/config.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
 
 #include "llvm/Function.h"
@@ -18,6 +19,9 @@
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
+#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+#include "llvm/Analysis/DebugInfo.h"
+#endif
 #include "llvm/Analysis/ValueTracking.h"
 
 #include <map>
@@ -59,7 +63,8 @@ static void buildInstructionToLineMap(Module *m,
   }
 }
 
-static std::string getDSPIPath(DbgStopPointInst *dspi) {
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+static std::string getDSPIPath(const DbgStopPointInst *dspi) {
   std::string dir, file;
   bool res = GetConstantStringInfo(dspi->getDirectory(), dir);
   assert(res && "GetConstantStringInfo failed");
@@ -73,6 +78,45 @@ static std::string getDSPIPath(DbgStopPointInst *dspi) {
     return dir + "/" + file;
   }
 }
+#else
+static std::string getDSPIPath(DILocation Loc) {
+  std::string dir = Loc.getDirectory();
+  std::string file = Loc.getFilename();
+  if (dir.empty()) {
+    return file;
+  } else if (*dir.rbegin() == '/') {
+    return dir + file;
+  } else {
+    return dir + "/" + file;
+  }
+}
+#endif
+
+bool InstructionInfoTable::getInstructionDebugInfo(const llvm::Instruction *I, 
+                                                   const std::string *&File,
+                                                   unsigned &Line) {
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+  if (const DbgStopPointInst *dspi = dyn_cast<DbgStopPointInst>(I)) {
+    File = internString(getDSPIPath(dspi));
+    Line = dspi->getLine();
+    return true;
+  }
+#else
+  if (MDNode *N = I->getMetadata("dbg")) {
+    DILocation Loc(N);
+    File = internString(getDSPIPath(Loc));
+    Line = Loc.getLineNumber();
+    return true;
+  }
+#endif
+
+  return false;
+}
+
+bool InstructionInfoTable::ltfunc::operator()(const Function *f1,
+    const Function *f2) const {
+  return f1->getNameStr() < f2->getNameStr();
+}
 
 InstructionInfoTable::InstructionInfoTable(Module *m) 
   : dummyString(""), dummyInfo(0, dummyString, 0, 0) {
@@ -80,27 +124,34 @@ InstructionInfoTable::InstructionInfoTable(Module *m)
   std::map<const Instruction*, unsigned> lineTable;
   buildInstructionToLineMap(m, lineTable);
 
-  for (Module::iterator fnIt = m->begin(), fn_ie = m->end(); 
-       fnIt != fn_ie; ++fnIt) {
+  // Sort the list of functions, in order to get consistent IDs
+  std::vector<Function*> functions;
+
+  for (Module::iterator fnIt = m->begin(), fn_ie = m->end();
+         fnIt != fn_ie; ++fnIt) {
+    functions.push_back(&(*fnIt));
+  }
+
+  std::sort(functions.begin(), functions.end(), ltfunc());
+
+  for (std::vector<Function*>::iterator fnIt = functions.begin();
+      fnIt != functions.end(); fnIt++) {
+    Function *f = *fnIt;
     const std::string *initialFile = &dummyString;
     unsigned initialLine = 0;
 
     // It may be better to look for the closest stoppoint to the entry
     // following the CFG, but it is not clear that it ever matters in
     // practice.
-    for (inst_iterator it = inst_begin(fnIt), ie = inst_end(fnIt);
-         it != ie; ++it) {
-      if (DbgStopPointInst *dspi = dyn_cast<DbgStopPointInst>(&*it)) {
-        initialFile = internString(getDSPIPath(dspi));
-        initialLine = dspi->getLine();
+    for (inst_iterator it = inst_begin(f), ie = inst_end(f);
+         it != ie; ++it)
+      if (getInstructionDebugInfo(&*it, initialFile, initialLine))
         break;
-      }
-    }
     
     typedef std::map<BasicBlock*, std::pair<const std::string*,unsigned> > 
       sourceinfo_ty;
     sourceinfo_ty sourceInfo;
-    for (llvm::Function::iterator bbIt = fnIt->begin(), bbie = fnIt->end(); 
+    for (llvm::Function::iterator bbIt = f->begin(), bbie = f->end();
          bbIt != bbie; ++bbIt) {
       std::pair<sourceinfo_ty::iterator, bool>
         res = sourceInfo.insert(std::make_pair(bbIt,
@@ -129,10 +180,7 @@ InstructionInfoTable::InstructionInfoTable(Module *m)
             lineTable.find(instr);
           if (ltit!=lineTable.end())
             assemblyLine = ltit->second;
-          if (DbgStopPointInst *dspi = dyn_cast<DbgStopPointInst>(instr)) {
-            file = internString(getDSPIPath(dspi));
-            line = dspi->getLine();
-          }
+          getInstructionDebugInfo(instr, file, line);
           infos.insert(std::make_pair(instr,
                                       InstructionInfo(id++,
                                                       *file,

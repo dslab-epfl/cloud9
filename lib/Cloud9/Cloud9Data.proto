@@ -1,0 +1,115 @@
+package cloud9.data;
+
+////////////////////////////////////////////////////////////////////////////////
+// Common data structures
+////////////////////////////////////////////////////////////////////////////////
+
+// A single, continuous path fragment
+message PathData {
+	required uint32 length = 1; // The length of the fragment
+	required bytes path = 2; // The fragment data - one byte per node in the path
+}
+
+// A compact representation of a set of tree paths, as a set of branches
+message ExecutionPathSet {
+	message ExecutionPath {
+		optional uint32 parent = 3;
+		optional uint32 parent_pos = 4;
+		required PathData data = 2;
+	}
+	
+	repeated ExecutionPath path = 1;
+}
+
+// A bit of progress statistics information. Among its uses: code coverage tracking
+message StatisticData {
+	required uint32 id = 1;
+	required uint64 value = 2;
+}
+
+// A set of progress updates
+message StatisticUpdate {
+	required string name = 1;
+	repeated StatisticData data = 2;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// The structure of a worker update
+////////////////////////////////////////////////////////////////////////////////
+
+message WorkerReportMessage {
+	message Registration {
+		required string address = 1;
+		required uint32 port = 2;
+		
+		required bool wants_updates = 5;
+		
+		required string prog_name = 3;
+		required uint32 prog_crc = 6;
+		required uint32 stat_id_count = 4;
+		
+		repeated string targets = 7;
+	}
+	
+	message NodeSetUpdate {
+		required ExecutionPathSet pathSet = 1;
+	}
+	
+	message NodeDataUpdate {
+		repeated uint32 data = 1;
+	}
+	
+	message TargetUpdate {
+		required string targetName = 1;
+		required uint32 value = 2;
+	}
+	
+	required uint32 id = 1;
+	
+	optional NodeSetUpdate nodeSetUpdate = 2;
+	optional NodeDataUpdate nodeDataUpdate = 3;
+	optional Registration registration = 4;
+		
+	repeated StatisticUpdate localUpdates = 5;
+	repeated TargetUpdate targetUpdates = 6;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// The structure of a load balancer response
+////////////////////////////////////////////////////////////////////////////////
+
+message LBResponseMessage {
+	message JobTransfer {
+		required string dest_address = 2;
+		required uint32 dest_port = 3;
+		
+		required ExecutionPathSet path_set = 4;
+		repeated uint32 count = 5;
+		
+		repeated string targets = 6;
+	}
+	
+	message JobSeed {
+		required ExecutionPathSet path_set = 1;
+	}
+	
+	required uint32 id = 1;
+
+	optional JobTransfer jobTransfer = 2;
+	optional JobSeed jobSeed = 3;
+	required bool more_details = 4;
+	required bool terminate = 7;
+	
+	repeated StatisticUpdate globalUpdates = 5;
+	
+	repeated string targets = 6;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// The structure of a path exchange message between workers
+////////////////////////////////////////////////////////////////////////////////
+
+message PeerTransferMessage {
+	required ExecutionPathSet path_set = 1;
+	repeated uint64 instr_since_fork = 2;
+}

@@ -20,6 +20,7 @@ namespace klee {
   class MemoryObject;
   class ObjectState;
   class TimingSolver;
+  class AddressPool;
 
   template<class T> class ref;
 
@@ -34,9 +35,15 @@ namespace klee {
   typedef ImmutableMap<const MemoryObject*, ObjectHolder, MemoryObjectLT> MemoryMap;
   
   class AddressSpace {
+	  friend class ObjectState;
+	  friend class ExecutionState;
   private:
+	  typedef std::vector<AddressSpace*> cow_domain_t;
+
     /// Epoch counter used to control ownership of objects.
     mutable unsigned cowKey;
+
+    mutable cow_domain_t *cowDomain;
 
     /// Unsupported, use copy constructor
     AddressSpace &operator=(const AddressSpace&); 
@@ -52,8 +59,8 @@ namespace klee {
     MemoryMap objects;
     
   public:
-    AddressSpace() : cowKey(1) {}
-    AddressSpace(const AddressSpace &b) : cowKey(++b.cowKey), objects(b.objects) { }
+    AddressSpace() : cowKey(1), cowDomain(NULL) {}
+    AddressSpace(const AddressSpace &b) : cowKey(b.cowKey), cowDomain(NULL), objects(b.objects)  { }
     ~AddressSpace() {}
 
     /// Resolve address to an ObjectPair in result.
@@ -89,10 +96,14 @@ namespace klee {
                  unsigned maxResolutions=0,
                  double timeout=0.);
 
+    void _testAddressSpace();
+
     /***/
 
     /// Add a binding to the address space.
     void bindObject(const MemoryObject *mo, ObjectState *os);
+
+    void bindSharedObject(const MemoryObject *mo, ObjectState *os);
 
     /// Remove a binding from the address space.
     void unbindObject(const MemoryObject *mo);
@@ -114,7 +125,7 @@ namespace klee {
 
     /// Copy the concrete values of all managed ObjectStates into the
     /// actual system memory location they were allocated at.
-    void copyOutConcretes();
+    void copyOutConcretes(AddressPool *pool);
 
     /// Copy the concrete values of all managed ObjectStates back from
     /// the actual system memory location they were allocated
@@ -124,7 +135,7 @@ namespace klee {
     ///
     /// \retval true The copy succeeded. 
     /// \retval false The copy failed because a read-only object was modified.
-    bool copyInConcretes();
+    bool copyInConcretes(AddressPool *pool);
   };
 } // End klee namespace
 

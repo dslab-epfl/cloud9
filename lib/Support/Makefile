@@ -13,4 +13,6 @@ LIBRARYNAME=kleeSupport
 DONT_BUILD_RELINKED=1
 BUILD_ARCHIVE=1
 
+CXX.Flags += -Wno-deprecated
+
 include $(LEVEL)/Makefile.common

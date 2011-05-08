@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Executor.h"
+#include "klee/Executor.h"
 
 #include "Context.h"
 
@@ -17,13 +17,16 @@
 
 #include "klee/Internal/Module/KModule.h"
 
+#include "klee/util/GetElementPtrTypeIterator.h"
+
 #include "llvm/Constants.h"
 #include "llvm/Function.h"
 #include "llvm/Instructions.h"
 #include "llvm/Module.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/ModuleProvider.h"
+#endif
 #include "llvm/Support/CallSite.h"
-#include "llvm/Support/GetElementPtrTypeIterator.h"
 #include "llvm/Target/TargetData.h"
 #include <iostream>
 #include <cassert>
@@ -51,9 +54,9 @@ namespace klee {
       abort();
 
     case Instruction::Trunc: 
-      return op1->Extract(0, Expr::getWidthForLLVMType(type));
-    case Instruction::ZExt:  return op1->ZExt(Expr::getWidthForLLVMType(type));
-    case Instruction::SExt:  return op1->SExt(Expr::getWidthForLLVMType(type));
+      return op1->Extract(0, getWidthForLLVMType(type));
+    case Instruction::ZExt:  return op1->ZExt(getWidthForLLVMType(type));
+    case Instruction::SExt:  return op1->SExt(getWidthForLLVMType(type));
     case Instruction::Add:   return op1->Add(op2);
     case Instruction::Sub:   return op1->Sub(op2);
     case Instruction::Mul:   return op1->Mul(op2);
@@ -70,10 +73,10 @@ namespace klee {
     case Instruction::BitCast:  return op1;
 
     case Instruction::IntToPtr:
-      return op1->ZExt(Expr::getWidthForLLVMType(type));
+      return op1->ZExt(getWidthForLLVMType(type));
 
     case Instruction::PtrToInt:
-      return op1->ZExt(Expr::getWidthForLLVMType(type));
+      return op1->ZExt(getWidthForLLVMType(type));
 
     case Instruction::GetElementPtr: {
       ref<ConstantExpr> base = op1->ZExt(Context::get().getPointerWidth());
@@ -91,11 +94,11 @@ namespace klee {
                                                             ci->getZExtValue()),
                                        Context::get().getPointerWidth());
         } else {
-          const SequentialType *st = cast<SequentialType>(*ii);
+          const SequentialType *set = cast<SequentialType>(*ii);
           ref<ConstantExpr> index = 
             evalConstant(cast<Constant>(ii.getOperand()));
           unsigned elementSize = 
-            kmodule->targetData->getTypeStoreSize(st->getElementType());
+            kmodule->targetData->getTypeStoreSize(set->getElementType());
 
           index = index->ZExt(Context::get().getPointerWidth());
           addend = index->Mul(ConstantExpr::alloc(elementSize, 

@@ -16,7 +16,9 @@ using namespace klee;
 StatisticManager::StatisticManager()
   : enabled(true),
     globalStats(0),
+    totalIndices(0),
     indexedStats(0),
+    changedIdxStats(0),
     contextStats(0),
     index(0) {
 }
@@ -26,10 +28,17 @@ StatisticManager::~StatisticManager() {
   if (indexedStats) delete[] indexedStats;
 }
 
-void StatisticManager::useIndexedStats(unsigned totalIndices) {  
-  if (indexedStats) delete[] indexedStats;
-  indexedStats = new uint64_t[totalIndices * stats.size()];
-  memset(indexedStats, 0, sizeof(*indexedStats) * totalIndices * stats.size());
+void StatisticManager::useIndexedStats(unsigned _totalIndices) {
+	totalIndices = _totalIndices;
+
+	if (indexedStats)
+		delete[] indexedStats;
+	indexedStats = new uint64_t[_totalIndices * stats.size()];
+	memset(indexedStats, 0, sizeof(*indexedStats) * _totalIndices
+			* stats.size());
+
+	changedIdxStats.clear();
+	changedIdxStats.resize(stats.size(), std::make_pair(false, std::vector<char>()));
 }
 
 void StatisticManager::registerStatistic(Statistic &s) {

@@ -10,7 +10,12 @@
 #ifndef KLEE_KINSTRUCTION_H
 #define KLEE_KINSTRUCTION_H
 
+#include "klee/Config/config.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/Support/DataTypes.h"
+#else
+#include "llvm/System/DataTypes.h"
+#endif
 #include <vector>
 
 namespace llvm {
@@ -37,6 +42,7 @@ namespace klee {
     /// Destination register index.
     unsigned dest;
 
+    bool originallyCovered;
   public:
     virtual ~KInstruction(); 
   };
@@ -51,6 +57,11 @@ namespace klee {
     /// offset - A constant offset to add to the pointer operand to execute the
     /// insturction.
     uint64_t offset;
+  };
+
+  struct KCallInstruction: KInstruction {
+    bool vulnerable;    // Whether the result of this call is unchecked, and
+                        // thus may lead to further errors
   };
 }
 

@@ -9,10 +9,10 @@
 
 #include "Common.h"
 
-#include "Searcher.h"
+#include "klee/Searcher.h"
 
 #include "CoreStats.h"
-#include "Executor.h"
+#include "klee/Executor.h"
 #include "PTree.h"
 #include "StatsTracker.h"
 
@@ -154,12 +154,12 @@ double WeightedRandomSearcher::getWeight(ExecutionState *es) {
     return es->weight;
   case InstCount: {
     uint64_t count = theStatisticManager->getIndexedValue(stats::instructions,
-                                                          es->pc->info->id);
+                                                          es->pc()->info->id);
     double inv = 1. / std::max((uint64_t) 1, count);
     return inv * inv;
   }
   case CPInstCount: {
-    StackFrame &sf = es->stack.back();
+    StackFrame &sf = es->stack().back();
     uint64_t count = sf.callPathNode->statistics.getValue(stats::instructions);
     double inv = 1. / std::max((uint64_t) 1, count);
     return inv;
@@ -168,8 +168,8 @@ double WeightedRandomSearcher::getWeight(ExecutionState *es) {
     return (es->queryCost < .1) ? 1. : 1./es->queryCost;
   case CoveringNew:
   case MinDistToUncovered: {
-    uint64_t md2u = computeMinDistToUncovered(es->pc,
-                                              es->stack.back().minDistToUncoveredOnReturn);
+    uint64_t md2u = computeMinDistToUncovered(es->pc(),
+                                              es->stack().back().minDistToUncoveredOnReturn);
 
     double invMD2U = 1. / (md2u ? md2u : 10000);
     if (type==CoveringNew) {
@@ -262,7 +262,7 @@ BumpMergingSearcher::~BumpMergingSearcher() {
 
 Instruction *BumpMergingSearcher::getMergePoint(ExecutionState &es) {  
   if (mergeFunction) {
-    Instruction *i = es.pc->inst;
+    Instruction *i = es.pc()->inst;
 
     if (i->getOpcode()==Instruction::Call) {
       CallSite cs(cast<CallInst>(i));
@@ -282,7 +282,7 @@ entry:
       statesAtMerge.begin();
     ExecutionState *es = it->second;
     statesAtMerge.erase(it);
-    ++es->pc;
+    ++es->pc();
 
     baseSearcher->addState(es);
   }
@@ -303,10 +303,10 @@ entry:
         // hack, because we are terminating the state we need to let
         // the baseSearcher know about it again
         baseSearcher->addState(&es);
-        executor.terminateState(es);
+        executor.terminateState(es, true);
       } else {
         it->second = &es; // the bump
-        ++mergeWith->pc;
+        ++mergeWith->pc();
 
         baseSearcher->addState(mergeWith);
       }
@@ -340,7 +340,7 @@ MergingSearcher::~MergingSearcher() {
 
 Instruction *MergingSearcher::getMergePoint(ExecutionState &es) {
   if (mergeFunction) {
-    Instruction *i = es.pc->inst;
+    Instruction *i = es.pc()->inst;
 
     if (i->getOpcode()==Instruction::Call) {
       CallSite cs(cast<CallInst>(i));
@@ -415,13 +415,13 @@ ExecutionState &MergingSearcher::selectState() {
              ie = toErase.end(); it != ie; ++it) {
         std::set<ExecutionState*>::iterator it2 = toMerge.find(*it);
         assert(it2!=toMerge.end());
-        executor.terminateState(**it);
+        executor.terminateState(**it, true);
         toMerge.erase(it2);
       }
 
       // step past merge and toss base back in pool
       statesAtMerge.erase(statesAtMerge.find(base));
-      ++base->pc;
+      ++base->pc();
       baseSearcher->addState(base);
     }  
   }
@@ -440,9 +440,9 @@ void MergingSearcher::update(ExecutionState *current,
     for (std::set<ExecutionState*>::const_iterator it = removedStates.begin(),
            ie = removedStates.end(); it != ie; ++it) {
       ExecutionState *es = *it;
-      std::set<ExecutionState*>::const_iterator it = statesAtMerge.find(es);
-      if (it!=statesAtMerge.end()) {
-        statesAtMerge.erase(it);
+      std::set<ExecutionState*>::const_iterator it2 = statesAtMerge.find(es);
+      if (it2 != statesAtMerge.end()) {
+        statesAtMerge.erase(it2);
         alt.erase(alt.find(es));
       }
     }    
@@ -456,7 +456,7 @@ void MergingSearcher::update(ExecutionState *current,
 
 BatchingSearcher::BatchingSearcher(Searcher *_baseSearcher,
                                    double _timeBudget,
-                                   unsigned _instructionBudget) 
+                                   unsigned _instructionBudget)
   : baseSearcher(_baseSearcher),
     timeBudget(_timeBudget),
     instructionBudget(_instructionBudget),
@@ -523,8 +523,8 @@ void IterativeDeepeningTimeSearcher::update(ExecutionState *current,
     for (std::set<ExecutionState*>::const_iterator it = removedStates.begin(),
            ie = removedStates.end(); it != ie; ++it) {
       ExecutionState *es = *it;
-      std::set<ExecutionState*>::const_iterator it = pausedStates.find(es);
-      if (it!=pausedStates.end()) {
+      std::set<ExecutionState*>::const_iterator it2 = pausedStates.find(es);
+      if (it2 != pausedStates.end()) {
         pausedStates.erase(it);
         alt.erase(alt.find(es));
       }

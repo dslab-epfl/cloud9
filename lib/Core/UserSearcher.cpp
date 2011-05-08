@@ -11,8 +11,8 @@
 
 #include "UserSearcher.h"
 
-#include "Searcher.h"
-#include "Executor.h"
+#include "klee/Searcher.h"
+#include "klee/Executor.h"
 
 #include "llvm/Support/CommandLine.h"
 
@@ -61,19 +61,19 @@ namespace {
                         clEnumValEnd));
   
   cl::opt<bool>
-  UseMerge("use-merge", 
+  UseMerge("use-merge",
            cl::desc("Enable support for klee_merge() (experimental)"));
  
   cl::opt<bool>
-  UseBumpMerge("use-bump-merge", 
+  UseBumpMerge("use-bump-merge",
            cl::desc("Enable support for klee_merge() (extra experimental)"));
  
   cl::opt<bool>
-  UseIterativeDeepeningTimeSearch("use-iterative-deepening-time-search", 
+  UseIterativeDeepeningTimeSearch("use-iterative-deepening-time-search",
                                     cl::desc("(experimental)"));
 
   cl::opt<bool>
-  UseBatchingSearch("use-batching-search", 
+  UseBatchingSearch("use-batching-search",
            cl::desc("Use batching searcher (keep running selected state for N instructions/time, see --batch-instructions and --batch-time"));
 
   cl::opt<unsigned>
@@ -102,17 +102,19 @@ bool klee::userSearcherRequiresBranchSequences() {
   return false;
 }
 
-Searcher *klee::constructUserSearcher(Executor &executor) {
-  Searcher *searcher = 0;
+Searcher *klee::constructUserSearcher(Executor &executor, Searcher *original) {
+  Searcher *searcher = original;
 
-  if (UseRandomPathSearch) {
-    searcher = new RandomPathSearcher(executor);
-  } else if (UseNonUniformRandomSearch) {
-    searcher = new WeightedRandomSearcher(executor, WeightType);
-  } else if (UseRandomSearch) {
-    searcher = new RandomSearcher();
-  } else {
-    searcher = new DFSSearcher();
+  if (!searcher) {
+	  if (UseRandomPathSearch) {
+		searcher = new RandomPathSearcher(executor);
+	  } else if (UseNonUniformRandomSearch) {
+		searcher = new WeightedRandomSearcher(executor, WeightType);
+	  } else if (UseRandomSearch) {
+		searcher = new RandomSearcher();
+	  } else {
+		searcher = new DFSSearcher();
+	  }
   }
 
   if (UseInterleavedNURS || UseInterleavedMD2UNURS || UseInterleavedRS ||

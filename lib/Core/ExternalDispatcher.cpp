@@ -8,12 +8,25 @@
 //===----------------------------------------------------------------------===//
 
 #include "ExternalDispatcher.h"
+#include "klee/Config/config.h"
+
+// Ugh.
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
 
 #include "llvm/Module.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Instructions.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/ModuleProvider.h"
+#endif
+#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+#include "llvm/LLVMContext.h"
+#endif
 #include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/Support/CallSite.h"
@@ -23,6 +36,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <iostream>
+#include <cstdint>
 
 using namespace llvm;
 using namespace klee;
@@ -68,10 +82,16 @@ void *ExternalDispatcher::resolveSymbol(const std::string &name) {
 
 ExternalDispatcher::ExternalDispatcher() {
   dispatchModule = new Module("ExternalDispatcher", getGlobalContext());
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
   ExistingModuleProvider* MP = new ExistingModuleProvider(dispatchModule);
-  
+#endif
+
   std::string error;
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
   executionEngine = ExecutionEngine::createJIT(MP, &error);
+#else
+  executionEngine = ExecutionEngine::createJIT(dispatchModule, &error);
+#endif
   if (!executionEngine) {
     std::cerr << "unable to make jit: " << error << "\n";
     abort();
@@ -210,7 +230,7 @@ Function *ExternalDispatcher::createDispatcher(Function *target, Instruction *in
     cast<FunctionType>(cast<PointerType>(target->getType())->getElementType());
 
   // Each argument will be passed by writing it into gTheArgsP[i].
-  unsigned i = 0;
+  unsigned i = 0, idx = 2;
   for (CallSite::arg_iterator ai = cs.arg_begin(), ae = cs.arg_end();
        ai!=ae; ++ai, ++i) {
     // Determine the type the argument will be passed as. This accomodates for
@@ -221,15 +241,21 @@ Function *ExternalDispatcher::createDispatcher(Function *target, Instruction *in
     Instruction *argI64p = 
       GetElementPtrInst::Create(argI64s, 
                                 ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 
-                                                 i+1), 
+                                                 idx), 
                                 "", dBB);
 
     Instruction *argp = new BitCastInst(argI64p, PointerType::getUnqual(argTy),
                                         "", dBB);
     args[i] = new LoadInst(argp, "", dBB);
+
+    unsigned argSize = argTy->getPrimitiveSizeInBits();
+    idx += ((!!argSize ? argSize : 64) + 63)/64;
   }
 
-  Instruction *result = CallInst::Create(target, args, args+i, "", dBB);
+  Constant *dispatchTarget =
+    dispatchModule->getOrInsertFunction(target->getName(), FTy,
+                                        target->getAttributes());
+  Instruction *result = CallInst::Create(dispatchTarget, args, args+i, "", dBB);
   if (result->getType() != Type::getVoidTy(getGlobalContext())) {
     Instruction *resp = 
       new BitCastInst(argI64s, PointerType::getUnqual(result->getType()), 

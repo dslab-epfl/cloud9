@@ -61,9 +61,9 @@ KTestObject *SeedInfo::getNextInput(const MemoryObject *mo,
 void SeedInfo::patchSeed(const ExecutionState &state, 
                          ref<Expr> condition,
                          TimingSolver *solver) {
-  std::vector< ref<Expr> > required(state.constraints.begin(),
-                                    state.constraints.end());
-  ExecutionState tmp(required);
+  std::vector< ref<Expr> > required(state.constraints().begin(),
+                                    state.constraints().end());
+  ExecutionState tmp(state.executor, required);
   tmp.addConstraint(condition);
 
   // Try and patch direct reads first, this is likely to resolve the

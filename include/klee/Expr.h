@@ -14,7 +14,11 @@
 #include "klee/util/Ref.h"
 
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/SmallVector.h"
+
+#include "cloud9/Logger.h"
+#include "cloud9/Utils.h"
 
 #include <set>
 #include <vector>
@@ -95,6 +99,7 @@ public:
   static const Width Int16 = 16;
   static const Width Int32 = 32;
   static const Width Int64 = 64;
+  static const Width Fl80 = 80;
   
 
   enum Kind {
@@ -143,15 +148,15 @@ public:
     
     // Compare
     Eq,
-    Ne,  /// Not used in canonical form
+    Ne,  ///< Not used in canonical form
     Ult,
     Ule,
-    Ugt, /// Not used in canonical form
-    Uge, /// Not used in canonical form
+    Ugt, ///< Not used in canonical form
+    Uge, ///< Not used in canonical form
     Slt,
     Sle,
-    Sgt, /// Not used in canonical form
-    Sge, /// Not used in canonical form
+    Sgt, ///< Not used in canonical form
+    Sge, ///< Not used in canonical form
 
     LastKind=Sge,
 
@@ -213,7 +218,6 @@ public:
 
   static void printKind(std::ostream &os, Kind k);
   static void printWidth(std::ostream &os, Expr::Width w);
-  static Width getWidthForLLVMType(const llvm::Type *type);
 
   /// returns the smallest number of bytes in which the given width fits
   static inline unsigned getMinBytesForWidth(Width w) {
@@ -304,7 +308,7 @@ private:
   ConstantExpr(const llvm::APInt &v) : value(v) {}
 
 public:
-  ~ConstantExpr() {};
+  ~ConstantExpr() {}
   
   Width getWidth() const { return value.getBitWidth(); }
   Kind getKind() const { return Constant; }
@@ -361,6 +365,10 @@ public:
     return r;
   }
 
+  static ref<ConstantExpr> alloc(const llvm::APFloat &f) {
+    return alloc(f.bitcastToAPInt());
+  }
+
   static ref<ConstantExpr> alloc(uint64_t v, Width w) {
     return alloc(llvm::APInt(w, v));
   }
@@ -379,10 +387,14 @@ public:
   /* Utility Functions */
 
   /// isZero - Is this a constant zero.
-  bool isZero() const { return getZExtValue() == 0; }
+  bool isZero() const {
+	  return value == 0;
+  }
 
   /// isOne - Is this a constant one.
-  bool isOne() const { return getZExtValue() == 1; }
+  bool isOne() const {
+	  return value == 1;
+  }
   
   /// isTrue - Is this the true expression.
   bool isTrue() const { 
@@ -396,7 +408,7 @@ public:
 
   /// isAllOnes - Is this constant all ones.
   bool isAllOnes() const {
-    return getZExtValue(getWidth()) == bits64::maxValueOfNBits(getWidth());
+	  return value.isAllOnesValue();
   }
 
   /* Constant Operations */
@@ -589,6 +601,9 @@ public:
       stpInitialArray(0) {
     assert((isSymbolicArray() || constantValues.size() == size) &&
            "Invalid size for constant array!");
+    //CLOUD9_DEBUG("Array " << _name << " created! Stack trace: " << CLOUD9_STACKTRACE);
+    //cloud9::breakSignal();
+
 #ifdef NDEBUG
     for (const ref<ConstantExpr> *it = constantValuesBegin;
          it != constantValuesEnd; ++it)

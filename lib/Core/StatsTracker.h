@@ -26,8 +26,9 @@ namespace klee {
   class Executor;  
   class InstructionInfoTable;
   class InterpreterHandler;
-  class KInstruction;
-  class StackFrame;
+  struct KInstruction;
+  struct KFunction;
+  struct StackFrame;
 
   class StatsTracker {
     friend class WriteStatsTimer;
@@ -55,12 +56,15 @@ namespace klee {
     void writeStatsLine();
     void writeIStats();
 
+    std::pair<std::pair<unsigned, unsigned>, unsigned> computeCodeCoverage(KFunction *kf);
+
   public:
     StatsTracker(Executor &_executor, std::string _objectFilename,
                  bool _updateMinDistToUncovered);
     ~StatsTracker();
 
     // called after a new StackFrame has been pushed (for callpath tracing)
+    void framePushed(StackFrame *frame, StackFrame *parentFrame);
     void framePushed(ExecutionState &es, StackFrame *parentFrame);
 
     // called after a StackFrame has been popped 
@@ -83,6 +87,8 @@ namespace klee {
     double elapsed();
 
     void computeReachableUncovered();
+
+    void computeCodeCoverage();
   };
 
   uint64_t computeMinDistToUncovered(const KInstruction *ki,

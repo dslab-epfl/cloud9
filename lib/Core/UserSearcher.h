@@ -19,7 +19,7 @@ namespace klee {
 
   bool userSearcherRequiresBranchSequences();
 
-  Searcher *constructUserSearcher(Executor &executor);
+  Searcher *constructUserSearcher(Executor &executor, Searcher *original);
 }
 
 #endif

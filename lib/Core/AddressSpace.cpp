@@ -14,6 +14,9 @@
 
 #include "klee/Expr.h"
 #include "klee/TimerStatIncrementer.h"
+#include "klee/AddressPool.h"
+
+#include <sys/mman.h>
 
 using namespace klee;
 
@@ -22,7 +25,15 @@ using namespace klee;
 void AddressSpace::bindObject(const MemoryObject *mo, ObjectState *os) {
   assert(os->copyOnWriteOwner==0 && "object already has owner");
   os->copyOnWriteOwner = cowKey;
+
   objects = objects.replace(std::make_pair(mo, os));
+}
+
+void AddressSpace::bindSharedObject(const MemoryObject *mo, ObjectState *os) {
+  assert(os->isShared);
+  assert(os->copyOnWriteOwner > 0);
+
+  objects = objects.insert(std::make_pair(mo, os));
 }
 
 void AddressSpace::unbindObject(const MemoryObject *mo) {
@@ -39,13 +50,29 @@ ObjectState *AddressSpace::getWriteable(const MemoryObject *mo,
                                         const ObjectState *os) {
   assert(!os->readOnly);
 
-  if (cowKey==os->copyOnWriteOwner) {
-    return const_cast<ObjectState*>(os);
+  if (cowKey != os->copyOnWriteOwner) {
+    if (os->isShared) {
+      ObjectState *n = new ObjectState(*os);
+      n->copyOnWriteOwner = cowKey;
+
+      for (cow_domain_t::iterator it = cowDomain->begin(); it != cowDomain->end();
+          it++) {
+        AddressSpace *as = *it;
+        if (as->findObject(mo) != NULL) {
+          as->objects = as->objects.replace(std::make_pair(mo, n));
+        }
+      }
+
+      return n;
+    } else {
+      ObjectState *n = new ObjectState(*os);
+      n->copyOnWriteOwner = cowKey;
+
+      objects = objects.replace(std::make_pair(mo, n));
+      return n;
+    }
   } else {
-    ObjectState *n = new ObjectState(*os);
-    n->copyOnWriteOwner = cowKey;
-    objects = objects.replace(std::make_pair(mo, n));
-    return n;    
+    return const_cast<ObjectState*>(os);
   }
 }
 
@@ -289,7 +316,7 @@ bool AddressSpace::resolve(ExecutionState &state,
 // transparently avoid screwing up symbolics (if the byte is symbolic
 // then its concrete cache byte isn't being used) but is just a hack.
 
-void AddressSpace::copyOutConcretes() {
+void AddressSpace::copyOutConcretes(AddressPool *pool) {
   for (MemoryMap::iterator it = objects.begin(), ie = objects.end(); 
        it != ie; ++it) {
     const MemoryObject *mo = it->first;
@@ -304,7 +331,7 @@ void AddressSpace::copyOutConcretes() {
   }
 }
 
-bool AddressSpace::copyInConcretes() {
+bool AddressSpace::copyInConcretes(AddressPool *pool) {
   for (MemoryMap::iterator it = objects.begin(), ie = objects.end(); 
        it != ie; ++it) {
     const MemoryObject *mo = it->first;
@@ -325,6 +352,18 @@ bool AddressSpace::copyInConcretes() {
   }
 
   return true;
+}
+
+void AddressSpace::_testAddressSpace() {
+	uint64_t prevAddr = 0;
+
+	for (MemoryMap::iterator it = objects.begin(); it != objects.end(); ++it) {
+		uint64_t crtAddr = it->first->address;
+
+		assert(crtAddr >= prevAddr);
+
+		prevAddr = crtAddr;
+	}
 }
 
 /***/

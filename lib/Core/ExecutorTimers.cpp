@@ -10,7 +10,7 @@
 #include "Common.h"
 
 #include "CoreStats.h"
-#include "Executor.h"
+#include "klee/Executor.h"
 #include "PTree.h"
 #include "StatsTracker.h"
 
@@ -56,6 +56,7 @@ public:
 
 static const double kSecondsPerTick = .1;
 static volatile unsigned timerTicks = 0;
+static unsigned callsWithoutCheck = 0;
 
 // XXX hack
 extern "C" unsigned dumpStates, dumpPTree;
@@ -119,9 +120,13 @@ void Executor::addTimer(Timer *timer, double rate) {
   timers.push_back(new TimerInfo(timer, rate));
 }
 
+void Executor::resetTimers() {
+    timerTicks = 0;
+    callsWithoutCheck = 0;
+}
+
 void Executor::processTimers(ExecutionState *current,
                              double maxInstTime) {
-  static unsigned callsWithoutCheck = 0;
   unsigned ticks = timerTicks;
 
   if (!ticks && ++callsWithoutCheck > 1000) {
@@ -151,13 +156,13 @@ void Executor::processTimers(ExecutionState *current,
           ExecutionState *es = *it;
           *os << "(" << es << ",";
           *os << "[";
-          ExecutionState::stack_ty::iterator next = es->stack.begin();
+          ExecutionState::stack_ty::iterator next = es->stack().begin();
           ++next;
-          for (ExecutionState::stack_ty::iterator sfIt = es->stack.begin(),
-                 sf_ie = es->stack.end(); sfIt != sf_ie; ++sfIt) {
+          for (ExecutionState::stack_ty::iterator sfIt = es->stack().begin(),
+                 sf_ie = es->stack().end(); sfIt != sf_ie; ++sfIt) {
             *os << "('" << sfIt->kf->function->getNameStr() << "',";
-            if (next == es->stack.end()) {
-              *os << es->prevPC->info->line << "), ";
+            if (next == es->stack().end()) {
+              *os << es->prevPC()->info->line << "), ";
             } else {
               *os << next->caller->info->line << "), ";
               ++next;
@@ -165,11 +170,11 @@ void Executor::processTimers(ExecutionState *current,
           }
           *os << "], ";
 
-          StackFrame &sf = es->stack.back();
-          uint64_t md2u = computeMinDistToUncovered(es->pc,
+          StackFrame &sf = es->stack().back();
+          uint64_t md2u = computeMinDistToUncovered(es->pc(),
                                                     sf.minDistToUncoveredOnReturn);
           uint64_t icnt = theStatisticManager->getIndexedValue(stats::instructions,
-                                                               es->pc->info->id);
+                                                               es->pc()->info->id);
           uint64_t cpicnt = sf.callPathNode->statistics.getValue(stats::instructions);
 
           *os << "{";
@@ -212,9 +217,6 @@ void Executor::processTimers(ExecutionState *current,
         }
       }
     }
-
-    timerTicks = 0;
-    callsWithoutCheck = 0;
   }
 }
 

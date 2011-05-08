@@ -17,10 +17,15 @@
 
 #include "klee/ExecutionState.h"
 #include "klee/Interpreter.h"
+#include "klee/Expr.h"
+#include "klee/ForkTag.h"
+#include "klee/util/Ref.h"
 #include "klee/Internal/Module/Cell.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
 #include "llvm/Support/CallSite.h"
+#include "cloud9/worker/SymbolicEngine.h"
+#include "cloud9/Logger.h"
 #include <vector>
 #include <string>
 #include <map>
@@ -44,13 +49,13 @@ namespace llvm {
 
 namespace klee {  
   class Array;
-  class Cell;
+  struct Cell;
   class ExecutionState;
   class ExternalDispatcher;
   class Expr;
   class InstructionInfoTable;
-  class KFunction;
-  class KInstruction;
+  struct KFunction;
+  struct KInstruction;
   class KInstIterator;
   class KModule;
   class MemoryManager;
@@ -60,17 +65,16 @@ namespace klee {
   class Searcher;
   class SeedInfo;
   class SpecialFunctionHandler;
-  class StackFrame;
+  struct StackFrame;
   class StatsTracker;
   class TimingSolver;
   class TreeStreamWriter;
-  template<class T> class ref;
 
   /// \todo Add a context object to keep track of data only live
   /// during an instruction step. Should contain addedStates,
   /// removedStates, and haltExecution, among others.
 
-class Executor : public Interpreter {
+class Executor : public Interpreter, public ::cloud9::worker::SymbolicEngine {
   friend class BumpMergingSearcher;
   friend class MergingSearcher;
   friend class RandomPathSearcher;
@@ -78,6 +82,7 @@ class Executor : public Interpreter {
   friend class WeightedRandomSearcher;
   friend class SpecialFunctionHandler;
   friend class StatsTracker;
+  friend class ObjectState;
 
 public:
   class Timer {
@@ -168,7 +173,7 @@ private:
   bool ivcEnabled;
 
   /// The maximum time to allow for a single stp query.
-  double stpTimeout;  
+  double stpTimeout; 
 
   llvm::Function* getCalledFunction(llvm::CallSite &cs, ExecutionState &state);
   
@@ -199,6 +204,11 @@ private:
                             llvm::Function *function,
                             std::vector< ref<Expr> > &arguments);
 
+  void callUnmodelledFunction(ExecutionState &state,
+                            KInstruction *target,
+                            llvm::Function *function,
+                            std::vector<ref<Expr> > &arguments);
+
   ObjectState *bindObjectInState(ExecutionState &state, const MemoryObject *mo,
                                  bool isLocal, const Array *array = 0);
 
@@ -212,6 +222,7 @@ private:
   /// beginning of.
   typedef std::vector< std::pair<std::pair<const MemoryObject*, const ObjectState*>, 
                                  ExecutionState*> > ExactResolutionList;
+
   void resolveExact(ExecutionState &state,
                     ref<Expr> p,
                     ExactResolutionList &results,
@@ -261,7 +272,11 @@ private:
                               ref<Expr> value /* undef if read */,
                               KInstruction *target /* undef if write */);
 
-  void executeMakeSymbolic(ExecutionState &state, const MemoryObject *mo);
+  void executeMakeSymbolic(ExecutionState &state, const MemoryObject *mo,
+      bool shared=false);
+
+  void executeEvent(ExecutionState &state, unsigned int type,
+      long int value);
 
   /// Create a new state where each input condition has been added as
   /// a constraint and return the results. The input state is included
@@ -269,12 +284,14 @@ private:
   /// NULL pointers for states which were unable to be created.
   void branch(ExecutionState &state, 
               const std::vector< ref<Expr> > &conditions,
-              std::vector<ExecutionState*> &result);
+              std::vector<ExecutionState*> &result, int reason);
 
   // Fork current and return states in which condition holds / does
   // not hold, respectively. One of the states is necessarily the
   // current state, and one of the states may be null.
-  StatePair fork(ExecutionState &current, ref<Expr> condition, bool isInternal);
+  StatePair fork(ExecutionState &current, ref<Expr> condition, bool isInternal, int reason);
+  StatePair fork(ExecutionState &current, int reason);
+  ForkTag getForkTag(ExecutionState &current, int reason);
 
   /// Add the given (boolean) condition as a constraint on state. This
   /// function is a wrapper around the state's addConstraint function
@@ -292,12 +309,18 @@ private:
   Cell& getArgumentCell(ExecutionState &state,
                         KFunction *kf,
                         unsigned index) {
-    return state.stack.back().locals[kf->getArgRegister(index)];
+    return state.stack().back().locals[kf->getArgRegister(index)];
+  }
+
+  Cell& getArgumentCell(StackFrame &sf, 
+			KFunction *kf, 
+			unsigned index) {
+    return sf.locals[kf->getArgRegister(index)];
   }
 
   Cell& getDestCell(ExecutionState &state,
                     KInstruction *target) {
-    return state.stack.back().locals[target->dest];
+    return state.stack().back().locals[target->dest];
   }
 
   void bindLocal(KInstruction *target, 
@@ -332,7 +355,7 @@ private:
   std::string getAddressInfo(ExecutionState &state, ref<Expr> address) const;
 
   // remove state from queue and delete
-  void terminateState(ExecutionState &state);
+  bool terminateState(ExecutionState &state, bool silenced);
   // call exit handler and terminate state
   void terminateStateEarly(ExecutionState &state, const llvm::Twine &message);
   // call exit handler and terminate state
@@ -355,6 +378,9 @@ private:
   /// bindModuleConstants - Initialize the module constant table.
   void bindModuleConstants();
 
+  template <typename TypeIt>
+  void computeOffsets(KGEPInstruction *kgepi, TypeIt ib, TypeIt ie);
+
   /// bindInstructionConstants - Initialize any necessary per instruction
   /// constant values.
   void bindInstructionConstants(KInstruction *KI);
@@ -376,7 +402,36 @@ private:
   void initTimers();
   void processTimers(ExecutionState *current,
                      double maxInstTime);
-                
+  void resetTimers();
+
+  /// Pthread create needs a specific StackFrame instead of the one of the current state
+  void bindArgumentToPthreadCreate(KFunction *kf, unsigned index, 
+				   StackFrame &sf, ref<Expr> value);
+
+  /// Finds the functions coresponding to an address.
+  /// For now, it only support concrete values for the thread and function pointer argument.
+  /// Can be extended easily to take care of symbolic function pointers.
+  /// \param address address of the function pointer
+  KFunction* resolveFunction(ref<Expr> address);
+
+
+  //pthread handlers
+  void executeThreadCreate(ExecutionState &state, thread_id_t tid,
+      ref<Expr> start_function, ref<Expr> arg);
+
+  void executeThreadExit(ExecutionState &state);
+  
+  void executeProcessExit(ExecutionState &state);
+  
+  void executeProcessFork(ExecutionState &state, KInstruction *ki,
+      process_id_t pid);
+  
+  bool schedule(ExecutionState &state, bool yield);
+  
+  void executeThreadNotifyOne(ExecutionState &state, wlist_id_t wlist);
+
+  void executeFork(ExecutionState &state, KInstruction *ki, int reason);
+
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);
   virtual ~Executor();
@@ -386,7 +441,7 @@ public:
   }
 
   // XXX should just be moved out to utility module
-  ref<klee::ConstantExpr> evalConstant(llvm::Constant *c);
+  ref<ConstantExpr> evalConstant(llvm::Constant *c);
 
   virtual void setPathWriter(TreeStreamWriter *tsw) {
     pathWriter = tsw;
@@ -409,6 +464,8 @@ public:
 
   virtual const llvm::Module *
   setModule(llvm::Module *module, const ModuleOptions &opts);
+  
+  const KModule* getKModule() const {return kmodule;} 
 
   virtual void useSeeds(const std::vector<struct KTest *> *seeds) { 
     usingSeeds = seeds;
@@ -447,6 +504,26 @@ public:
 
   virtual void getCoveredLines(const ExecutionState &state,
                                std::map<const std::string*, std::set<unsigned> > &res);
+
+  Expr::Width getWidthForLLVMType(const llvm::Type *type) const;
+
+  /*** Cloud9 symbolic execution engine methods ***/
+
+  virtual ExecutionState *createRootState(llvm::Function *f);
+  virtual void initRootState(ExecutionState *state, int argc, char **argv, char **envp);
+
+  virtual void stepInState(ExecutionState *state);
+
+  virtual void destroyStates();
+
+  virtual void destroyState(klee::ExecutionState *state);
+
+  virtual klee::Searcher *initSearcher(klee::Searcher *base);
+
+  virtual klee::KModule *getModule() {
+	  return kmodule;
+  }
+
 };
   
 } // End klee namespace

@@ -17,8 +17,13 @@
 
 #include "llvm/System/Process.h"
 
+#include "cloud9/instrum/Timing.h"
+#include "cloud9/instrum/InstrumentationManager.h"
+
 using namespace klee;
 using namespace llvm;
+
+using cloud9::instrum::Timer;
 
 /***/
 
@@ -33,10 +38,16 @@ bool TimingSolver::evaluate(const ExecutionState& state, ref<Expr> expr,
   sys::TimeValue now(0,0),user(0,0),delta(0,0),sys(0,0);
   sys::Process::GetTimeUsage(now,user,sys);
 
-  if (simplifyExprs)
-    expr = state.constraints.simplifyExpr(expr);
+  Timer t;
+  t.start();
 
-  bool success = solver->evaluate(Query(state.constraints, expr), result);
+  if (simplifyExprs)
+    expr = state.constraints().simplifyExpr(expr);
+
+  bool success = solver->evaluate(Query(state.constraints(), expr), result);
+
+  t.stop();
+  cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::ConstraintSolve, t);
 
   sys::Process::GetTimeUsage(delta,user,sys);
   delta -= now;
@@ -57,10 +68,16 @@ bool TimingSolver::mustBeTrue(const ExecutionState& state, ref<Expr> expr,
   sys::TimeValue now(0,0),user(0,0),delta(0,0),sys(0,0);
   sys::Process::GetTimeUsage(now,user,sys);
 
-  if (simplifyExprs)
-    expr = state.constraints.simplifyExpr(expr);
+  Timer t;
+  t.start();
 
-  bool success = solver->mustBeTrue(Query(state.constraints, expr), result);
+  if (simplifyExprs)
+    expr = state.constraints().simplifyExpr(expr);
+
+  bool success = solver->mustBeTrue(Query(state.constraints(), expr), result);
+
+  t.stop();
+  cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::ConstraintSolve, t);
 
   sys::Process::GetTimeUsage(delta,user,sys);
   delta -= now;
@@ -104,10 +121,16 @@ bool TimingSolver::getValue(const ExecutionState& state, ref<Expr> expr,
   sys::TimeValue now(0,0),user(0,0),delta(0,0),sys(0,0);
   sys::Process::GetTimeUsage(now,user,sys);
 
-  if (simplifyExprs)
-    expr = state.constraints.simplifyExpr(expr);
+  Timer t;
+  t.start();
 
-  bool success = solver->getValue(Query(state.constraints, expr), result);
+  if (simplifyExprs)
+    expr = state.constraints().simplifyExpr(expr);
+
+  bool success = solver->getValue(Query(state.constraints(), expr), result);
+
+  t.stop();
+  cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::ConstraintSolve, t);
 
   sys::Process::GetTimeUsage(delta,user,sys);
   delta -= now;
@@ -129,10 +152,16 @@ TimingSolver::getInitialValues(const ExecutionState& state,
   sys::TimeValue now(0,0),user(0,0),delta(0,0),sys(0,0);
   sys::Process::GetTimeUsage(now,user,sys);
 
-  bool success = solver->getInitialValues(Query(state.constraints,
+  Timer t;
+  t.start();
+
+  bool success = solver->getInitialValues(Query(state.constraints(),
                                                 ConstantExpr::alloc(0, Expr::Bool)), 
                                           objects, result);
   
+  t.stop();
+  cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::ConstraintSolve, t);
+
   sys::Process::GetTimeUsage(delta,user,sys);
   delta -= now;
   stats::solverTime += delta.usec();
@@ -143,5 +172,5 @@ TimingSolver::getInitialValues(const ExecutionState& state,
 
 std::pair< ref<Expr>, ref<Expr> >
 TimingSolver::getRange(const ExecutionState& state, ref<Expr> expr) {
-  return solver->getRange(Query(state.constraints, expr));
+  return solver->getRange(Query(state.constraints(), expr));
 }

@@ -11,6 +11,7 @@
 
 #include "Memory.h"
 
+#include "klee/Executor.h"
 #include "Context.h"
 #include "klee/Expr.h"
 #include "klee/Solver.h"
@@ -25,11 +26,25 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
+#include <sstream>
 #include <cassert>
 #include <sstream>
 
 using namespace llvm;
 using namespace klee;
+
+#if 0
+#define OSTATE_DEBUG(msg)	\
+	do { \
+		std::ostringstream oss(std::ostringstream::out); \
+		oss << msg; \
+		oss.flush(); \
+		std::string message = oss.str(); \
+		fireDebugMessage(message); \
+	} while (0)
+#else
+#define OSTATE_DEBUG(msg)
+#endif
 
 namespace {
   cl::opt<bool>
@@ -60,6 +75,12 @@ ObjectHolder &ObjectHolder::operator=(const ObjectHolder &b) {
 
 /***/
 
+std::ostream &klee::operator<<(std::ostream &os, const MemoryObject &obj) {
+	obj.getAllocInfo(os);
+
+	return os;
+}
+
 int MemoryObject::counter = 0;
 
 MemoryObject::~MemoryObject() {
@@ -68,21 +89,7 @@ MemoryObject::~MemoryObject() {
 void MemoryObject::getAllocInfo(std::string &result) const {
   llvm::raw_string_ostream info(result);
 
-  info << "MO" << id << "[" << size << "]";
-
-  if (allocSite) {
-    info << " allocated at ";
-    if (const Instruction *i = dyn_cast<Instruction>(allocSite)) {
-      info << i->getParent()->getParent()->getNameStr() << "():";
-      info << *i;
-    } else if (const GlobalValue *gv = dyn_cast<GlobalValue>(allocSite)) {
-      info << "global:" << gv->getNameStr();
-    } else {
-      info << "value:" << *allocSite;
-    }
-  } else {
-    info << " (no allocation info)";
-  }
+  getAllocInfo(info);
   
   info.flush();
 }
@@ -99,7 +106,8 @@ ObjectState::ObjectState(const MemoryObject *mo)
     knownSymbolics(0),
     updates(0, 0),
     size(mo->size),
-    readOnly(false) {
+    readOnly(false),
+    isShared(false) {
   if (!UseConstantArrays) {
     // FIXME: Leaked.
     static unsigned id = 0;
@@ -119,7 +127,8 @@ ObjectState::ObjectState(const MemoryObject *mo, const Array *array)
     knownSymbolics(0),
     updates(array, 0),
     size(mo->size),
-    readOnly(false) {
+    readOnly(false),
+    isShared(false) {
   makeSymbolic();
 }
 
@@ -133,7 +142,8 @@ ObjectState::ObjectState(const ObjectState &os)
     knownSymbolics(0),
     updates(os.updates),
     size(os.size),
-    readOnly(false) {
+    readOnly(false),
+    isShared(os.isShared) {
   assert(!os.readOnly && "no need to copy read only object?");
 
   if (os.knownSymbolics) {
@@ -197,6 +207,11 @@ const UpdateList &ObjectState::getUpdates() const {
     // Start a new update list.
     // FIXME: Leaked.
     static unsigned id = 0;
+
+    std::string c9AllocInfo;
+    object->getAllocInfo(c9AllocInfo);
+
+    //CLOUD9_DEBUG("Creating constant array for memory object " << c9AllocInfo);
     const Array *array = new Array("const_arr" + llvm::utostr(++id), size,
                                    &Contents[0],
                                    &Contents[0] + Contents.size());
@@ -396,6 +411,8 @@ void ObjectState::write8(unsigned offset, uint8_t value) {
 
   markByteConcrete(offset);
   markByteUnflushed(offset);
+
+  OSTATE_DEBUG("Wrote at concrete offset " << offset << " concrete value " << (char)value << " (" << (int)value << ") in slot " << *object);
 }
 
 void ObjectState::write8(unsigned offset, ref<Expr> value) {
@@ -408,6 +425,8 @@ void ObjectState::write8(unsigned offset, ref<Expr> value) {
     markByteSymbolic(offset);
     markByteUnflushed(offset);
   }
+
+  OSTATE_DEBUG("Wrote at concrete offset " << offset << " symbolic value " << value << " in slot " << *object);
 }
 
 void ObjectState::write8(ref<Expr> offset, ref<Expr> value) {
@@ -425,6 +444,8 @@ void ObjectState::write8(ref<Expr> offset, ref<Expr> value) {
   }
   
   updates.extend(ZExtExpr::create(offset, Expr::Int32), value);
+
+  OSTATE_DEBUG("Wrote at symbolic offset " << offset << " symbolic value " << value << " in slot " << *object);
 }
 
 /***/

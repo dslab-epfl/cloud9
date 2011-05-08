@@ -12,11 +12,16 @@
 
 #include "Context.h"
 #include "klee/Expr.h"
+#include "AddressSpace.h"
 
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Instruction.h"
+#include "llvm/Function.h"
 
 #include <vector>
 #include <string>
+
+using namespace llvm;
 
 namespace llvm {
   class Value;
@@ -40,10 +45,10 @@ public:
 
   /// size in bytes
   unsigned size;
-  std::string name;
+  mutable std::string name;
 
   bool isLocal;
-  bool isGlobal;
+  mutable bool isGlobal;
   bool isFixed;
 
   /// true if created by us.
@@ -66,6 +71,7 @@ public:
   MemoryObject &operator=(const MemoryObject &b);
 
 public:
+
   // XXX this is just a temp hack, should be removed
   explicit
   MemoryObject(uint64_t _address) 
@@ -75,6 +81,7 @@ public:
       isFixed(true),
       allocSite(0) {
   }
+
 
   MemoryObject(uint64_t _address, unsigned _size, 
                bool _isLocal, bool _isGlobal, bool _isFixed,
@@ -94,9 +101,28 @@ public:
   ~MemoryObject();
 
   /// Get an identifying string for this allocation.
+	template<class OStream>
+	void getAllocInfo(OStream &info) const {
+		info << "MO" << id << "[" << size << "]";
+
+		if (allocSite) {
+			info << " allocated at ";
+			if (const Instruction *i = dyn_cast<Instruction>(allocSite)) {
+				info << i->getParent()->getParent()->getNameStr() << "():";
+				info << *i;
+			} else if (const GlobalValue *gv = dyn_cast<GlobalValue>(allocSite)) {
+				info << "global:" << gv->getNameStr();
+			} else {
+				info << "value:" << *allocSite;
+			}
+		} else {
+			info << " (no allocation info)";
+		}
+	}
+
   void getAllocInfo(std::string &result) const;
 
-  void setName(std::string name) {
+  void setName(std::string name) const {
     this->name = name;
   }
 
@@ -135,6 +161,8 @@ public:
   }
 };
 
+std::ostream &operator<<(std::ostream &os, const MemoryObject &obj);
+
 class ObjectState {
 private:
   friend class AddressSpace;
@@ -161,6 +189,8 @@ public:
   unsigned size;
 
   bool readOnly;
+
+  bool isShared; // The object is shared among addr. spaces within the same state
 
 public:
   /// Create a new object state for the given memory object with concrete

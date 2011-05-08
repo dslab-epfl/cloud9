@@ -11,6 +11,7 @@
 
 #include <klee/Expr.h>
 #include <klee/util/ExprPPrinter.h>
+#include "klee/ExecutionState.h"
 
 #include <vector>
 #include <iostream>
@@ -27,10 +28,13 @@ PTree::~PTree() {}
 std::pair<PTreeNode*, PTreeNode*>
 PTree::split(Node *n, 
              const data_type &leftData, 
-             const data_type &rightData) {
+             const data_type &rightData,
+             ForkTag forkTag) {
   assert(n && !n->left && !n->right);
   n->left = new Node(n, leftData);
   n->right = new Node(n, rightData);
+  n->forkTag = forkTag;
+
   return std::make_pair(n->left, n->right);
 }
 
@@ -66,13 +70,9 @@ void PTree::dump(std::ostream &os) {
   while (!stack.empty()) {
     PTree::Node *n = stack.back();
     stack.pop_back();
-    if (n->condition.isNull()) {
-      os << "\tn" << n << " [label=\"\"";
-    } else {
-      os << "\tn" << n << " [label=\"";
-      pp->print(n->condition);
-      os << "\",shape=diamond";
-    }
+
+    os << "\tn" << n << " [label=\"\"";
+
     if (n->data)
       os << ",fillcolor=green";
     os << "];\n";
@@ -95,7 +95,7 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     left(0),
     right(0),
     data(_data),
-    condition(0) {
+    forkTag(KLEE_FORK_DEFAULT) {
 }
 
 PTreeNode::~PTreeNode() {
