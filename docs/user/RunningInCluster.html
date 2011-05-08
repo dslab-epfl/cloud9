@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.8: http://docutils.sourceforge.net/" />
+<title>Running in a Cluster</title>
+<style type="text/css">
+
+/*
+:Author: David Goodger (goodger@python.org)
+:Id: $Id: html4css1.css 6387 2010-08-13 12:23:41Z milde $
+:Copyright: This stylesheet has been placed in the public domain.
+
+Default cascading style sheet for the HTML output of Docutils.
+
+See http://docutils.sf.net/docs/howto/html-stylesheets.html for how to
+customize this style sheet.
+*/
+
+/* used to remove borders from tables and images */
+.borderless, table.borderless td, table.borderless th {
+  border: 0 }
+
+table.borderless td, table.borderless th {
+  /* Override padding for "table.docutils td" with "! important".
+     The right padding separates the table cells. */
+  padding: 0 0.5em 0 0 ! important }
+
+.first {
+  /* Override more specific margin styles with "! important". */
+  margin-top: 0 ! important }
+
+.last, .with-subtitle {
+  margin-bottom: 0 ! important }
+
+.hidden {
+  display: none }
+
+a.toc-backref {
+  text-decoration: none ;
+  color: black }
+
+blockquote.epigraph {
+  margin: 2em 5em ; }
+
+dl.docutils dd {
+  margin-bottom: 0.5em }
+
+object[type="image/svg+xml"], object[type="application/x-shockwave-flash"] {
+  overflow: hidden;
+}
+
+/* Uncomment (and remove this text!) to get bold-faced definition list terms
+dl.docutils dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em }
+
+div.abstract p.topic-title {
+  font-weight: bold ;
+  text-align: center }
+
+div.admonition, div.attention, div.caution, div.danger, div.error,
+div.hint, div.important, div.note, div.tip, div.warning {
+  margin: 2em ;
+  border: medium outset ;
+  padding: 1em }
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title {
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title {
+  color: red ;
+  font-weight: bold ;
+  font-family: sans-serif }
+
+/* Uncomment (and remove this text!) to get reduced vertical space in
+   compound paragraphs.
+div.compound .compound-first, div.compound .compound-middle {
+  margin-bottom: 0.5em }
+
+div.compound .compound-last, div.compound .compound-middle {
+  margin-top: 0.5em }
+*/
+
+div.dedication {
+  margin: 2em 5em ;
+  text-align: center ;
+  font-style: italic }
+
+div.dedication p.topic-title {
+  font-weight: bold ;
+  font-style: normal }
+
+div.figure {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+div.footer, div.header {
+  clear: both;
+  font-size: smaller }
+
+div.line-block {
+  display: block ;
+  margin-top: 1em ;
+  margin-bottom: 1em }
+
+div.line-block div.line-block {
+  margin-top: 0 ;
+  margin-bottom: 0 ;
+  margin-left: 1.5em }
+
+div.sidebar {
+  margin: 0 0 0.5em 1em ;
+  border: medium outset ;
+  padding: 1em ;
+  background-color: #ffffee ;
+  width: 40% ;
+  float: right ;
+  clear: right }
+
+div.sidebar p.rubric {
+  font-family: sans-serif ;
+  font-size: medium }
+
+div.system-messages {
+  margin: 5em }
+
+div.system-messages h1 {
+  color: red }
+
+div.system-message {
+  border: medium outset ;
+  padding: 1em }
+
+div.system-message p.system-message-title {
+  color: red ;
+  font-weight: bold }
+
+div.topic {
+  margin: 2em }
+
+h1.section-subtitle, h2.section-subtitle, h3.section-subtitle,
+h4.section-subtitle, h5.section-subtitle, h6.section-subtitle {
+  margin-top: 0.4em }
+
+h1.title {
+  text-align: center }
+
+h2.subtitle {
+  text-align: center }
+
+hr.docutils {
+  width: 75% }
+
+img.align-left, .figure.align-left, object.align-left {
+  clear: left ;
+  float: left ;
+  margin-right: 1em }
+
+img.align-right, .figure.align-right, object.align-right {
+  clear: right ;
+  float: right ;
+  margin-left: 1em }
+
+img.align-center, .figure.align-center, object.align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.align-left {
+  text-align: left }
+
+.align-center {
+  clear: both ;
+  text-align: center }
+
+.align-right {
+  text-align: right }
+
+/* reset inner alignment in figures */
+div.align-right {
+  text-align: left }
+
+/* div.align-center * { */
+/*   text-align: left } */
+
+ol.simple, ul.simple {
+  margin-bottom: 1em }
+
+ol.arabic {
+  list-style: decimal }
+
+ol.loweralpha {
+  list-style: lower-alpha }
+
+ol.upperalpha {
+  list-style: upper-alpha }
+
+ol.lowerroman {
+  list-style: lower-roman }
+
+ol.upperroman {
+  list-style: upper-roman }
+
+p.attribution {
+  text-align: right ;
+  margin-left: 50% }
+
+p.caption {
+  font-style: italic }
+
+p.credits {
+  font-style: italic ;
+  font-size: smaller }
+
+p.label {
+  white-space: nowrap }
+
+p.rubric {
+  font-weight: bold ;
+  font-size: larger ;
+  color: maroon ;
+  text-align: center }
+
+p.sidebar-title {
+  font-family: sans-serif ;
+  font-weight: bold ;
+  font-size: larger }
+
+p.sidebar-subtitle {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+p.topic-title {
+  font-weight: bold }
+
+pre.address {
+  margin-bottom: 0 ;
+  margin-top: 0 ;
+  font: inherit }
+
+pre.literal-block, pre.doctest-block {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+span.classifier {
+  font-family: sans-serif ;
+  font-style: oblique }
+
+span.classifier-delimiter {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+span.interpreted {
+  font-family: sans-serif }
+
+span.option {
+  white-space: nowrap }
+
+span.pre {
+  white-space: pre }
+
+span.problematic {
+  color: red }
+
+span.section-subtitle {
+  /* font-size relative to parent (h1..h6 element) */
+  font-size: 80% }
+
+table.citation {
+  border-left: solid 1px gray;
+  margin-left: 1px }
+
+table.docinfo {
+  margin: 2em 4em }
+
+table.docutils {
+  margin-top: 0.5em ;
+  margin-bottom: 0.5em }
+
+table.footnote {
+  border-left: solid 1px black;
+  margin-left: 1px }
+
+table.docutils td, table.docutils th,
+table.docinfo td, table.docinfo th {
+  padding-left: 0.5em ;
+  padding-right: 0.5em ;
+  vertical-align: top }
+
+table.docutils th.field-name, table.docinfo th.docinfo-name {
+  font-weight: bold ;
+  text-align: left ;
+  white-space: nowrap ;
+  padding-left: 0 }
+
+h1 tt.docutils, h2 tt.docutils, h3 tt.docutils,
+h4 tt.docutils, h5 tt.docutils, h6 tt.docutils {
+  font-size: 100% }
+
+ul.auto-toc {
+  list-style-type: none }
+
+</style>
+</head>
+<body>
+<div class="document" id="running-in-a-cluster">
+<h1 class="title">Running in a Cluster</h1>
+
+<p>Cloud9 supports running on private clusters of commodity hardware, as well as on public cloud infrastructures.  We provide in the <cite>infra/</cite> directory a handy set of Python scripts that run and coordinate Cloud9 executions across a set of machines accessible via SSH through their IP addresses.  Therefore, these scripts can be used both on private clusters, as well as public cloud instances (the nature of the machines is orthogonal to the scripts, as long as they are available through their IP addresses).</p>
+<p>In this tutorial, we show how the infrastructure scripts can be used to schedule and run Cloud9 across the entire range of Coreutils.</p>
+<div class="section" id="setting-up-worker-nodes-and-load-balancer">
+<h1>Setting Up Worker Nodes and Load Balancer</h1>
+<p>The infrastructure scripts run the Cloud9 workers on the cluster machines, while the load balancer is run locally from where the scripts are being invoked.  Therefore, you need to follow the Cloud9 installation procedure on all the machines that Cloud9 will run on.  You may also want to consider setting up Cloud9 in a single place, and make the installation avaiable to the other machines via NFS.  Finally, you should also make sure the testing targets (the .bc binaries) are available locally to each worker node, and that a dedicated directory for storing the experimental results is available on each of the machines.</p>
+</div>
+<div class="section" id="configuring-the-infrastructure-scripts">
+<h1>Configuring the Infrastructure Scripts</h1>
+<p>The infrastructure scripts rely on multiple configuration files that describe various aspects of the testing setup.  In this section, we show how to write such configuration files for testing the Coreutils UNIX utilities.  All the configuration files reside in directories under <cite>infra/</cite>.</p>
+<div class="section" id="the-machine-setup">
+<h2>The Machine Setup</h2>
+<p>The infrastructure scripts assume that worker nodes will run on single or multi-core machines, and that the load balancer is invoked locally.  Multi-core machines can co-locate multiple workers (which will still run independently).</p>
+<p>You describe the cluster setup by creating a .hosts file in the <cite>hosts/</cite> directory of the infrastructure scripts. You need to specify there the names of the machines you're using (including the local host), the number of cores available (0 for the local host), the directory where Cloud9 is deployed, the SSH user name used to connect to the machines, the directory where the logs should be stored (the directory must exist), and optionally a root directory of the testing targets.  A sample configuration file is provided as a starting point.</p>
+</div>
+<div class="section" id="testing-targets">
+<h2>Testing Targets</h2>
+<p>Setup the command line arguments of the testing targets by creating a configuration file in the <cite>cmdlines/</cite> directory.  On each line, the configuration file should have an entry of the form &lt;id&gt;:&lt;command line&gt;, where the &lt;id&gt; is an unique name for the command line described after &quot;:&quot;.  You may use the provided <cite>coreutils.cmdlines</cite> for testing the Coreutils.</p>
+</div>
+<div class="section" id="klee-specific-parameters">
+<h2>Klee-specific Parameters</h2>
+<p>Since each Cloud9 worker node runs the sequential Klee symbolic execution engine, you can specify which Klee-specific parameters to pass to each worker by creating a corresponding configuration file in the <cite>kleecmd/</cite> directory. You may use the provided <cite>coreutils.kcmd</cite> configuration for running the Coreutils.</p>
+</div>
+<div class="section" id="coverable-source-files">
+<h2>Coverable Source Files</h2>
+<p>Setup the file that describes the source files accounted for when computing code coverage in the <cite>coverable/</cite> directory. You may use the provided <cite>coreutils.coverable</cite> file for running the Coreutils.</p>
+</div>
+<div class="section" id="experiment-schedule">
+<h2>Experiment Schedule</h2>
+<p>An experiment schedule describes which targets are executed on which machines, and in which order.  The experiment runs in multiple iterations.  During each iteration, multiple targets are being executed in parallel; at the end of an iteration, all jobs are terminated, then the next iteration follows.</p>
+<p>You create an experiment schedule file in the <cite>exp/</cite> directory. Each line in the file is one iteration of the experiment -- all the items on the line are executed in parallel. The items are space-separated, and have the form &quot;&lt;testing target id&gt; &lt;# workers&gt; [&lt;host&gt; &lt;# cores&gt;]*&quot;, which describes the number of workers allocated for a testing target, and their allocation per phisical hosts.  The provided <cite>coreutils-1.exp</cite> file shows how the entire Coreutils suite would be run with 1-worker Cloud9, on the sample infrastructure provided in the <cite>hosts/</cite> directory.  You can also use the provided <cite>./gen-schedule.py</cite> script that can generate such schedule files given a host and testing targets configuration files.</p>
+</div>
+</div>
+<div class="section" id="running-the-testing-experiment">
+<h1>Running the Testing Experiment</h1>
+<p>Finally, you should run the <cite>./run-experiment.py</cite> script, which takes as input the name of the configuration files that you created at the previous steps. You should not use the full names of the files, but only their base name. For instance, when specifying the coverage configuration in <cite>coverable/coreutils.coverable</cite>, you should just mention <cite>coreutils</cite>. For instance, the full command line to run Coreutils on 12-worker Cloud9, on an EPFL cluster described by <cite>epfl.hosts</cite>, for 10-minute iterations is:</p>
+<pre class="literal-block">
+./run-experiment.py -t 600 --strategy random-path,cov-opt epfl coreutils coreutils-12 coreutils coreutils
+</pre>
+<p>You can run ./run-experiment.py --help to see the exact format.</p>
+</div>
+<div class="section" id="measuring-code-coverage">
+<h1>Measuring Code Coverage</h1>
+<p>During or after the experiment, you can check the coverage progress by running the provided <cite>./mine-coverage.py</cite> script. You need to specify the configuration file for the cluster, and one or more test IDs that identify the experiment. The test IDs are printed by the <cite>run-experiment.py</cite> script before the experiment starts (look for a log line saying &quot;Using testing ID: test-xx-xx-xx-xx-xx-xx&quot;). You can also use the &quot;-t&quot; parameter to get a nice tabular ASCII output.</p>
+</div>
+</div>
+</body>
+</html>
