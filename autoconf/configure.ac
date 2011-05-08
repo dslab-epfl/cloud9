@@ -20,7 +20,6 @@ AC_CONFIG_SRCDIR(["Makefile.config.in"])
 
 dnl Configure a common Makefile
 AC_CONFIG_FILES(Makefile.config)
-AC_CONFIG_FILES(stp/Makefile.common)
 
 dnl Configure project makefiles
 dnl List every Makefile that exists within your source tree
@@ -263,22 +262,45 @@ AC_CHECK_HEADERS([selinux/selinux.h],
         AC_SUBST(HAVE_SELINUX, 1),
         AC_SUBST(HAVE_SELINUX, 0))
 
-dnl User option to use stplog.
+AC_ARG_WITH(stp,
+  AS_HELP_STRING([--with-stp],
+    [Location of STP installation directory]),,)
 
-AC_ARG_ENABLE(stplog,
-              AS_HELP_STRING([--enable-stplog],
-                             [Compile with the stplog library [[disabled]]]),
-                             ,enableval=no)
-if test ${enableval} = "yes" ; then
-  AC_SUBST(ENABLE_STPLOG,[[1]])
+if test X$with_stp = X ; then
+  AC_SUBST(ENABLE_EXT_STP,[[0]])
 else
-  AC_SUBST(ENABLE_STPLOG,[[0]])
+  stp_root=`cd $with_stp 2> /dev/null; pwd`
+
+  old_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS="$CPPFLAGS -I$stp_root/include"
+  AC_CHECK_HEADER(stp/c_interface.h,, [
+         AC_MSG_ERROR([Unable to use stp/c_interface.h header])
+  ])
+  CPPFLAGS="$old_CPPFLAGS"
+
+  AC_CHECK_LIB(stp, vc_setInterfaceFlags,, [
+         AC_MSG_ERROR([Unable to link with libstp])
+  ], -L$stp_root/lib)
+
+  AC_DEFINE(HAVE_EXT_STP, 1, [Using external STP])
+  AC_SUBST(ENABLE_EXT_STP,[[1]])
+  AC_SUBST(STP_ROOT,$stp_root)
 fi
-AC_DEFINE_UNQUOTED([ENABLE_STPLOG],$ENABLE_STPLOG,[Define if stplog enabled])
 
 dnl **************************************************************************
 dnl * Create the output files
 dnl **************************************************************************
+
+dnl Do special configuration of Makefiles
+AC_CONFIG_MAKEFILE(Makefile)
+AC_CONFIG_MAKEFILE(Makefile.common)
+AC_CONFIG_MAKEFILE(lib/Makefile)
+AC_CONFIG_MAKEFILE(runtime/Makefile)
+AC_CONFIG_MAKEFILE(stp/Makefile)
+AC_CONFIG_MAKEFILE(test/Makefile)
+AC_CONFIG_MAKEFILE(test/Makefile.tests)
+AC_CONFIG_MAKEFILE(tools/Makefile)
+AC_CONFIG_MAKEFILE(unittests/Makefile)
 
 dnl This must be last
 AC_OUTPUT

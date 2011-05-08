@@ -20,7 +20,33 @@ endif
 
 include $(LLVM_SRC_ROOT)/Makefile.rules
 
+# LLVMCC was added in 2.7.
+ifeq ($(LLVMCC),)
+LLVMCC := $(LLVMGCC)
+LLVMCXX := $(LLVMGXX)
+endif
+
 LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib
-CXX.Flags += -DLLVM_23
+
+ifeq ($(AVOID_STDCPP0X), 1)
+CXX.Flags += -DLLVM_23 -fexceptions
+else
+CXX.Flags += -DLLVM_23 -fexceptions -std=c++0x
+endif
 CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include
-CXX.Flags += -DKLEE_DIR=\"$(PROJ_SRC_ROOT)\"
+CXX.Flags += -fno-omit-frame-pointer -DEXT_HASH_MAP
+
+PROTOC ?= protoc
+
+ifeq ($(ENABLE_EXT_STP),1)
+  LD.Flags += -L$(STP_ROOT)/lib
+  CXX.Flags += -I$(STP_ROOT)/include
+else
+  LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib
+  CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include
+endif
+
+CXX.Flags += -DKLEE_DIR=\"$(PROJ_OBJ_ROOT)\"
+
+%.pb.cc %.pb.h: %.proto
+	$(PROTOC) --cpp_out=./ $<
