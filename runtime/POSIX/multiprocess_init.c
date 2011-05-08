@@ -30,48 +30,63 @@
  *
  */
 
-#ifndef FD_H_
-#define FD_H_
+#include "multiprocess.h"
+#include "signals.h"
 
+#include "models.h"
 #include "common.h"
 
-#include <sys/uio.h>
+#include <string.h>
+#include <klee/klee.h>
 
-#define FD_IS_FILE          (1 << 3)    // The fd points to a disk file
-#define FD_IS_SOCKET        (1 << 4)    // The fd points to a socket
-#define FD_IS_PIPE          (1 << 5)    // The fd points to a pipe
-#define FD_CLOSE_ON_EXEC    (1 << 6)    // The fd should be closed at exec() time (ignored)
+////////////////////////////////////////////////////////////////////////////////
+// Processes
+////////////////////////////////////////////////////////////////////////////////
 
-typedef struct {
-  unsigned int refcount;
-  unsigned int queued;
-  int flags;
-} file_base_t;
+proc_data_t __pdata[MAX_PROCESSES];
+sem_set_t __sems[MAX_SEMAPHORES];
 
-typedef struct {
-  unsigned int attr;
+static void klee_init_semaphores(void) {
+  STATIC_LIST_INIT(__sems);
+  klee_make_shared(__sems, sizeof(__sems));
+}
 
-  file_base_t *io_object;
+void klee_init_processes(void) {
+  STATIC_LIST_INIT(__pdata);
+  klee_make_shared(__pdata, sizeof(__pdata));
 
-  char allocated;
-} fd_entry_t;
+  proc_data_t *pdata = &__pdata[PID_TO_INDEX(DEFAULT_PROCESS)];
+  pdata->allocated = 1;
+  pdata->terminated = 0;
+  pdata->parent = DEFAULT_PARENT;
+  pdata->umask = DEFAULT_UMASK;
+  pdata->wlist = klee_get_wlist();
+  pdata->children_wlist = klee_get_wlist();
 
-extern fd_entry_t __fdt[MAX_FDS];
+  klee_init_semaphores();
 
-void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe);
+  klee_init_threads();
 
-void __adjust_fds_on_fork(void);
-void __close_fds(void);
+#ifdef HAVE_POSIX_SIGNALS
+  klee_init_signals();
+#endif
 
-#define _FD_SET(n, p)    ((p)->fds_bits[(n)/NFDBITS] |= (1 << ((n) % NFDBITS)))
-#define _FD_CLR(n, p)    ((p)->fds_bits[(n)/NFDBITS] &= ~(1 << ((n) % NFDBITS)))
-#define _FD_ISSET(n, p)  ((p)->fds_bits[(n)/NFDBITS] & (1 << ((n) % NFDBITS)))
-#define _FD_ZERO(p)  memset((char *)(p), '\0', sizeof(*(p)))
+}
 
-ssize_t _scatter_read(int fd, const struct iovec *iov, int iovcnt);
-ssize_t _gather_write(int fd, const struct iovec *iov, int iovcnt, void* addr, size_t addr_len);
+////////////////////////////////////////////////////////////////////////////////
+// Threads
+////////////////////////////////////////////////////////////////////////////////
 
-int __get_concrete_fd(int symfd);
+tsync_data_t __tsync;
 
+void klee_init_threads(void) {
+  STATIC_LIST_INIT(__tsync.threads);
 
-#endif /* FD_H_ */
+  // Thread initialization
+  thread_data_t *def_data = &__tsync.threads[DEFAULT_THREAD];
+  def_data->allocated = 1;
+  def_data->terminated = 0;
+  def_data->ret_value = 0;
+  def_data->joinable = 1; // Why not?
+  def_data->wlist = klee_get_wlist();
+}

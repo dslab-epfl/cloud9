@@ -19,11 +19,13 @@
 void klee_warning(const char*);
 void klee_warning_once(const char*);
 
+/*
 int kill(pid_t pid, int sig) {
   klee_warning("ignoring (EPERM)");
   errno = EPERM;
   return -1;
 }
+ */
 
 int _setjmp (struct __jmp_buf_tag __env[1]) __attribute__((weak));
 int _setjmp (struct __jmp_buf_tag __env[1]) {
@@ -58,13 +60,3 @@ int execle(const char *path, const char *arg, ...)  { return __bad_exec(); }
 int execv(const char *path, char *const argv[]) { return __bad_exec(); }
 int execvp(const char *file, char *const argv[]) { return __bad_exec(); }
 int execve(const char *file, char *const argv[], char *const envp[]) { return __bad_exec(); }
-
-pid_t fork(void) {
-  klee_warning("ignoring (ENOMEM)");
-  errno = ENOMEM;
-  return -1;
-}
-
-pid_t vfork(void) {
-  return fork();
-}

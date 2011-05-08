@@ -1,161 +1,133 @@
-//===-- fd_init.c ---------------------------------------------------------===//
-//
-//                     The KLEE Symbolic Virtual Machine
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
-//
-//===----------------------------------------------------------------------===//
+/*
+ * Cloud9 Parallel Symbolic Execution Engine
+ *
+ * Copyright (c) 2011, Dependable Systems Laboratory, EPFL
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Dependable Systems Laboratory, EPFL nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE DEPENDABLE SYSTEMS LABORATORY, EPFL BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * All contributors are listed in CLOUD9-AUTHORS file.
+ *
+ */
 
-#define _LARGEFILE64_SOURCE
-#define _FILE_OFFSET_BITS 64
 #include "fd.h"
+#include "files.h"
+#include "sockets.h"
+
+#include "models.h"
+
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <assert.h>
+#include <stdio.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+
 #include <klee/klee.h>
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <unistd.h>
+// File descriptor table
+fd_entry_t __fdt[MAX_FDS];
 
+// Symbolic file system
+filesystem_t    __fs;
+disk_file_t __stdin_file;
 
-exe_file_system_t __exe_fs;
+// Symbolic network
+network_t       __net;
+unix_t          __unix_net;
 
-/* NOTE: It is important that these are statically initialized
-   correctly, since things that run before main may hit them given the
-   current way things are linked. */
+static void _init_fdt(void) {
+  STATIC_LIST_INIT(__fdt);
 
-/* XXX Technically these flags are initialized w.o.r. to the
-   environment we are actually running in. We could patch them in
-   klee_init_fds, but we still have the problem that uclibc calls
-   prior to main will get the wrong data. Not such a big deal since we
-   mostly care about sym case anyway. */
+  int fd;
 
+  fd = _open_symbolic(&__stdin_file, O_RDONLY, 0);
+  assert(fd == 0);
 
-exe_sym_env_t __exe_env = { 
-  {{ 0, eOpen | eReadable, 0, 0}, 
-   { 1, eOpen | eWriteable, 0, 0}, 
-   { 2, eOpen | eWriteable, 0, 0}},
-  022,
-  0,
-  0
-};
+  fd = _open_concrete(1, O_WRONLY);
+  assert(fd == 1);
 
-static void __create_new_dfile(exe_disk_file_t *dfile, unsigned size, 
-                               const char *name, struct stat64 *defaults) {
-  struct stat64 *s = malloc(sizeof(*s));
-  const char *sp;
-  char sname[64];
-  for (sp=name; *sp; ++sp)
-    sname[sp-name] = *sp;
-  memcpy(&sname[sp-name], "-stat", 6);
-
-  assert(size);
-
-  dfile->size = size;
-  dfile->contents = malloc(dfile->size);
-  klee_make_symbolic(dfile->contents, dfile->size, name);
-  
-  klee_make_symbolic(s, sizeof(*s), sname);
-
-  /* For broken tests */
-  if (!klee_is_symbolic(s->st_ino) && 
-      (s->st_ino & 0x7FFFFFFF) == 0)
-    s->st_ino = defaults->st_ino;
-  
-  /* Important since we copy this out through getdents, and readdir
-     will otherwise skip this entry. For same reason need to make sure
-     it fits in low bits. */
-  klee_assume((s->st_ino & 0x7FFFFFFF) != 0);
-
-  /* uclibc opendir uses this as its buffer size, try to keep
-     reasonable. */
-  klee_assume((s->st_blksize & ~0xFFFF) == 0);
-
-  klee_prefer_cex(s, !(s->st_mode & ~(S_IFMT | 0777)));
-  klee_prefer_cex(s, s->st_dev == defaults->st_dev);
-  klee_prefer_cex(s, s->st_rdev == defaults->st_rdev);
-  klee_prefer_cex(s, (s->st_mode&0700) == 0600);
-  klee_prefer_cex(s, (s->st_mode&0070) == 0020);
-  klee_prefer_cex(s, (s->st_mode&0007) == 0002);
-  klee_prefer_cex(s, (s->st_mode&S_IFMT) == S_IFREG);
-  klee_prefer_cex(s, s->st_nlink == 1);
-  klee_prefer_cex(s, s->st_uid == defaults->st_uid);
-  klee_prefer_cex(s, s->st_gid == defaults->st_gid);
-  klee_prefer_cex(s, s->st_blksize == 4096);
-  klee_prefer_cex(s, s->st_atime == defaults->st_atime);
-  klee_prefer_cex(s, s->st_mtime == defaults->st_mtime);
-  klee_prefer_cex(s, s->st_ctime == defaults->st_ctime);
-
-  s->st_size = dfile->size;
-  s->st_blocks = 8;
-  dfile->stat = s;
+  fd = _open_concrete(1, O_WRONLY);
+  assert(fd == 2);
 }
 
-static unsigned __sym_uint32(const char *name) {
-  unsigned x;
-  klee_make_symbolic(&x, sizeof x, name);
-  return x;
+static void _init_symfiles(unsigned n_files, unsigned file_length) {
+  char fname[] = "FILE??";
+  unsigned int fname_len = strlen(fname);
+
+  struct stat s;
+  int res = CALL_UNDERLYING(stat, ".", &s);
+
+  assert(res == 0 && "Could not get default stat values");
+
+  klee_make_shared(&__fs, sizeof(filesystem_t));
+  memset(&__fs, 0, sizeof(filesystem_t));
+
+  __fs.count = n_files;
+  __fs.files = (disk_file_t**)malloc(n_files*sizeof(disk_file_t*));
+  klee_make_shared(__fs.files, n_files*sizeof(disk_file_t*));
+
+  // Create n symbolic files
+  unsigned int i;
+  for (i = 0; i < n_files; i++) {
+    __fs.files[i] = (disk_file_t*)malloc(sizeof(disk_file_t));
+    klee_make_shared(__fs.files[i], sizeof(disk_file_t));
+
+    disk_file_t *dfile = __fs.files[i];
+
+    fname[fname_len-1] = '0' + (i % 10);
+    fname[fname_len-2] = '0' + (i / 10);
+
+    __init_disk_file(dfile, file_length, fname, &s, 1);
+  }
+
+  // Create the stdin symbolic file
+  klee_make_shared(&__stdin_file, sizeof(disk_file_t));
+  __init_disk_file(&__stdin_file, MAX_STDINSIZE, "STDIN", &s, 0);
 }
 
-/* n_files: number of symbolic input files, excluding stdin
-   file_length: size in bytes of each symbolic file, including stdin
-   sym_stdout_flag: 1 if stdout should be symbolic, 0 otherwise
-   save_all_writes_flag: 1 if all writes are executed as expected, 0 if 
-                         writes past the initial file size are discarded 
-			 (file offset is always incremented)
-   max_failures: maximum number of system call failures */
-void klee_init_fds(unsigned n_files, unsigned file_length, 
-		   int sym_stdout_flag, int save_all_writes_flag,
-		   unsigned max_failures) {
-  unsigned k;
-  char name[7] = "?-data";
-  struct stat64 s;
+static void _init_network(void) {
+  // Initialize the INET domain
+  klee_make_shared(&__net, sizeof(__net));
 
-  stat64(".", &s);
+  __net.net_addr.s_addr = htonl(DEFAULT_NETWORK_ADDR);
+  __net.next_port = htons(DEFAULT_UNUSED_PORT);
+  STATIC_LIST_INIT(__net.end_points);
 
-  __exe_fs.n_sym_files = n_files;
-  __exe_fs.sym_files = malloc(sizeof(*__exe_fs.sym_files) * n_files);
-  for (k=0; k < n_files; k++) {
-    name[0] = 'A' + k;
-    __create_new_dfile(&__exe_fs.sym_files[k], file_length, name, &s);
-  }
-  
-  /* setting symbolic stdin */
-  if (file_length) {
-    __exe_fs.sym_stdin = malloc(sizeof(*__exe_fs.sym_stdin));
-    __create_new_dfile(__exe_fs.sym_stdin, file_length, "stdin", &s);
-    __exe_env.fds[0].dfile = __exe_fs.sym_stdin;
-  }
-  else __exe_fs.sym_stdin = NULL;
+  // Initialize the UNIX domain
+  klee_make_shared(&__unix_net, sizeof(__unix_net));
+  STATIC_LIST_INIT(__unix_net.end_points);
+}
 
-  __exe_fs.max_failures = max_failures;
-  if (__exe_fs.max_failures) {
-    __exe_fs.read_fail = malloc(sizeof(*__exe_fs.read_fail));
-    __exe_fs.write_fail = malloc(sizeof(*__exe_fs.write_fail));
-    __exe_fs.close_fail = malloc(sizeof(*__exe_fs.close_fail));
-    __exe_fs.ftruncate_fail = malloc(sizeof(*__exe_fs.ftruncate_fail));
-    __exe_fs.getcwd_fail = malloc(sizeof(*__exe_fs.getcwd_fail));
+void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe) {
+  _init_symfiles(n_files, file_length);
+  _init_network();
 
-    klee_make_symbolic(__exe_fs.read_fail, sizeof(*__exe_fs.read_fail), "read_fail");
-    klee_make_symbolic(__exe_fs.write_fail, sizeof(*__exe_fs.write_fail), "write_fail");
-    klee_make_symbolic(__exe_fs.close_fail, sizeof(*__exe_fs.close_fail), "close_fail");
-    klee_make_symbolic(__exe_fs.ftruncate_fail, sizeof(*__exe_fs.ftruncate_fail), "ftruncate_fail");
-    klee_make_symbolic(__exe_fs.getcwd_fail, sizeof(*__exe_fs.getcwd_fail), "getcwd_fail");
-  }
+  _init_fdt();
 
-  /* setting symbolic stdout */
-  if (sym_stdout_flag) {
-    __exe_fs.sym_stdout = malloc(sizeof(*__exe_fs.sym_stdout));
-    __create_new_dfile(__exe_fs.sym_stdout, 1024, "stdout", &s);
-    __exe_env.fds[1].dfile = __exe_fs.sym_stdout;
-    __exe_fs.stdout_writes = 0;
-  }
-  else __exe_fs.sym_stdout = NULL;
-  
-  __exe_env.save_all_writes = save_all_writes_flag;
-  __exe_env.version = __sym_uint32("model_version");
-  klee_assume(__exe_env.version == 1);
+  // Setting the unsafe (allow external writes) flag
+  __fs.unsafe = unsafe;
 }

@@ -18,15 +18,29 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <syslog.h>
 
 #include "klee/Config/config.h"
+#include "common.h"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+
+
+#include <stdint.h>
+
 
 void klee_warning(const char*);
 void klee_warning_once(const char*);
+
+#ifndef HAVE_POSIX_SIGNALS
 
 /* Silent ignore */
 
@@ -49,12 +63,46 @@ int sigaction(int signum, const struct sigaction *act,
   return 0;
 }
 
+typedef void (*sighandler_t)(int);
+
+sighandler_t signal(int signum, sighandler_t handler) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
+sighandler_t sigset(int sig, sighandler_t disp) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
+int sighold(int sig) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
+int sigrelse(int sig) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
+int sigignore(int sig) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
+unsigned int alarm(unsigned int seconds) {
+  klee_warning_once("silently ignoring");
+  return 0;
+}
+
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
      __attribute__((weak));
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
   klee_warning_once("silently ignoring");
   return 0;
 }
+
+#endif /* HAVE_POSIX_SIGNALS */
 
 /* Not even worth warning about these */
 int fdatasync(int fd) __attribute__((weak));
@@ -71,13 +119,6 @@ void sync(void) {
 
 extern int __fgetc_unlocked(FILE *f);
 extern int __fputc_unlocked(int c, FILE *f);
-
-int __socketcall(int type, int *args) __attribute__((weak));
-int __socketcall(int type, int *args) {
-  klee_warning("ignoring (EAFNOSUPPORT)");
-  errno = EAFNOSUPPORT;
-  return -1;
-}
 
 int _IO_getc(FILE *f) __attribute__((weak));
 int _IO_getc(FILE *f) {
@@ -107,13 +148,6 @@ int mknod(const char *pathname, mode_t mode, dev_t dev) __attribute__((weak));
 int mknod(const char *pathname, mode_t mode, dev_t dev) {
   klee_warning("ignoring (EIO)");
   errno = EIO;
-  return -1;
-}
-
-int pipe(int filedes[2]) __attribute__((weak));
-int pipe(int filedes[2]) {
-  klee_warning("ignoring (ENFILE)");
-  errno = ENFILE;
   return -1;
 }
 
@@ -268,41 +302,6 @@ char *canonicalize_file_name (const char *name) {
 int getloadavg(double loadavg[], int nelem) __attribute__((weak));
 int getloadavg(double loadavg[], int nelem) {
   klee_warning("ignoring (-1 result)");
-  return -1;
-}
-
-pid_t wait(int *status) __attribute__((weak));
-pid_t wait(int *status) {
-  klee_warning("ignoring (ECHILD)");
-  errno = ECHILD;
-  return -1;
-}
-
-pid_t wait3(int *status, int options, struct rusage *rusage) __attribute__((weak));
-pid_t wait3(int *status, int options, struct rusage *rusage) {
-  klee_warning("ignoring (ECHILD)");
-  errno = ECHILD;
-  return -1;
-}
-
-pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage) __attribute__((weak));
-pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage) {
-  klee_warning("ignoring (ECHILD)");
-  errno = ECHILD;
-  return -1;
-}
-
-pid_t waitpid(pid_t pid, int *status, int options) __attribute__((weak));
-pid_t waitpid(pid_t pid, int *status, int options) {
-  klee_warning("ignoring (ECHILD)");
-  errno = ECHILD;
-  return -1;
-}
-
-pid_t waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options) __attribute__((weak));
-pid_t waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options) {
-  klee_warning("ignoring (ECHILD)");
-  errno = ECHILD;
   return -1;
 }
 
@@ -471,23 +470,28 @@ int setresuid(uid_t ruid, uid_t euid, uid_t suid) {
 
 int setrlimit(__rlimit_resource_t resource, const struct rlimit *rlim) __attribute__((weak));
 int setrlimit(__rlimit_resource_t resource, const struct rlimit *rlim) {
+#if 0
   klee_warning("ignoring (EPERM)");
   errno = EPERM;
   return -1;
+#endif
+  return 0;
 }
 
 int setrlimit64(__rlimit_resource_t resource, const struct rlimit64 *rlim) __attribute__((weak));
 int setrlimit64(__rlimit_resource_t resource, const struct rlimit64 *rlim) {
+#if 0
   klee_warning("ignoring (EPERM)");
   errno = EPERM;
   return -1;
+#endif
+  return 0;
 }
 
 pid_t setsid(void) __attribute__((weak));
 pid_t setsid(void) {
   klee_warning("ignoring (EPERM)");
-  errno = EPERM;
-  return -1;
+  return 0;
 }
 
 int settimeofday(const struct timeval *tv, const struct timezone *tz) __attribute__((weak));
@@ -538,23 +542,18 @@ ssize_t readahead(int fd, off64_t *offset, size_t count) {
   return -1;
 }
 
-void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset) __attribute__((weak));
-void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset) {
-  klee_warning("ignoring (EPERM)");
-  errno = EPERM;
-  return (void*) -1;
+void openlog(const char *ident, int option, int facility) {
+  klee_warning("ignoring");
 }
 
-void *mmap64(void *start, size_t length, int prot, int flags, int fd, off64_t offset) __attribute__((weak));
-void *mmap64(void *start, size_t length, int prot, int flags, int fd, off64_t offset) {
-  klee_warning("ignoring (EPERM)");
-  errno = EPERM;
-  return (void*) -1;
+void syslog(int priority, const char *format, ...) {
+  klee_warning("ignoring");
 }
 
-int munmap(void*start, size_t length) __attribute__((weak));
-int munmap(void*start, size_t length) {
-  klee_warning("ignoring (EPERM)");
-  errno = EPERM;
-  return -1;
+void closelog(void) {
+  klee_warning("ignoring");
+}
+
+void vsyslog(int priority, const char *format, va_list ap) {
+  klee_warning("ignoring");
 }

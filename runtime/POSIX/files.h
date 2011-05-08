@@ -30,48 +30,61 @@
  *
  */
 
-#ifndef FD_H_
-#define FD_H_
+#ifndef FILES_H_
+#define FILES_H_
 
 #include "common.h"
+#include "buffers.h"
+#include "fd.h"
 
-#include <sys/uio.h>
-
-#define FD_IS_FILE          (1 << 3)    // The fd points to a disk file
-#define FD_IS_SOCKET        (1 << 4)    // The fd points to a socket
-#define FD_IS_PIPE          (1 << 5)    // The fd points to a pipe
-#define FD_CLOSE_ON_EXEC    (1 << 6)    // The fd should be closed at exec() time (ignored)
+#include <sys/types.h>
+#include <unistd.h>
 
 typedef struct {
-  unsigned int refcount;
-  unsigned int queued;
-  int flags;
-} file_base_t;
+  char *name;
+  block_buffer_t contents;
+
+  struct stat *stat;
+} disk_file_t;  // The "disk" storage of the file
 
 typedef struct {
-  unsigned int attr;
+  unsigned count;
+  disk_file_t **files;
 
-  file_base_t *io_object;
+  char unsafe;
+} filesystem_t;
 
-  char allocated;
-} fd_entry_t;
+extern filesystem_t __fs;
+extern disk_file_t __stdin_file;
 
-extern fd_entry_t __fdt[MAX_FDS];
+typedef struct {
+  file_base_t __bdata;
 
-void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe);
+  off_t offset;
 
-void __adjust_fds_on_fork(void);
-void __close_fds(void);
+  int concrete_fd;
+  disk_file_t *storage;
+} file_t;       // The open file structure
 
-#define _FD_SET(n, p)    ((p)->fds_bits[(n)/NFDBITS] |= (1 << ((n) % NFDBITS)))
-#define _FD_CLR(n, p)    ((p)->fds_bits[(n)/NFDBITS] &= ~(1 << ((n) % NFDBITS)))
-#define _FD_ISSET(n, p)  ((p)->fds_bits[(n)/NFDBITS] & (1 << ((n) % NFDBITS)))
-#define _FD_ZERO(p)  memset((char *)(p), '\0', sizeof(*(p)))
+void __init_disk_file(disk_file_t *dfile, size_t maxsize, const char *symname,
+    const struct stat *defstats, int symstats);
 
-ssize_t _scatter_read(int fd, const struct iovec *iov, int iovcnt);
-ssize_t _gather_write(int fd, const struct iovec *iov, int iovcnt, void* addr, size_t addr_len);
+disk_file_t *__get_sym_file(const char *pathname);
 
-int __get_concrete_fd(int symfd);
+int _close_file(file_t *file);
+ssize_t _read_file(file_t *file, void *buf, size_t count, off_t offset);
+ssize_t _write_file(file_t *file, const void *buf, size_t count, off_t offset);
+int _stat_file(file_t *file, struct stat *buf);
+int _ioctl_file(file_t *file, unsigned long request, char *argp);
+
+int _is_blocking_file(file_t *file, int event);
+
+static inline int _file_is_concrete(file_t *file) {
+  return file->concrete_fd >= 0;
+}
+
+int _open_concrete(int concrete_fd, int flags);
+int _open_symbolic(disk_file_t *dfile, int flags, mode_t mode);
 
 
-#endif /* FD_H_ */
+#endif /* FILES_H_ */

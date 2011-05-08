@@ -30,48 +30,47 @@
  *
  */
 
-#ifndef FD_H_
-#define FD_H_
+#ifndef POSIX_CONFIG_H_
+#define POSIX_CONFIG_H_
 
-#include "common.h"
+////////////////////////////////////////////////////////////////////////////////
+// System Limits
+////////////////////////////////////////////////////////////////////////////////
 
-#include <sys/uio.h>
+#define MAX_THREADS         16
+#define MAX_PROCESSES       8
 
-#define FD_IS_FILE          (1 << 3)    // The fd points to a disk file
-#define FD_IS_SOCKET        (1 << 4)    // The fd points to a socket
-#define FD_IS_PIPE          (1 << 5)    // The fd points to a pipe
-#define FD_CLOSE_ON_EXEC    (1 << 6)    // The fd should be closed at exec() time (ignored)
+#define MAX_SEMAPHORES      8
 
-typedef struct {
-  unsigned int refcount;
-  unsigned int queued;
-  int flags;
-} file_base_t;
+#define MAX_EVENTS          4
 
-typedef struct {
-  unsigned int attr;
+#define MAX_FDS             64
+#define MAX_FILES           16
 
-  file_base_t *io_object;
+#define MAX_PATH_LEN        75
 
-  char allocated;
-} fd_entry_t;
+#define MAX_PORTS           32
+#define MAX_UNIX_EPOINTS    32
 
-extern fd_entry_t __fdt[MAX_FDS];
+#define MAX_PENDING_CONN    4
 
-void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe);
+#define MAX_MMAPS           4
 
-void __adjust_fds_on_fork(void);
-void __close_fds(void);
+#define MAX_STDINSIZE       16
 
-#define _FD_SET(n, p)    ((p)->fds_bits[(n)/NFDBITS] |= (1 << ((n) % NFDBITS)))
-#define _FD_CLR(n, p)    ((p)->fds_bits[(n)/NFDBITS] &= ~(1 << ((n) % NFDBITS)))
-#define _FD_ISSET(n, p)  ((p)->fds_bits[(n)/NFDBITS] & (1 << ((n) % NFDBITS)))
-#define _FD_ZERO(p)  memset((char *)(p), '\0', sizeof(*(p)))
+#define MAX_DGRAM_SIZE          65536
+#define MAX_NUMBER_DGRAMS       8
+#define STREAM_BUFFER_SIZE      4096
+#define PIPE_BUFFER_SIZE        4096
+#define SENDFILE_BUFFER_SIZE    256
 
-ssize_t _scatter_read(int fd, const struct iovec *iov, int iovcnt);
-ssize_t _gather_write(int fd, const struct iovec *iov, int iovcnt, void* addr, size_t addr_len);
+////////////////////////////////////////////////////////////////////////////////
+// Enabled Components
+////////////////////////////////////////////////////////////////////////////////
 
-int __get_concrete_fd(int symfd);
+#define HAVE_FAULT_INJECTION    1
+//#define HAVE_SYMBOLIC_CTYPE     1
+#define HAVE_POSIX_SIGNALS	1
 
 
-#endif /* FD_H_ */
+#endif /* POSIX_CONFIG_H_ */
