@@ -58,6 +58,7 @@ disk_file_t __stdin_file;
 // Symbolic network
 network_t       __net;
 unix_t          __unix_net;
+netlink_t       __netlink_net;
 
 static void _init_fdt(void) {
   STATIC_LIST_INIT(__fdt);
@@ -122,6 +123,10 @@ static void _init_network(void) {
   // Initialize the UNIX domain
   klee_make_shared(&__unix_net, sizeof(__unix_net));
   STATIC_LIST_INIT(__unix_net.end_points);
+
+  // Initialize the netlink domain
+  klee_make_shared(&__netlink_net, sizeof(__netlink_net));
+  STATIC_LIST_INIT(__netlink_net.end_points);
 }
 
 void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe,

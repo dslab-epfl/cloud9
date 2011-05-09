@@ -69,7 +69,7 @@ void __close_fds(void);
 #define _FD_ZERO(p)  memset((char *)(p), '\0', sizeof(*(p)))
 
 ssize_t _scatter_read(int fd, const struct iovec *iov, int iovcnt);
-ssize_t _gather_write(int fd, const struct iovec *iov, int iovcnt, void* addr, size_t addr_len);
+ssize_t _gather_write(int fd, const struct iovec *iov, int iovcnt);
 
 int __get_concrete_fd(int symfd);
 

@@ -51,6 +51,7 @@
 
 #define MAX_PORTS           32
 #define MAX_UNIX_EPOINTS    32
+#define MAX_NETLINK_EPOINTS 32
 
 #define MAX_PENDING_CONN    4
 
@@ -58,7 +59,7 @@
 
 #define MAX_STDINSIZE       16
 
-#define MAX_DGRAM_SIZE          65536
+#define MAX_DGRAM_SIZE          4096
 #define MAX_NUMBER_DGRAMS       8
 #define STREAM_BUFFER_SIZE      4096
 #define PIPE_BUFFER_SIZE        4096

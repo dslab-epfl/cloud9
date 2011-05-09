@@ -51,7 +51,6 @@
 #define SOCK_STATUS_CONNECTING      (1 << 2)
 #define SOCK_STATUS_CONNECTED       (1 << 3)
 #define SOCK_STATUS_CLOSING         (1 << 4) // Transient state due to concurrency
-//todo: ah: strange: no CLOSED state
 
 struct socket;
 
@@ -77,15 +76,19 @@ typedef struct {
   end_point_t end_points[MAX_UNIX_EPOINTS];
 } unix_t;
 
+typedef struct {
+  end_point_t end_points[MAX_NETLINK_EPOINTS];
+} netlink_t;
+
 extern network_t __net;
 extern unix_t __unix_net;
+extern netlink_t __netlink_net;
 
 typedef struct {
   struct sockaddr* src;
   size_t src_len;
 
-  char* contents;
-  size_t contents_len;
+  block_buffer_t contents;
 } datagram_t;
 
 typedef struct socket {
@@ -94,6 +97,7 @@ typedef struct socket {
   int status;
   int type;
   int domain;
+  int protocol;
 
   end_point_t *local_end;
   end_point_t *remote_end;
@@ -111,8 +115,8 @@ typedef struct socket {
 } socket_t;
 
 int _close_socket(socket_t *sock);
-ssize_t _read_socket(socket_t *sock, void *buf, size_t count, struct sockaddr* addr, socklen_t* addr_len);
-ssize_t _write_socket(socket_t *sock, const void *buf, size_t count, const void* addr, size_t addr_len);
+ssize_t _read_socket(socket_t *sock, void *buf, size_t count);
+ssize_t _write_socket(socket_t *sock, const void *buf, size_t count);
 int _stat_socket(socket_t *sock, struct stat *buf);
 int _ioctl_socket(socket_t *sock, unsigned long request, char *argp);
 
