@@ -145,7 +145,9 @@ void _stream_close(stream_buffer_t *buff) {
   buff->status |= BUFFER_STATUS_CLOSED;
 }
 
-ssize_t _stream_read(stream_buffer_t *buff, char *dest, size_t count) {
+ssize_t _stream_readv(stream_buffer_t *buff, const struct iovec *iov, int iovcnt) {
+  size_t count = __count_iovec(iov, iovcnt);
+
   if (count == 0) {
     return 0;
   }
@@ -177,16 +179,30 @@ ssize_t _stream_read(stream_buffer_t *buff, char *dest, size_t count) {
     klee_event(__KLEE_EVENT_PKT_FRAGMENT, __concretize_size(count));
   }
 
-  if (buff->start + count > buff->max_size) {
-    size_t overflow = (buff->start + count) % buff->max_size;
+  int i;
+  size_t offset = buff->start;
+  size_t remaining = count;
 
-    memcpy(dest, &buff->contents[buff->start], count - overflow);
-    memcpy(&dest[count-overflow], &buff->contents[0], overflow);
-  } else {
-    memcpy(dest, &buff->contents[buff->start], count);
+  for (i = 0; i < iovcnt; i++) {
+    if (remaining == 0)
+      break;
+
+    size_t cur_count = (remaining < iov[i].iov_len) ? remaining : iov[i].iov_len;
+
+    if (offset + cur_count > buff->max_size) {
+      size_t overflow = (offset + cur_count) % buff->max_size;
+
+      memcpy(iov[i].iov_base, &buff->contents[offset], cur_count - overflow);
+      memcpy(&((char*)iov[i].iov_base)[cur_count-overflow], &buff->contents[0], overflow);
+      offset = overflow;
+    } else {
+      memcpy(iov[i].iov_base, &buff->contents[offset], cur_count);
+      offset += cur_count;
+    }
+    remaining -= cur_count;
   }
 
-  buff->start = (buff->start + count) % buff->max_size;
+  buff->start = offset;
   buff->size -= count;
 
   __notify_event(buff, EVENT_WRITE);
@@ -194,7 +210,9 @@ ssize_t _stream_read(stream_buffer_t *buff, char *dest, size_t count) {
   return count;
 }
 
-ssize_t _stream_write(stream_buffer_t *buff, const char *src, size_t count) {
+ssize_t _stream_writev(stream_buffer_t *buff, const struct iovec *iov, int iovcnt) {
+  size_t count = __count_iovec(iov, iovcnt);
+
   if (count == 0) {
     return 0;
   }
@@ -223,15 +241,27 @@ ssize_t _stream_write(stream_buffer_t *buff, const char *src, size_t count) {
   if (count > buff->max_size - buff->size)
     count = buff->max_size - buff->size;
 
-  size_t end = (buff->start + buff->size) % buff->max_size;
+  int i;
+  size_t offset = (buff->start + buff->size) % buff->max_size;
+  size_t remaining = count;
 
-  if (end + count > buff->max_size) {
-    size_t overflow = (end + count) % buff->max_size;
+  for (i = 0; i < iovcnt; i++) {
+    if (remaining == 0)
+      break;
 
-    memcpy(&buff->contents[end], src, count - overflow);
-    memcpy(&buff->contents[0], &src[count - overflow], overflow);
-  } else {
-    memcpy(&buff->contents[end], src, count);
+    size_t cur_count = (remaining < iov[i].iov_len) ? remaining : iov[i].iov_len;
+
+    if (offset + cur_count > buff->max_size) {
+      size_t overflow = (offset + cur_count) % buff->max_size;
+
+      memcpy(&buff->contents[offset], iov[i].iov_base, cur_count - overflow);
+      memcpy(&buff->contents[0], &((char*)iov[i].iov_base)[cur_count-overflow], overflow);
+      offset = overflow;
+    } else {
+      memcpy(&buff->contents[offset], iov[i].iov_base, cur_count);
+      offset += cur_count;
+    }
+    remaining -= cur_count;
   }
 
   buff->size += count;
@@ -239,6 +269,18 @@ ssize_t _stream_write(stream_buffer_t *buff, const char *src, size_t count) {
   __notify_event(buff, EVENT_READ);
 
   return count;
+}
+
+ssize_t _stream_read(stream_buffer_t *buff, char *dest, size_t count) {
+  struct iovec iov = { .iov_base = dest, .iov_len = count };
+
+  return _stream_readv(buff, &iov, 1);
+}
+
+ssize_t _stream_write(stream_buffer_t *buff, const char *src, size_t count) {
+  struct iovec iov = { .iov_base = (char*)src, .iov_len = count };
+
+  return _stream_writev(buff, &iov, 1);
 }
 
 int _stream_register_event(stream_buffer_t *buff, wlist_id_t wlist) {
@@ -264,9 +306,13 @@ void _block_finalize(block_buffer_t *buff) {
   free(buff->contents);
 }
 
-ssize_t _block_read(block_buffer_t *buff, char *dest, size_t count, size_t offset) {
+ssize_t _block_readv(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
+    size_t count, size_t offset) {
   if (offset > buff->size)
     return -1;
+
+  if (!count)
+    count = __count_iovec(iov, iovcnt);
 
   if (offset + count > buff->size)
     count = buff->size - offset;
@@ -274,14 +320,27 @@ ssize_t _block_read(block_buffer_t *buff, char *dest, size_t count, size_t offse
   if (count == 0)
     return 0;
 
-  memcpy(dest, &buff->contents[offset], count);
+  int i;
+  size_t remaining = count;
+  for (i = 0; i < iovcnt; i++) {
+    if (remaining == 0)
+      break;
+
+    size_t cur_count = (remaining < iov[i].iov_len) ? remaining : iov[i].iov_len;
+    memcpy(iov[i].iov_base, &buff->contents[offset+(count-remaining)], cur_count);
+    remaining -= cur_count;
+  }
 
   return count;
 }
 
-ssize_t _block_write(block_buffer_t *buff, const char *src, size_t count, size_t offset) {
+ssize_t _block_writev(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
+    size_t count, size_t offset) {
   if (offset > buff->max_size)
     return -1;
+
+  if (!count)
+    count = __count_iovec(iov, iovcnt);
 
   if (offset + count > buff->max_size)
     count = buff->max_size - offset;
@@ -289,9 +348,28 @@ ssize_t _block_write(block_buffer_t *buff, const char *src, size_t count, size_t
   if (count == 0)
     return 0;
 
+  int i;
+  size_t remaining = count;
+  for (i = 0; i < iovcnt; i++) {
+    if (remaining == 0)
+      break;
+
+    size_t cur_count = (remaining < iov[i].iov_len) ? remaining : iov[i].iov_len;
+    memcpy(&buff->contents[offset+(count-remaining)], iov[i].iov_base, cur_count);
+    remaining -= cur_count;
+  }
+
   buff->size = offset + count;
 
-  memcpy(&buff->contents[offset], src, count);
-
   return count;
+}
+
+ssize_t _block_read(block_buffer_t *buff, char *dest, size_t count, size_t offset) {
+  struct iovec iov = { .iov_base = dest, .iov_len = count };
+  return _block_readv(buff, &iov, 1, 0, offset);
+}
+
+ssize_t _block_write(block_buffer_t *buff, const char *src, size_t count, size_t offset) {
+  struct iovec iov = { .iov_base = (char*)src, .iov_len = count };
+  return _block_writev(buff, &iov, 1, 0, offset);
 }

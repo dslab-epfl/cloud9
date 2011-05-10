@@ -34,6 +34,7 @@
 #define BUFFERS_H_
 
 #include <unistd.h>
+#include <sys/uio.h>
 
 #include "common.h"
 #include "multiprocess.h"
@@ -88,6 +89,10 @@ void _stream_destroy(stream_buffer_t *buff);
 
 ssize_t _stream_read(stream_buffer_t *buff, char *dest, size_t count);
 ssize_t _stream_write(stream_buffer_t *buff, const char *src, size_t count);
+
+ssize_t _stream_readv(stream_buffer_t *buff, const struct iovec *iov, int iovcnt);
+ssize_t _stream_writev(stream_buffer_t *buff, const struct iovec *iov, int iovcnt);
+
 void _stream_close(stream_buffer_t *buff);
 
 int _stream_register_event(stream_buffer_t *buff, wlist_id_t wlist);
@@ -128,8 +133,14 @@ typedef struct {
 
 void _block_init(block_buffer_t *buff, size_t max_size);
 void _block_finalize(block_buffer_t *buff);
+
 ssize_t _block_read(block_buffer_t *buff, char *dest, size_t count, size_t offset);
 ssize_t _block_write(block_buffer_t *buff, const char *src, size_t count, size_t offset);
+
+ssize_t _block_readv(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
+    size_t count, size_t offset);
+ssize_t _block_writev(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
+    size_t count, size_t offset);
 
 
 #endif /* BUFFERS_H_ */
