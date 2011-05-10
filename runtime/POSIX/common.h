@@ -36,6 +36,7 @@
 #include "config.h"
 
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 
@@ -230,5 +231,17 @@ struct list_head {
     ((struct list_head *)list)->next = (list); \
     ((struct list_head *)list)->prev = (list); \
   } while(0)
+
+////////////////////////////////////////////////////////////////////////////////
+// IOvec manipulation
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t __count_iovec(const struct iovec *iov, int iovcnt) {
+  size_t result = 0;
+  int i;
+  for (i = 0; i < iovcnt; i++)
+    result += iov[i].iov_len;
+  return result;
+}
 
 #endif /* COMMON_H_ */

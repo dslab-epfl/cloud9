@@ -83,14 +83,6 @@
 // Internal Routines
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t __count_iovec(const struct iovec *iov, int iovcnt) {
-  size_t result = 0;
-  int i;
-  for (i = 0; i < iovcnt; i++)
-    result += iov[i].iov_len;
-  return result;
-}
-
 static in_port_t __get_unused_port(void) {
   unsigned int i;
   char found = 0;
@@ -315,11 +307,9 @@ static int __create_shared_datagram(datagram_t* datagram,
     const struct iovec *iov, int iovcnt) {
 
   size_t count = __count_iovec(iov, iovcnt);
-  size_t offset = 0;
-  int i;
 
   // Capping to the max dgram size
-  count = MIN(count, MAX_DGRAM_SIZE);
+  count = (count > MAX_DGRAM_SIZE) ? MAX_DGRAM_SIZE : count;
 
   _block_init(&datagram->contents, count);
   klee_make_shared(datagram->contents.contents, count);
@@ -331,14 +321,8 @@ static int __create_shared_datagram(datagram_t* datagram,
   klee_make_shared(datagram->src, addr_len);
   memcpy(datagram->src, addr, addr_len);
 
-  // Copying the buffers
-  for (i = 0; i < iovcnt; i++) {
-    ssize_t res = _block_write(&datagram->contents,
-        iov[i].iov_base, iov[i].iov_len, offset);
-    assert((size_t)res == iov[i].iov_len);
-
-    offset += iov[i].iov_len;
-  }
+  ssize_t res = _block_writev(&datagram->contents, iov, iovcnt, count, 0);
+  assert((size_t)res == count);
 
   return 0;
 }
@@ -517,32 +501,19 @@ static ssize_t __read_datagram_socket(socket_t *sock, const struct iovec *iov,
   if (count == 0)
     return 0;
 
-  size_t offset = 0;
-  int i;
+  count = count > datagram.contents.size ? datagram.contents.size : count;
 
-  count = MIN(count, datagram.contents.size);
-
-  for (i = 0; i < iovcnt; i++) {
-    size_t iovcount = MIN(count, iov[i].iov_len);
-    ssize_t res = _block_read(&datagram.contents, iov[i].iov_base,
-        iovcount, offset);
-    assert((size_t)res == iovcount);
-
-    offset += iovcount;
-    count -= iovcount;
-
-    if (count == 0)
-      break;
-  }
+  ssize_t res = _block_readv(&datagram.contents, iov, iovcnt, count, 0);
+  assert((size_t)res == count);
 
   if (addr != NULL) {
-    memcpy(addr, datagram.src, MIN(*addr_len, datagram.src_len));
+    memcpy(addr, datagram.src, (*addr_len > datagram.src_len) ? datagram.src_len : *addr_len);
     *addr_len = datagram.src_len;
   }
 
   __free_datagram(&datagram);
 
-  return offset;
+  return count;
 }
 
 static ssize_t __read_stream_socket(socket_t* sock, void* buf, size_t count) {
@@ -681,8 +652,6 @@ ssize_t _write_socket(socket_t *sock, const void *buf, size_t count) {
     errno = ENOTCONN;
     return -1;
   }
-
-  assert(sock->type == SOCK_STREAM);
 
   return __write_stream_socket(sock, buf, count);
 }
