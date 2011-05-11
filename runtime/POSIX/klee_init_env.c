@@ -14,6 +14,7 @@
 #include "fd.h"
 #include "multiprocess.h"
 #include "misc.h"
+#include "netlink.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -114,6 +115,7 @@ void klee_init_env(int argc, char **argv) {
   klee_init_processes();
   klee_init_fds(sym_files, sym_file_len, unsafe_flag, overlapped_flag);
   klee_init_mmap();
+  klee_init_netlink();
 }
 
 void klee_process_args(int* argcPtr, char*** argvPtr) {

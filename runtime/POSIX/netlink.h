@@ -41,5 +41,7 @@
 void _netlink_handler(socket_t *sock, const struct iovec *iov, int iovcnt,
     size_t count);
 
+void klee_init_netlink(void);
+
 
 #endif /* NETLINK_H_ */

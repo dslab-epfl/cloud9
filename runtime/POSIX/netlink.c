@@ -36,20 +36,44 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
+#include <stdio.h>
 #include <linux/rtnetlink.h>
 #include <asm/types.h>
 #include <linux/netlink.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
-static void _netlink_route_handler(struct nlmsghdr *nh) {
+#define NL_IFCOUNT    3
+#define NL_IFHWSIZE   6
+
+static char __base_hw_address[NL_IFHWSIZE] = {
+    0xC1, 0x00, 0xD9, 0x00, 0x00, 0x00
+};
+
+static char __base_hw_name[] = "eth";
+
+
+typedef struct netlink_iface {
+  char name[IFNAMSIZ];
+  char hw_addr[NL_IFHWSIZE];
+  unsigned int flags;
+} netlink_iface_t;
+
+static netlink_iface_t __ifaces[NL_IFCOUNT];
+
+static void _netlink_getlink_handler(socket_t *sock, struct nlmsghdr *nh) {
+
+}
+
+static void _netlink_route_handler(socket_t *sock, struct nlmsghdr *nh) {
   switch(nh->nlmsg_type) {
   case RTM_GETLINK:
-    klee_debug("Getlink message received\n");
-    break;
-  case RTM_GETADDR:
-    klee_debug("Getaddr message received\n");
-    break;
+    _netlink_getlink_handler(sock, nh);
+    return;
   default:
     klee_debug("Unknown message received: %d\n", nh->nlmsg_type);
+    klee_warning("unsupported rtnetlink message");
     break;
   }
 }
@@ -98,9 +122,14 @@ void _netlink_handler(socket_t *sock, const struct iovec *iov, int iovcnt,
       return;
     }
 
+    if (!(nh->nlmsg_flags & NLM_F_REQUEST)) {
+      klee_warning("netlink request flag not set");
+      return;
+    }
+
     switch (sock->protocol) {
     case NETLINK_ROUTE:
-      _netlink_route_handler(nh);
+      _netlink_route_handler(sock, nh);
       break;
     default:
       assert(0 && "invalid netlink protocol");
@@ -109,4 +138,16 @@ void _netlink_handler(socket_t *sock, const struct iovec *iov, int iovcnt,
 
   if (iovcnt > 1)
     free(buf);
+}
+
+void klee_init_netlink(void) {
+  unsigned char i;
+  for (i = 0; i < NL_IFCOUNT; i++) {
+    snprintf(__ifaces[i].name, IFNAMSIZ, "%s%d", __base_hw_name, i);
+
+    memcpy(__ifaces[i].hw_addr, __base_hw_address, NL_IFHWSIZE);
+    __ifaces[i].hw_addr[NL_IFHWSIZE-1] = i;
+
+    __ifaces[i].flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING;
+  }
 }
