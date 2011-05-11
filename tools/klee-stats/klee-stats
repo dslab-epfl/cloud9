@@ -187,16 +187,21 @@ Tfork:   Time spent forking (%)""")
         if BTot == 0:
             BFull = BTot = 1
 
+        # special case: no coverage data
+        coverage =  0
+        if not (SCov == SUnc == 0):
+            coverage = 100.*SCov/(SCov+SUnc)	
+
         Mem=Mem/1024./1024.
         AvgQC = int(QCon/max(1,QTot))
         if (opts.printAll):
-            table.append((Path, I, Treal, 100.*SCov/(SCov+SUnc), 100.*(2*BFull+BPart)/(2.*BTot),
+            table.append((Path, I, Treal, coverage, 100.*(2*BFull+BPart)/(2.*BTot),
                           SCov+SUnc, 100.*Ts/Treal, St, Mem, QTot, AvgQC, 100.*Tcex/Treal, 100.*Tf/Treal))
         elif (opts.printMore):
-            table.append((Path, I, Treal, 100.*SCov/(SCov+SUnc), 100.*(2*BFull+BPart)/(2.*BTot),
+            table.append((Path, I, Treal, coverage, 100.*(2*BFull+BPart)/(2.*BTot),
                           SCov+SUnc, 100.*Ts/Treal, St, Mem))
         else:
-            table.append((Path, I, Treal, 100.*SCov/(SCov+SUnc), 100.*(2*BFull+BPart)/(2.*BTot),
+            table.append((Path, I, Treal, coverage, 100.*(2*BFull+BPart)/(2.*BTot),
                           SCov+SUnc, 100.*Ts/Treal))
         
     def addRow(Path,data):
