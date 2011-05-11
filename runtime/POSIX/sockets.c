@@ -35,6 +35,7 @@
 #include "fd.h"
 
 #include "signals.h"
+#include "netlink.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -50,10 +51,8 @@
 #include <stdio.h>
 #include <netdb.h>
 #include <sys/ioctl.h>
-#include <sys/param.h>  //MIN/MAX macros
 #include <asm/types.h>
 #include <linux/netlink.h>
-#include <linux/rtnetlink.h>
 #include <klee/klee.h>
 
 
@@ -345,7 +344,6 @@ static void __free_all_datagrams(stream_buffer_t* buf) {
 // close() /////////////////////////////////////////////////////////////////////
 
 static int _bind(socket_t *sock, const struct sockaddr *addr, socklen_t addrlen);
-static ssize_t _netlink_handler(socket_t *sock, const struct iovec *iov, int iovcnt);
 
 static int __is_bound(socket_t* sock) {
   assert(sock->type == SOCK_DGRAM || sock->type == SOCK_RAW);
@@ -585,7 +583,8 @@ static ssize_t __write_datagram_socket(socket_t *sock,
 
   if (sock->domain == AF_NETLINK) {
     if (__is_netlink_kernel((const struct sockaddr_nl*)addr)) {
-      res = _netlink_handler(sock, iov, iovcnt);
+      res = __count_iovec(iov, iovcnt);
+      _netlink_handler(sock, iov, iovcnt, res);
       done = 1;
     }
   }
@@ -1962,69 +1961,4 @@ uint16_t ntohs(uint16_t v) {
 
 uint32_t ntohl(uint32_t v) {
   return htonl(v);
-}
-
-// Netlink support /////////////////////////////////////////////////////////////
-
-static ssize_t _netlink_route_handler(socket_t *sock, const void *buf, size_t count) {
-  struct nlmsghdr *nh;
-
-  for (nh = (struct nlmsghdr*) buf; NLMSG_OK(nh, count);
-       nh = NLMSG_NEXT(nh, count)) {
-    if (nh->nlmsg_type == NLMSG_DONE)
-      return 0;
-
-    if (nh->nlmsg_type == NLMSG_ERROR) {
-      klee_warning("netlink error datagram received from user");
-      return 0;
-    }
-
-    switch(nh->nlmsg_type) {
-    case RTM_GETLINK:
-      klee_debug("Getlink message received\n");
-      break;
-    case RTM_GETADDR:
-      klee_debug("Getaddr message received\n");
-      break;
-    default:
-      klee_debug("Unknown message received: %d\n", nh->nlmsg_type);
-      break;
-    }
-  }
-
-  return 0;
-}
-
-static ssize_t _netlink_handler(socket_t *sock, const struct iovec *iov, int iovcnt) {
-  size_t count = __count_iovec(iov, iovcnt);
-  void *buf;
-
-  if (iovcnt == 1)
-    buf = iov[0].iov_base;
-  else {
-    buf = malloc(count);
-
-    size_t offset = 0;
-    int i;
-
-    for (i = 0; i < iovcnt; i++) {
-      memcpy(&((char*)buf)[offset], iov[i].iov_base, iov[i].iov_len);
-      offset += iov[i].iov_len;
-    }
-  }
-
-  ssize_t res;
-
-  switch (sock->protocol) {
-  case NETLINK_ROUTE:
-    res = _netlink_route_handler(sock, buf, count);
-    break;
-  default:
-    assert(0 && "invalid netlink protocol");
-  }
-
-  if (iovcnt > 1)
-    free(buf);
-
-  return res;
 }
