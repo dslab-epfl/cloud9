@@ -532,8 +532,14 @@ static ssize_t __read_stream_socket(socket_t* sock, void* buf, size_t count) {
 }
 
 ssize_t _read_socket(socket_t *sock, void *buf, size_t count) {
-  assert(sock->type == SOCK_STREAM);
-  return __read_stream_socket(sock, buf, count);
+  if (sock->type == SOCK_STREAM) {
+    return __read_stream_socket(sock, buf, count);
+  } else if (sock->type == SOCK_DGRAM || sock->type == SOCK_RAW) {
+    struct iovec iov = { .iov_base = buf, .iov_len = count };
+    return __read_datagram_socket(sock, &iov, 1, NULL, NULL);
+  } else {
+    assert(0 && "invalid socket type");
+  }
 }
 
 // write() /////////////////////////////////////////////////////////////////////
@@ -608,6 +614,11 @@ static ssize_t __write_datagram_socket(socket_t *sock,
 }
 
 static ssize_t __write_stream_socket(socket_t *sock, const char *buf, size_t count) {
+  if (sock->status != SOCK_STATUS_CONNECTED) {
+    errno = ENOTCONN;
+    return -1;
+  }
+
   stream_buffer_t* out_stream = sock->out;
 
   if (out_stream == NULL || _stream_is_closed(out_stream)) {
@@ -648,12 +659,14 @@ static ssize_t __write_stream_socket(socket_t *sock, const char *buf, size_t cou
 }
 
 ssize_t _write_socket(socket_t *sock, const void *buf, size_t count) {
-  if (sock->status != SOCK_STATUS_CONNECTED) {
-    errno = ENOTCONN;
-    return -1;
+  if (sock->type == SOCK_STREAM) {
+    return __write_stream_socket(sock, buf, count);
+  } else if (sock->type == SOCK_DGRAM || sock->type == SOCK_RAW) {
+    struct iovec iov = { .iov_base = (void*)buf, .iov_len = count };
+    return __write_datagram_socket(sock, &iov, 1, NULL, 0);
+  } else {
+    assert(0 && "invalid socket type");
   }
-
-  return __write_stream_socket(sock, buf, count);
 }
 
 // fstat() /////////////////////////////////////////////////////////////////////
