@@ -128,10 +128,16 @@ void KModule::readVulnerablePoints(std::istream &is) {
 }
 
 bool KModule::isVulnerablePoint(KInstruction *kinst) {
-  CallInst *callInst = dyn_cast<CallInst>(kinst->inst);
-  assert(callInst);
+  Function *target;
 
-  Function *target = callInst->getCalledFunction();
+  if (CallInst *inst = dyn_cast<CallInst>(kinst->inst)) {
+    target = inst->getCalledFunction();
+  } else if (InvokeInst *inst = dyn_cast<InvokeInst>(kinst->inst)) {
+    target = inst->getCalledFunction();
+  } else {
+    assert(false);
+  }
+
   if (!target)
     return false;
 
@@ -705,6 +711,7 @@ KFunction::KFunction(llvm::Function *_function,
       case Instruction::ExtractValue:
         ki = new KGEPInstruction(); break;
       case Instruction::Call:
+      case Instruction::Invoke:
         ki = new KCallInstruction();
         break;
       default:
