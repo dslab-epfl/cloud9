@@ -35,8 +35,16 @@
 #include "llvm/Type.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/CFG.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Process.h"
+#else
+#include "llvm/Support/Process.h"
+#endif
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Path.h"
+#else
+#include "llvm/Support/Path.h"
+#endif
 
 #include "cloud9/instrum/InstrumentationManager.h"
 #include "cloud9/worker/WorkerCommon.h"
@@ -189,10 +197,18 @@ StatsTracker::StatsTracker(Executor &_executor, std::string _objectFilename,
   KModule *km = executor.kmodule;
 
   sys::Path module(objectFilename);
-  if (!sys::Path(objectFilename).isAbsolute()) {
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+	if (!sys::Path(objectFilename).isAbsolute()) {
+#else
+  if (!llvm::sys::path::is_absolute(Twine(objectFilename))) {
+#endif
     sys::Path current = sys::Path::GetCurrentDirectory();
     current.appendComponent(objectFilename);
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
     if (current.exists())
+#else
+    if (current.isValid())
+#endif
       objectFilename = current.c_str();
   }
 

@@ -170,10 +170,10 @@ int pthread_attr_destroy(pthread_attr_t *attr) {
 }
 
 int pthread_once(pthread_once_t *once_control, void (*init_routine)(void)) {
-  if (once_control == PTHREAD_ONCE_INIT) {
+  if (*once_control == 0) {
     init_routine();
 
-    *once_control = !PTHREAD_ONCE_INIT;
+    *once_control = 1;
   }
 
   return 0;

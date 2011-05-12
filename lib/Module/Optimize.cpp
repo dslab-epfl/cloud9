@@ -21,7 +21,11 @@
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Support/CommandLine.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/DynamicLibrary.h"
+#else
+#include "llvm/Support/DynamicLibrary.h"
+#endif
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO.h"
@@ -129,7 +133,9 @@ static void AddStandardCompilePasses(PassManager &PM) {
   addPass(PM, createLoopRotatePass());
   addPass(PM, createLICMPass());                 // Hoist loop invariants
   addPass(PM, createLoopUnswitchPass());         // Unswitch loops.
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
   addPass(PM, createLoopIndexSplitPass());       // Index split loops.
+#endif
   // FIXME : Removing instcombine causes nestedloop regression.
   addPass(PM, createInstructionCombiningPass());
   addPass(PM, createIndVarSimplifyPass());       // Canonicalize indvars

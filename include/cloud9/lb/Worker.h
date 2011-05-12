@@ -80,7 +80,7 @@ private:
 
   unsigned int lastReportTime;
 
-  Worker() : nodesRevision(1), totalJobs(0), lastReportTime(0), updatedInterests(false) {
+  Worker() : nodesRevision(1), totalJobs(0), updatedInterests(false), lastReportTime(0) {
 
   }
 public:

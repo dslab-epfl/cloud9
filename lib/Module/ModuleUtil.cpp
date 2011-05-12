@@ -15,12 +15,20 @@
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Linker.h"
 #include "llvm/Module.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
 #include "llvm/Assembly/AsmAnnotationWriter.h"
+#else
+#include "llvm/Assembly/AssemblyAnnotationWriter.h"
+#endif
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/ValueTracking.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Path.h"
+#else
+#include "llvm/Support/Path.h"
+#endif
 
 #include <map>
 #include <iostream>

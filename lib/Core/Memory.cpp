@@ -75,11 +75,12 @@ ObjectHolder &ObjectHolder::operator=(const ObjectHolder &b) {
 
 /***/
 
+/* Commented out because it would not compile, to be solved later
 std::ostream &klee::operator<<(std::ostream &os, const MemoryObject &obj) {
 	obj.getAllocInfo(os);
 
 	return os;
-}
+}*/
 
 int MemoryObject::counter = 0;
 

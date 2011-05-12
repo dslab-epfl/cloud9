@@ -8,11 +8,16 @@
 //===----------------------------------------------------------------------===//
 
 #include "Passes.h"
-#include "klee/Config/config.h"
 
 #include "llvm/InlineAsm.h"
 #if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
+#endif
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Target/TargetLowering.h"
+#include "llvm/Target/TargetRegistry.h"
 #endif
 
 using namespace llvm;
@@ -32,6 +37,10 @@ Function *RaiseAsmPass::getIntrinsic(llvm::Module &M,
 bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
   if (CallInst *ci = dyn_cast<CallInst>(I)) {
     if (InlineAsm *ia = dyn_cast<InlineAsm>(ci->getCalledValue())) {
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
+      (void) ia;
+      return TLI && TLI->ExpandInlineAsm(ci);
+#else
       const std::string &as = ia->getAsmString();
       const std::string &cs = ia->getConstraintString();
       const llvm::Type *T = ci->getType();
@@ -59,6 +68,7 @@ bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
 #endif
         return true;
       }
+#endif
     }
   }
 
@@ -68,6 +78,19 @@ bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
 bool RaiseAsmPass::runOnModule(Module &M) {
   bool changed = false;
   
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
+  std::string Err;
+  std::string HostTriple = llvm::sys::getHostTriple();
+  const Target *NativeTarget = TargetRegistry::lookupTarget(HostTriple, Err);
+  if (NativeTarget == 0) {
+    llvm::errs() << "Warning: unable to select native target: " << Err << "\n";
+    TLI = 0;
+  } else {
+    TargetMachine *TM = NativeTarget->createTargetMachine(HostTriple, "");
+    TLI = TM->getTargetLowering();
+  }
+#endif
+
   for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; ++fi) {
     for (Function::iterator bi = fi->begin(), be = fi->end(); bi != be; ++bi) {
       for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie;) {

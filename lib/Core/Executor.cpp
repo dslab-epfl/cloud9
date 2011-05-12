@@ -58,7 +58,11 @@
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Process.h"
+#else
+#include "llvm/Support/Process.h"
+#endif
 #include "llvm/Target/TargetData.h"
 
 #include "cloud9/instrum/InstrumentationManager.h"
@@ -972,7 +976,7 @@ ForkTag Executor::getForkTag(ExecutionState &current, int reason) {
       if (!it->caller)
         continue;
 
-      KCallInstruction *callInst = dynamic_cast<KCallInstruction*>((KInstruction*)it->caller);
+      KCallInstruction *callInst = dyn_cast<KCallInstruction>((KInstruction*)it->caller);
       assert(callInst);
 
       if (callInst->vulnerable) {

@@ -63,10 +63,20 @@
 #include "llvm/Function.h"
 #include "llvm/Module.h"
 #include "llvm/Instructions.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/TimeValue.h"
+#else
+#include "llvm/Support/TimeValue.h"
+#endif
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Path.h"
+#else
+#include "llvm/Support/Path.h"
+#endif
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/raw_ostream.h"
+#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
+#include "llvm/Support/raw_os_ostream.h"
+#endif
 
 #include "klee/Interpreter.h"
 #include "klee/Statistics.h"
@@ -223,13 +233,13 @@ void JobManager::serializeInstructionTrace(std::ostream &s,
     for (ExecutionTrace::const_iterator it = trace.getEntries().begin();
         it != trace.getEntries().end(); it++) {
 
-      if (InstructionTraceEntry *instEntry = dynamic_cast<InstructionTraceEntry*>(*it)) {
+      if (InstructionTraceEntry *instEntry = dyn_cast<InstructionTraceEntry>(*it)) {
         if (enabled) {
           unsigned int opcode = instEntry->getInstruction()->inst->getOpcode();
           s.write((char*)&opcode, sizeof(unsigned int));
         }
         count++;
-      } else if (BreakpointEntry *brkEntry = dynamic_cast<BreakpointEntry*>(*it)) {
+      } else if (BreakpointEntry *brkEntry = dyn_cast<BreakpointEntry>(*it)) {
         if (!enabled && brkEntry->getID() == KLEE_BRK_START_TRACING) { // XXX This is ugly
           CLOUD9_DEBUG("Starting to serialize. Skipped " << count << " instructions.");
           enabled = true;
@@ -281,7 +291,7 @@ void JobManager::serializeExecutionTrace(std::ostream &os,
     // Output each instruction in the node
     for (ExecutionTrace::const_iterator it = trace.getEntries().begin(); it
         != trace.getEntries().end(); it++) {
-      if (InstructionTraceEntry *instEntry = dynamic_cast<InstructionTraceEntry*>(*it)) {
+      if (InstructionTraceEntry *instEntry = dyn_cast<InstructionTraceEntry>(*it)) {
         klee::KInstruction *ki = instEntry->getInstruction();
         bool newBB = false;
         bool newFn = false;
@@ -314,7 +324,7 @@ void JobManager::serializeExecutionTrace(std::ostream &os,
         saver.restore();
         ki->inst->print(raw_os, NULL);
         os << std::endl;
-      } else if (DebugLogEntry *logEntry = dynamic_cast<DebugLogEntry*>(*it)) {
+      } else if (DebugLogEntry *logEntry = dyn_cast<DebugLogEntry>(*it)) {
         os << logEntry->getMessage() << std::endl;
       }
     }
@@ -346,7 +356,7 @@ void JobManager::processTestCase(SymbolicState *state) {
     for (ExecutionTrace::const_iterator it = trace.getEntries().begin();
         it != trace.getEntries().end(); it++) {
 
-      if (EventEntry *eventEntry = dynamic_cast<EventEntry*>(*it)) {
+      if (EventEntry *eventEntry = dyn_cast<EventEntry>(*it)) {
         eventEntries.push_back(eventEntry);
       }
     }
@@ -412,7 +422,7 @@ void JobManager::initialize(llvm::Module *module, llvm::Function *_mainFn,
   interpreter = klee::Interpreter::create(iOpts, kleeHandler);
   kleeHandler->setInterpreter(interpreter);
 
-  symbEngine = dynamic_cast<SymbolicEngine*> (interpreter);
+  symbEngine = dyn_cast<SymbolicEngine> (interpreter);
   interpreter->setModule(module, mOpts);
 
   kleeModule = symbEngine->getModule();

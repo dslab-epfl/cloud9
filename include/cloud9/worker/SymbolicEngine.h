@@ -42,6 +42,7 @@ namespace klee {
 class ExecutionState;
 class Searcher;
 class KModule;
+class Interpreter;
 }
 
 namespace llvm {
@@ -123,6 +124,8 @@ public:
 
 	void registerStateEventHandler(StateEventHandler *handler);
 	void deregisterStateEventHandler(StateEventHandler *handler);
+
+  static bool classof(const klee::Interpreter* interpreter){ return true; }
 };
 
 }

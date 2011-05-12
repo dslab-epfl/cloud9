@@ -36,7 +36,12 @@
 #undef PACKAGE_TARNAME
 #undef PACKAGE_VERSION
 #include "llvm/Target/TargetSelect.h"
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Signals.h"
+#else
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/system_error.h"
+#endif
 #include "llvm/Support/CallSite.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/InlineAsm.h"
@@ -160,14 +165,19 @@ static void parseArguments(int argc, char **argv) {
   }
     
   int numArgs = arguments.size() + 1;
-  const char **argArray = new const char*[numArgs+1];
+  char **argArray = new char*[numArgs+1];
   argArray[0] = argv[0];
   argArray[numArgs] = 0;
   for (int i=1; i<numArgs; i++) {
-    argArray[i] = arguments[i-1].c_str();
+    argArray[i] = new char[arguments[i-1].size() + 1];
+    std::copy(arguments[i-1].begin(), arguments[i-1].end(), argArray[i]);
+    argArray[i][arguments[i-1].size()] = '\0';
   }
 
   cl::ParseCommandLineOptions(numArgs, (char**) argArray, " klee\n");
+  for (int i=1; i<numArgs; i++) {
+    delete[] argArray[i];
+  }
   delete[] argArray;
 }
 
@@ -317,7 +327,7 @@ int main(int argc, char **argv, char **envp) {
   Function *mainFn = mainModule->getFunction("main");
   if (!mainFn) {
     std::cerr << "'main' function not found in module.\n";
-    return NULL;
+    return 0;
   }
 
   // FIXME: Change me to std types.

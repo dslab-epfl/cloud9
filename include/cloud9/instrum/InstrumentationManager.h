@@ -33,7 +33,11 @@
 #ifndef INSTRUMENTATIONMANAGER_H_
 #define INSTRUMENTATIONMANAGER_H_
 
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
 #include "llvm/System/Process.h"
+#else
+#include "llvm/Support/Process.h"
+#endif
 
 #include "cloud9/instrum/Timing.h"
 

@@ -524,6 +524,8 @@ public:
 	  return kmodule;
   }
 
+  //Hack for dynamic cast in CoreStrategies, TODO Solve it as soon as possible
+  static bool classof(const SymbolicEngine* engine){ return true; }
 };
   
 } // End klee namespace
