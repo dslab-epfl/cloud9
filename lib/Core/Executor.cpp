@@ -1036,6 +1036,15 @@ ref<klee::ConstantExpr> Executor::evalConstant(Constant *c) {
       return Expr::createPointer(0);
     } else if (isa<UndefValue>(c) || isa<ConstantAggregateZero>(c)) {
       return ConstantExpr::create(0, getWidthForLLVMType(c->getType()));
+    }else if (const ConstantStruct *cs = dyn_cast<ConstantStruct>(c)) { 
+      if(cs->getNumOperands() == 0)
+	      return Expr::createPointer(0);
+      ref<klee::ConstantExpr> result = evalConstant(cs->getOperand(0));
+      for (unsigned k=1, e=cs->getNumOperands(); k != e; ++k){
+	      ref<klee::ConstantExpr> next = evalConstant(cs->getOperand(k));
+	      result = next->Concat(result);
+      }
+      return result; 
     } else {
       // Constant{Array,Struct,Vector}
       assert(0 && "invalid argument to evalConstant()");
@@ -1674,15 +1683,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
   case Instruction::Invoke:
   case Instruction::Call: {
-    CallSite cs;
-    unsigned argStart;
-    if (i->getOpcode()==Instruction::Call) {
-      cs = CallSite(cast<CallInst>(i));
-      argStart = 1;
-    } else {
-      cs = CallSite(cast<InvokeInst>(i));
-      argStart = 3;
-    }
+    CallSite cs(i);
 
     unsigned numArgs = cs.arg_size();
     Function *f = getCalledFunction(cs, state);
@@ -1696,7 +1697,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     arguments.reserve(numArgs);
 
     for (unsigned j=0; j<numArgs; ++j)
-      arguments.push_back(eval(ki, argStart+j, state).value);
+      arguments.push_back(eval(ki, j+1, state).value);
 
     if (!f) {
       // special case the call with a bitcast case

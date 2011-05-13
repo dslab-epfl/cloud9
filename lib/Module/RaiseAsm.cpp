@@ -37,11 +37,17 @@ Function *RaiseAsmPass::getIntrinsic(llvm::Module &M,
 bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
   if (CallInst *ci = dyn_cast<CallInst>(I)) {
     if (InlineAsm *ia = dyn_cast<InlineAsm>(ci->getCalledValue())) {
+      //Added verification for empty assemply line
+      //Used as memory barrier in LLVM, not needed in Klee
+      const std::string &as = ia->getAsmString();
+      if(as.length() == 0){
+	      I->eraseFromParent();
+	      return true;
+      }  
 #if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
       (void) ia;
       return TLI && TLI->ExpandInlineAsm(ci);
 #else
-      const std::string &as = ia->getAsmString();
       const std::string &cs = ia->getConstraintString();
       const llvm::Type *T = ci->getType();
 
