@@ -48,10 +48,9 @@ class ToolData:
 
 class CoverageMiner:
     def __init__(self, hostsName, hfilter=None, ffilter=None, targetcov=None):
-        self.hosts = readHosts(hostsName)
+        self.hosts, self.localhost = readHosts(hostsName)
         self.hfilter = set(hfilter) if hfilter else None
         self.ffilter = set(ffilter) if ffilter else None
-        self.localhost = (host for host in self.hosts if self.hosts[host]["cores"] == 0).next()
         self.targetcov = targetcov
 
         self.pathRe = re.compile(r"^./([^/]+)/([^/-]+)-(\d+)(-(\d+))?/worker-(\d+)/c9-coverage.txt$")
@@ -64,8 +63,6 @@ class CoverageMiner:
         self.coveragedb = { }
 
         for host in self.hosts:
-            if host == self.localhost:
-                continue
             if self.hfilter and host not in self.hfilter:
                 continue
             self._pollCoverage(host, explist, self.coveragedb)

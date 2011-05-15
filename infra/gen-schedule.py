@@ -119,7 +119,7 @@ def main():
 
     args = parser.parse_args()
 
-    hosts = readHosts(args.hosts)
+    hosts, localhost = readHosts(args.hosts)
     cmdlines = readCmdlines(args.cmdlines)
     cmdFilter = None
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+/usr/bin/env python
 #
 # Cloud9 Parallel Symbolic Execution Engine
 # 
@@ -63,9 +63,8 @@ class StatsEntry:
 
 class StatsMiner:
     def __init__(self, hostsName, hfilter=None):
-        self.hosts = readHosts(hostsName)
+        self.hosts, self.localhost = readHosts(hostsName)
         self.hfilter = set(hfilter) if hfilter else None
-        self.localhost = (host for host in self.hosts if self.hosts[host]["cores"] == 0).next()
 
         self.pathRe = re.compile(r"^./([^/]+)/([^/-]+)-(\d+)(-(\d+))?/worker-(\d+)/c9-stats.txt$")
 
@@ -76,8 +75,6 @@ class StatsMiner:
         statsdb = { }
 
         for host in self.hosts:
-            if host == self.localhost:
-                continue
             if self.hfilter and host not in self.hfilter:
                 continue
             self._pollStats(host, explist, statsdb, wcfilter=wcfilter)

@@ -59,13 +59,12 @@ class ExperimentManager:
     def __init__(self, hostsName, cmdlinesName, expName, kleeCmdName, coverableName,
                  uid=None, uidprefix="test", debugcomm=False, duration=DEFAULT_EXP_DURATION,
                  balancetout=None, strategy=None, subprocKill=True, basePort=DEFAULT_BASE_PORT):
-        self.hosts = readHosts(hostsName)
+        self.hosts, self.localhost = readHosts(hostsName)
         self.cmdlines = readCmdlines(cmdlinesName)
         self.exp = readExp(expName)
         self.kleeCmd = readKleeCmd(kleeCmdName)
         self.coverable = getCoverablePath(coverableName)
         self.uid = uid if uid else self._generateUID(uidprefix)
-        self.localhost = (host for host in self.hosts if self.hosts[host]["cores"] == 0).next()
         self.debugcomm = debugcomm
         self.starttime = None
         self.duration = duration
@@ -75,7 +74,7 @@ class ExperimentManager:
         self.basePort = basePort
 
         self._logMsg("Using experiment name: %s" % bold(self.uid))
-        self._logMsg("Using as localhost: %s" % self.localhost)
+        self._logMsg("Using as localhost: %s" % self.localhost["host"])
 
     def initHosts(self):
         self._prepareLocalHost()
@@ -108,7 +107,7 @@ class ExperimentManager:
                 tgcounter = tgcounters[(target, workercount)]
 
                 # Allocate the load balancer
-                lbPort = ports[self.localhost]; ports[self.localhost] += 1
+                lbPort = ports[self.localhost["host"]]; ports[self.localhost["host"]] += 1
                 lbProc = self._runLB(port=lbPort, 
                                      target=target, 
                                      workerCount=workercount,
@@ -122,7 +121,7 @@ class ExperimentManager:
                     host, alloccount = alloc[0], alloc[1]
                     for i in range(alloccount):
                         workerProc = self._runWorker(host=host, port=ports[host], 
-                                                     lbHost=self.localhost, lbPort=lbPort, 
+                                                     lbHost=self.localhost["host"], lbPort=lbPort, 
                                                      target=target, workerID=workerID,
                                                      workerCount=workercount,
                                                      targetcounter=tgcounter)
@@ -158,7 +157,7 @@ class ExperimentManager:
     def _killAll(self, signal, aggressive=False):
         self._logMsg("Sending the %s signal..." % signal)
         for host in self.hosts:
-            if host == self.localhost:
+            if host == self.localhost["host"]:
                 continue
             self._killAllRemote(host, signal=signal, aggressive=aggressive)
 
@@ -308,29 +307,29 @@ class ExperimentManager:
             mkdir -p %(expdir)s/%(newdir)s
             if [ -h %(expdir)s/last ]; then rm -f %(expdir)s/last; fi
             [ ! -a %(expdir)s/last ] && ln -s %(expdir)s/%(newdir)s %(expdir)s/last""" % {
-                "root": self.hosts[self.localhost]["root"],
+                "root": self.localhost["root"],
                 "lb": LB_PATH,
-                "expdir": self.hosts[self.localhost]["expdir"],
+                "expdir": self.localhost["expdir"],
                 "newdir": self.uid
                 })
 
         if proc.wait() != 0:
-            self._logMsg("Unable to initialize the local host ('%s'). Aborting..." % self.localhost)
+            self._logMsg("Unable to initialize the local host ('%s'). Aborting..." % self.localhost["host"])
             exit(1)
         else:
             self._logMsg("Local host initialized.")
 
     def _runLB(self, port, target, workerCount, targetcounter):
         logdir = "%s/%s" % (
-            self.hosts[self.localhost]["expdir"],
+            self.localhost["expdir"],
             self._getExperimentID(target, workerCount, targetcounter))
         proc = runBashScript("""
             mkdir -p %(logdir)s
             %(root)s/%(lb)s -address %(address)s -port %(port)d %(debugcomm)s %(btout)s &>%(logfile)s""" % {
                 "logdir": logdir,
-                "root": self.hosts[self.localhost]["root"],
+                "root": self.localhost["root"],
                 "lb": LB_PATH,
-                "address": self.localhost,
+                "address": self.localhost["host"],
                 "port": port,
                 "debugcomm": "-debug-worker-communication" if self.debugcomm else "",
                 "btout": ("-balance-tout %d" % self.balancetout) if self.balancetout else "",
@@ -343,7 +342,7 @@ class ExperimentManager:
 
     def _runWorker(self, host, port, lbHost, lbPort, target, workerID, workerCount, targetcounter):
         logdir = "%s/%s" % (
-            self.hosts[self.localhost]["expdir"],
+            self.localhost["expdir"],
             self._getExperimentID(target, workerCount, targetcounter))
         if self.cmdlines[target].startswith("/"):
             cmdline = self.cmdlines[target]

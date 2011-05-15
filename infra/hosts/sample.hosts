@@ -1,8 +1,11 @@
 # <Hostname>		<# of cores> <Cloud9 root>		<SSH Username>	<Exp. dir>	 <Targets root>
-node1.epfl.ch		4     	     /home/cloud9/cloud9	cloud9		/var/cloud9/data /var/cloud9/experiments/coreutils-6.10
-node2.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/data /var/cloud9/experiments/coreutils-6.10
-node3.epfl.ch		4     	     /home/cloud9/cloud9	cloud9		/var/cloud9/data /var/cloud9/experiments/coreutils-6.10
-node4.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/data /var/cloud9/experiments/coreutils-6.10
-node5.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/data /var/cloud9/experiments/coreutils-6.10
-# This is a special 0-core entry, describing the local host
-gateway.epfl.ch	    	0	     /home/user/cloud9		-		/var/cloud9/data -
+node1.epfl.ch		4     	     /home/cloud9/cloud9	cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+node2.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+node3.epfl.ch		4     	     /home/cloud9/cloud9	cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+node4.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+node5.epfl.ch		8     	     /home/cloud9/cloud9	cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+# Optionally, you can have the local host run workers
+gateway.epfl.ch	      	4      	     /home/user/cloud9		cloud9		/var/cloud9/worker-data /var/cloud9/experiments/coreutils-6.10
+# This is a special required 0-core entry, describing the local host
+# The host name needs to be public, otherwise the worker machines won't be able to connect to their LB
+gateway.epfl.ch	    	0	     /home/user/cloud9		-		/var/cloud9/lb-data -

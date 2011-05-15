@@ -124,17 +124,24 @@ def getCoverablePath(coverable):
 
 def readHosts(hostsFile):
     hosts = { }
+    localhost = None
     f = open(_getHostsPath(hostsFile), "r")
     for line in f:
         if line.startswith("#"):
             continue
         tokens = line.split()
+
         host = tokens[0]
-        hosts[host] = dict(zip(["cores", "root", "user", "expdir", "targetdir"], tokens[1:]))
-        hosts[host]["cores"] = int(hosts[host]["cores"])
+        entry = dict(zip(["host", "cores", "root", "user", "expdir", "targetdir"], tokens))
+        entry["cores"] = int(entry["cores"])
+
+        if entry["cores"] == 0:
+            localhost = entry
+        else:
+            hosts[host] = entry
     f.close()
 
-    return hosts
+    return (hosts, localhost)
 
 def readCmdlines(cmdlinesFile):
     cmdlines = { }

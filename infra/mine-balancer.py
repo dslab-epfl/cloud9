@@ -54,9 +54,8 @@ class BalanceAverage:
 
 class BalancerMiner:
     def __init__(self, hostsName, hfilter=None):
-        self.hosts = readHosts(hostsName)
+        self.hosts, self.localhost = readHosts(hostsName)
         self.hfilter = set(hfilter) if hfilter else None
-        self.localhost = (host for host in self.hosts if self.hosts[host]["cores"] == 0).next()
 
         self.pathRe = re.compile(r"^./([^/]+)/([^/-]+)-(\d+)(-(\d+))?/out-lb.txt$")
         self.totalRe = re.compile(r"^\[([\d.]+)\].*\[(\d+)\] IN TOTAL$")
@@ -78,7 +77,7 @@ class BalancerMiner:
                done
            done""" % {
                 "testdirs": " ".join(explist),
-                "expdir": self.hosts[self.localhost]["expdir"],
+                "expdir": self.localhost["expdir"],
                 "skip": skip
                 }, stdout=PIPE)
 
