@@ -10,6 +10,8 @@ Makefile.config
 config.log
 config.status
 include/klee/Config/config.h
+stp/AST/ASTKind.cpp
+stp/AST/ASTKind.h
 stp/Makefile.common
 stp/include/
 
@@ -35,6 +37,7 @@ vgcore.*
 
 *.bc
 *.pyc
+*.ll
 *~
 
 cloud9.tar.gz
