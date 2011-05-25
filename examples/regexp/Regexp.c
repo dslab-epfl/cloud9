@@ -48,7 +48,7 @@ int match(char *re, char *text) {
 // The size of the buffer to test with.
 #define SIZE 7
 
-int main() {
+int main(int argc, char **argv) {
   // The input regular expression.
   char re[SIZE];
   
