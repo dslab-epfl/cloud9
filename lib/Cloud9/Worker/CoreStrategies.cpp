@@ -32,6 +32,7 @@
 
 #include "cloud9/worker/CoreStrategies.h"
 #include "cloud9/worker/TreeObjects.h"
+#include "cloud9/worker/TreeNodeInfo.h"
 #include "cloud9/worker/WorkerCommon.h"
 #include "cloud9/worker/SymbolicEngine.h"
 #include "cloud9/worker/JobManager.h"
@@ -79,6 +80,7 @@ ExecutionJob *BasicStrategy::selectJob(WorkerTree *tree, SymbolicState* state) {
   if (!node->layerExists(WORKER_LAYER_JOBS)) {
     dumpSymbolicTree(node);
   }
+
   assert(node->layerExists(WORKER_LAYER_JOBS));
 
   // Take the easy way first
@@ -95,10 +97,7 @@ ExecutionJob *BasicStrategy::selectJob(WorkerTree *tree, SymbolicState* state) {
 
 void BasicStrategy::dumpSymbolicTree(WorkerTree::Node *highlight) {
   jobManager->dumpSymbolicTree(NULL,
-      DotNodeDefaultDecorator<WorkerTree::Node>(
-          WORKER_LAYER_STATES,
-          WORKER_LAYER_JOBS,
-          highlight));
+      WorkerNodeDecorator(highlight));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +137,6 @@ ExecutionJob* RandomJobFromStateStrategy::onNextJobSelectionEx(bool &canBatch, u
     return NULL;
 
   return selectJob(tree, state);
-}
-
-void RandomJobFromStateStrategy::dumpSymbolicTree(WorkerTree::Node *highlight) {
-  stateStrat->dumpSymbolicTree(highlight);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

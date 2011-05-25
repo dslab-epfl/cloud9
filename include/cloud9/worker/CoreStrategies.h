@@ -124,8 +124,6 @@ private:
   WorkerTree *tree;
   StateSelectionStrategy *stateStrat;
 
-protected:
-  virtual void dumpSymbolicTree(WorkerTree::Node *highlight);
 public:
   RandomJobFromStateStrategy(WorkerTree *_tree, StateSelectionStrategy *_stateStrat,
       JobManager *_jobManager) :
