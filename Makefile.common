@@ -49,7 +49,6 @@ endif
 CXX.Flags += -DKLEE_DIR=\"$(PROJ_OBJ_ROOT)\"
 
 LD.Flags += -lrt
-CXX.Flags += -DGOOGLE_PROTOBUF_NO_RTTI
 
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --cpp_out=./ $<
