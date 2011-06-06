@@ -28,6 +28,7 @@ endif
 
 LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib
 
+AVOID_STDCPP0X:=1
 ifeq ($(AVOID_STDCPP0X), 1)
 CXX.Flags += -DLLVM_23 -fexceptions
 else
