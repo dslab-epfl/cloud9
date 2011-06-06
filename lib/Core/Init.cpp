@@ -485,9 +485,16 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
 
     StringRef newName = fName.substr(strlen("__klee_model_"), fName.size());
 
-    Value *modelF = mainModule->getNamedValue(newName);
+    GlobalValue *modelF = mainModule->getNamedValue(newName);
 
     if (modelF != NULL) {
+      if (GlobalAlias *modelA = dyn_cast<GlobalAlias>(modelF)) {
+        const GlobalValue *GV = modelA->resolveAliasedGlobal(false);
+        if (!GV || GV->getType() != modelF->getType())
+          continue; // TODO: support bitcasted aliases
+        modelF = const_cast<GlobalValue*>(GV);
+      }
+
       CLOUD9_DEBUG("Patching " << fName.str());
       modelF->getType()->dump();
       f->getType()->dump();
@@ -528,6 +535,7 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
   return mainModule;
 }
 
+#if 0
 static void __fix_linkage(llvm::Module *mainModule, std::string libcSymName, std::string libcAliasName) {
   //CLOUD9_DEBUG("Fixing linkage for " << libcSymName);
   Function *libcSym = mainModule->getFunction(libcSymName);
@@ -550,6 +558,7 @@ static void __fix_linkage(llvm::Module *mainModule, std::string libcSymName, std
 
 #define FIX_LINKAGE(module, syscall) \
   __fix_linkage(module, "__libc_" #syscall, #syscall)
+#endif
 
 static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
   Function *f;
@@ -631,9 +640,11 @@ static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
   //    f = mainModule->getFunction("__fgetc_unlocked");
   //    if (f) f->setName("fgetc_unlocked");
 
+#if 0
   FIX_LINKAGE(mainModule, open);
   FIX_LINKAGE(mainModule, fcntl);
   FIX_LINKAGE(mainModule, lseek);
+#endif
 
   // XXX we need to rearchitect so this can also be used with
   // programs externally linked with uclibc.
