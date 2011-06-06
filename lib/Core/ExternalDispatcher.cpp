@@ -40,7 +40,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <iostream>
-#include <cstdint>
+#include <tr1/cstdint>
 
 using namespace llvm;
 using namespace klee;

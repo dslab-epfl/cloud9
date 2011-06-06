@@ -489,7 +489,7 @@ void JobManager::initStrategy() {
 OracleStrategy *JobManager::createOracleStrategy() {
   std::vector<unsigned int> goalPath;
 
-  std::ifstream ifs(OraclePath);
+  std::ifstream ifs(OraclePath.c_str());
 
   assert(!ifs.fail());
 

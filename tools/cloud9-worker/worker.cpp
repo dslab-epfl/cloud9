@@ -273,7 +273,7 @@ int main(int argc, char **argv, char **envp) {
 	if (ReplayPath.size() > 0) {
       CLOUD9_INFO("Running in replay mode. No load balancer involved.");
 
-      std::ifstream is(ReplayPath);
+      std::ifstream is(ReplayPath.c_str());
 
       if (is.fail()) {
           CLOUD9_EXIT("Could not open the replay file " << ReplayPath);

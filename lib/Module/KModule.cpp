@@ -403,21 +403,21 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   }
 
   if (VulnerableSites != "") {
-    std::ifstream fs(VulnerableSites);
+    std::ifstream fs(VulnerableSites.c_str());
     assert(!fs.fail());
 
     readVulnerablePoints(fs);
   }
 
   if (CoverableModules != "") {
-    std::ifstream fs(CoverableModules);
+    std::ifstream fs(CoverableModules.c_str());
     assert(!fs.fail());
 
     readCoverableFiles(fs);
   }
 
   if (InitialCoverage != "") {
-    std::ifstream fs(InitialCoverage);
+    std::ifstream fs(InitialCoverage.c_str());
     assert(!fs.fail());
 
     readInitialCoverage(fs);
