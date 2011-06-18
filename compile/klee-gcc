@@ -23,7 +23,43 @@ def isLinkCommand():
             return False
     return is_linking
 
+def isPreprocessorCommand():
+		if sys.argv[1].startswith("-E"):
+			return True;
+		else:
+			return False
+
+def isLoaderCheckCommand():
+		if sys.argv[1].startswith("-print-prog-name=ld"):
+			return True;
+		else:
+			return False
+
+def isDumpversionCommand():
+		if sys.argv[1].startswith("-dumpversion"):
+			return True;
+		else:
+			return False
+
 def main():
+    if isPreprocessorCommand():
+      command = "gcc"
+      for arg in sys.argv[1:]:
+        command += " "
+        command += arg
+      proc = subprocess.Popen(command, shell = True, stdout = None, stderr = None)
+      proc.communicate()
+      return proc.returncode
+
+    if isLoaderCheckCommand():
+      print "klee-gcc"
+      return 0
+
+    if isDumpversionCommand():
+      proc = subprocess.Popen("llvm-gcc -dumpversion", shell = True, stdout = None, stderr = None)
+      proc.communicate()
+      return proc.returncode
+
     object_name = "a.o"
     do_linking = False
     modify_next_param = False
@@ -58,8 +94,11 @@ def main():
                 do_linking = True
                 modify_next_param = True
 
-        command = ["llvm-gcc","llvm-g++"][is_cpp] + command
+        command = ["llvm-gcc","llvm-g++"][is_cpp] + " -fno-exceptions" + command
 
+	if "-o" not in sys.argv[1:] and "-c" not in sys.argv[1:]:
+		command += " -o a.out -c"
+		do_linking = True
 	print "Compiling with command:", command
         proc = subprocess.Popen(command, shell = True, stdout = None, stderr = None)
         proc.communicate()
@@ -72,7 +111,10 @@ def main():
     # want my previous explicit declaration of hackyness to imply that this bit
     # of code here is not also a complete and total hack, it is.
     args = sys.argv[1:]
-    linkArgs = []
+    if do_linking:
+    	linkArgs = ["a.out"]
+    else:
+			linkArgs = []
     skipNext = False
     for a in args:
 
@@ -81,7 +123,7 @@ def main():
             continue
 
     	skip = False
-        for prefix in ('-emit-llvm', '-I', '-D', '-g', '-W', '-O', '-D', '-f', '-fnested-functions', '-pthread', '-std', '-Wl,', '-pedantic', '-nostdlib', '--disable-optcru', "-rdynamic", "-static"): 
+        for prefix in ('-emit-llvm', '-I', '-D', '-g', '-W', '-O', '-D', '-f', '-fnested-functions', '-pthread', '-std', '-Wl,', '-pedantic', '-nostdlib', '--disable-optcru', "-rdynamic", "-static", "-m64"): 
             if a.startswith(prefix):
             	skip = True
                 break
@@ -99,14 +141,11 @@ def main():
 	   	
         if not skip:
             linkArgs.append(a)
-
-    if do_linking:
-    	linkArgs.append("a.out")
  
     #linkArgs.append("-lrrd")
     print "Linking with command: llvm-ld --disable-opt " + " ".join(linkArgs)
     
-    proc = subprocess.Popen("llvm-ld --disable-opt " + " ".join(linkArgs), shell = True, stdout = None, stderr = None)
+    proc = subprocess.Popen("llvm-ld --disable-opt " + " ".join(linkArgs) + " -L/home/istvan/tools/ -lstdc++", shell = True, stdout = None, stderr = None)
     proc.communicate()
     
     return proc.returncode
