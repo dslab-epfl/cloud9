@@ -85,6 +85,36 @@ public:
   virtual bool runOnModule(llvm::Module &M);
 };
   
+class LowerSSEPass : public llvm::ModulePass {
+  static char ID;
+
+  bool runOnBasicBlock(llvm::BasicBlock &b);
+public:
+  LowerSSEPass()
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
+    : llvm::ModulePass((intptr_t) &ID) {}
+#else
+    : llvm::ModulePass(ID) {}
+#endif
+  
+  virtual bool runOnModule(llvm::Module &M);
+};
+  
+class SIMDInstrumentationPass : public llvm::ModulePass {
+  static char ID;
+
+  bool runOnBasicBlock(llvm::BasicBlock &b);
+public:
+  SIMDInstrumentationPass()
+#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
+    : llvm::ModulePass((intptr_t) &ID) {}
+#else
+    : llvm::ModulePass(ID) {}
+#endif
+  
+  virtual bool runOnModule(llvm::Module &M);
+};
+
   // performs two transformations which make interpretation
   // easier and faster.
   //

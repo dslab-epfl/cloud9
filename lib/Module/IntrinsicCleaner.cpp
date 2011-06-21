@@ -9,6 +9,7 @@
 
 #include "Passes.h"
 
+#include "../Core/Common.h"
 #include "klee/Config/config.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
@@ -23,6 +24,8 @@
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Type.h"
+#include "llvm/Support/IRBuilder.h"
+#include "llvm/Support/CallSite.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Target/TargetData.h"
@@ -32,6 +35,83 @@ using namespace llvm;
 namespace klee {
 
 char IntrinsicCleanerPass::ID;
+
+/// ReplaceCallWith - This function is used when we want to lower an intrinsic
+/// call to a call of an external function.  This handles hard cases such as
+/// when there was already a prototype for the external function, and if that
+/// prototype doesn't match the arguments we expect to pass in.
+template <class ArgIt>
+static CallInst *ReplaceCallWith(const char *NewFn, CallInst *CI,
+                                 ArgIt ArgBegin, ArgIt ArgEnd,
+                                 const Type *RetTy) {
+  // If we haven't already looked up this function, check to see if the
+  // program already contains a function with this name.
+  Module *M = CI->getParent()->getParent()->getParent();
+  // Get or insert the definition now.
+  std::vector<const Type *> ParamTys;
+  for (ArgIt I = ArgBegin; I != ArgEnd; ++I)
+    ParamTys.push_back((*I)->getType());
+  Constant* FCache = M->getOrInsertFunction(NewFn,
+                                  FunctionType::get(RetTy, ParamTys, false));
+
+  IRBuilder<> Builder(CI->getParent(), CI);
+  SmallVector<Value *, 8> Args(ArgBegin, ArgEnd);
+  CallInst *NewCI = Builder.CreateCall(FCache, Args.begin(), Args.end());
+  NewCI->setName(CI->getName());
+  if (!CI->use_empty())
+    CI->replaceAllUsesWith(NewCI);
+  CI->eraseFromParent();
+  return NewCI;
+}
+
+static void ReplaceFPIntrinsicWithCall(CallInst *CI, const char *Fname,
+                                       const char *Dname,
+                                       const char *LDname) {
+  CallSite CS(CI);
+  switch (CI->getArgOperand(0)->getType()->getTypeID()) {
+  default: klee_error("Invalid type in intrinsic");
+  case Type::FloatTyID:
+    ReplaceCallWith(Fname, CI, CS.arg_begin(), CS.arg_end(),
+                  Type::getFloatTy(CI->getContext()));
+    break;
+  case Type::DoubleTyID:
+    ReplaceCallWith(Dname, CI, CS.arg_begin(), CS.arg_end(),
+                  Type::getDoubleTy(CI->getContext()));
+    break;
+  case Type::X86_FP80TyID:
+  case Type::FP128TyID:
+  case Type::PPC_FP128TyID:
+    ReplaceCallWith(LDname, CI, CS.arg_begin(), CS.arg_end(),
+                  CI->getArgOperand(0)->getType());
+    break;
+  }
+}
+
+static void ReplaceIntIntrinsicWithCall(CallInst *CI, const char *Fname,
+                                       const char *Dname,
+                                       const char *LDname) {
+  CallSite CS(CI);
+  switch (CI->getArgOperand(0)->getType()->getTypeID()) {
+  default: klee_error("Invalid type in intrinsic");
+  case Type::IntegerTyID:
+		const IntegerType* itype = (const IntegerType*)CI->getArgOperand(0)->getType();
+		switch(itype->getBitWidth()) {
+			case 16:
+    		ReplaceCallWith(Fname, CI, CS.arg_begin(), CS.arg_end(),
+                  StructType::get(CI->getContext()));
+    		break;
+  		case 32:
+    		ReplaceCallWith(Dname, CI, CS.arg_begin(), CS.arg_end(),
+                  StructType::get(CI->getContext()));
+    		break;
+  		case 64:
+    		ReplaceCallWith(LDname, CI, CS.arg_begin(), CS.arg_end(),
+                  StructType::get(CI->getContext()));
+    		break;
+		}
+		break;
+  }
+}
 
 bool IntrinsicCleanerPass::runOnModule(Module &M) {
   bool dirty = false;
@@ -50,6 +130,7 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
     // increment now since LowerIntrinsic deletion makes iterator invalid.
     ++i;  
     if(ii) {
+			CallSite CS(ii);
       switch (ii->getIntrinsicID()) {
       case Intrinsic::vastart:
       case Intrinsic::vaend:
@@ -142,8 +223,20 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
       case Intrinsic::atomic_cmp_swap:
       case Intrinsic::atomic_load_add:
       case Intrinsic::atomic_load_sub:
-        break;
-                    
+        break;      
+  		case Intrinsic::powi:
+    		ReplaceFPIntrinsicWithCall(ii, "powif", "powi", "powil");
+				dirty = true;
+    		break;
+  		case Intrinsic::uadd_with_overflow:
+				ReplaceIntIntrinsicWithCall(ii, "uadds", "uadd", "uaddl");
+				dirty = true;
+    		break;
+  		case Intrinsic::trap:
+    		// Link with abort
+ 				ReplaceCallWith("abort", ii, CS.arg_end(), CS.arg_end(), Type::getVoidTy(getGlobalContext()));
+				dirty = true;
+    		break;
       default:
         if (LowerIntrinsics)
           IL->LowerIntrinsicCall(ii);

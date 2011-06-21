@@ -431,6 +431,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   pm.add(createLowerAtomicPass());
   pm.add(new RaiseAsmPass());
   if (opts.CheckDivZero) pm.add(new DivCheckPass());
+	pm.add(new LowerSSEPass());
   // FIXME: This false here is to work around a bug in
   // IntrinsicLowering which caches values which may eventually be
   // deleted (via RAUW). This can be removed once LLVM fixes this
