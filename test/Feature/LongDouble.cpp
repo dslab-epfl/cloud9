@@ -1,5 +1,7 @@
+// long double support is not complete: e.g. this test doesn't work with --libc=uclibc
+
 // RUN: %llvmgxx -I../../../include -g -fno-exceptions -emit-llvm -O0 -c -o %t.bc %s
-// RUN: %klee --libc=klee --no-output --exit-on-error %t.bc > %t.log
+// RUN: %klee --no-output --exit-on-error %t.bc > %t.log
 // RUN: grep -q {powl\(-11\\.0,0\)=1\\.0\\+} %t.log
 // RUN: grep -q {powl\(-11\\.0,1\)=-11\\.0\\+} %t.log
 // RUN: grep -q {powl\(-11\\.0,2\)=121\\.0\\+} %t.log
