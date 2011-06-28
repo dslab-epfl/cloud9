@@ -94,6 +94,7 @@ class ExperimentManager:
 
         # Initializing port mappings
         ports = dict((host, self.basePort) for host in self.hosts)
+        ports[self.localhost["host"]] = self.basePort
         
         for stageIndex, stage in enumerate(self.exp):
             self._logMsg("Running stage %d of the experiment." % (stageIndex + 1))
