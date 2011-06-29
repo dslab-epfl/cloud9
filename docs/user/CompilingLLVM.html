@@ -325,7 +325,10 @@ ul.auto-toc {
 <h2>Apache <tt class="docutils literal">httpd</tt> Server</h2>
 <p>We consider the original Apache <tt class="docutils literal">httpd</tt> 2.2.16 distribution. Unpack the archive and configure Apache as follows:</p>
 <pre class="literal-block">
-./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; RANLIB=&quot;ar --plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; AR_FLAGS=&quot;--plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
+./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
+   --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; \
+   RANLIB=&quot;ar --plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
+   AR_FLAGS=&quot;--plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
 </pre>
 <p>Then run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</p>
 </div>
