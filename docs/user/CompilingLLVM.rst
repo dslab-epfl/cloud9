@@ -24,6 +24,9 @@ Apache ``httpd`` Server
 
 We consider the original Apache ``httpd`` 2.2.16 distribution. Unpack the archive and configure Apache as follows::
 
-  ./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support --enable-static-htpasswd CC="llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm" CFLAGS="-g" RANLIB="ar --plugin <LLVM GCC front-end>/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s" AR_FLAGS="--plugin <LLVM GCC front-end>/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru"
+  ./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
+     --enable-static-htpasswd CC="llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm" CFLAGS="-g" \
+     RANLIB="ar --plugin <LLVM GCC front-end>/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s" \
+     AR_FLAGS="--plugin <LLVM GCC front-end>/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru"
 
 Then run ``make`` and at the end of the compilation, ``httpd.bc`` should be in the base directory of httpd.
