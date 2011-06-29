@@ -307,11 +307,13 @@ ul.auto-toc {
 <div class="document" id="installing-cloud9">
 <h1 class="title">Installing Cloud9</h1>
 
-<p>In order to install Cloud9, you need to perform the steps presented in the following sections (we assume an Ubuntu 10.10 x64 setup).</p>
+<p>In order to install Cloud9, you need to perform the steps presented in the following sections.</p>
 <div class="section" id="building-llvm">
 <h1>Building LLVM</h1>
-<p>Cloud9 requires LLVM 2.9. You should first download the GCC front-end <a class="reference external" href="http://llvm.org/releases/2.9/llvm-gcc4.2-2.9-x86_64-linux.tar.bz2">binaries</a>, and make sure your $PATH variable points to the <tt class="docutils literal">bin/</tt> directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your <tt class="docutils literal"><span class="pre">~/.profile</span></tt> configuration file.</p>
-<p>Then download the LLVM 2.9 <a class="reference external" href="http://llvm.org/releases/2.9/llvm-2.9.tgz">source</a>, run <tt class="docutils literal">./configure <span class="pre">--enable-optimized</span> <span class="pre">--enable-assertions</span></tt>, then <tt class="docutils literal">make <span class="pre">-jN</span></tt>, where <tt class="docutils literal">N</tt> is the number of available cores on the machine (for speeding up the build process).  Add then the resulting <tt class="docutils literal">Release+Asserts/bin</tt> directory to your $PATH.</p>
+<p>Cloud9 requires LLVM 2.9. You should first download the GCC front-end <a class="reference external" href="http://llvm.org/releases/2.9/llvm-gcc4.2-2.9-x86_64-linux.tar.bz2">binaries</a>, and make sure your <tt class="docutils literal">$PATH</tt> variable points to the <tt class="docutils literal">bin/</tt> directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your <tt class="docutils literal"><span class="pre">~/.profile</span></tt> configuration file.</p>
+<p>Then download the LLVM 2.9 <a class="reference external" href="http://llvm.org/releases/2.9/llvm-2.9.tgz">source</a>, and run <tt class="docutils literal">./configure <span class="pre">--enable-optimized</span> <span class="pre">--enable-assertions</span></tt> (add the <tt class="docutils literal"><span class="pre">--with-binutils-include=/usr/src/binutils/binutils-2.20.51.20100908/include</span></tt> option if you plan to compile LLVM targets).</p>
+<p>Run <tt class="docutils literal">make</tt> (you can also run <tt class="docutils literal">make <span class="pre">-jN</span></tt>, where <tt class="docutils literal">N</tt> is the number of cores on the machine, to speed up the build process).  Add then the resulting <tt class="docutils literal">Release+Asserts/bin</tt> directory to your <tt class="docutils literal">$PATH</tt>.</p>
+<p>For LLVM targets, you also need to copy <tt class="docutils literal">LLVMgold.so</tt> and <tt class="docutils literal">libLTO.so</tt> from LLVM's <tt class="docutils literal">Release+Asserts/bin</tt> directory to <tt class="docutils literal"><span class="pre">libexec/gcc/x86_64-unknown-linux-gnu/4.2.1</span></tt> in the LLVM GCC front-end binary installation.</p>
 </div>
 <div class="section" id="building-the-klee-c-library">
 <h1>Building The Klee C Library</h1>

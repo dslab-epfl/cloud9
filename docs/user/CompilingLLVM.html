@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
-<title>Cloud9 User Guide</title>
+<title>A General Guide to Compiling LLVM Targets</title>
 <style type="text/css">
 
 /*
@@ -304,22 +304,32 @@ ul.auto-toc {
 </style>
 </head>
 <body>
-<div class="document" id="cloud9-user-guide">
-<h1 class="title">Cloud9 User Guide</h1>
+<div class="document" id="a-general-guide-to-compiling-llvm-targets">
+<h1 class="title">A General Guide to Compiling LLVM Targets</h1>
 
+<p>Compiling testing targets to LLVM and obtaining the final <tt class="docutils literal">.bc</tt> LLVM bytecode used to be a tedious process, requiring in most cases to hack the target's build scripts.  A new compilation procedure, based on the LLVM gold plugin, alleviates this problem.  This section describes the LLVM-gold procedure, and assumes that LLVM 2.9 was installed for LLVM target building, according to <a class="reference external" href="Installation.html">the documentation</a>.</p>
+<div class="section" id="general-rules">
+<h1>General Rules</h1>
+<p>These guidelines apply generally to all testing targets.  Their application is specific to each target, so please consult the target's build documentation.</p>
 <ul class="simple">
-<li>Installation<ol class="arabic">
-<li><a class="reference external" href="user/Prerequisites.html">Cloud9 Prerequisites</a></li>
-<li><a class="reference external" href="user/Installation.html">Installing Cloud9</a></li>
-</ol>
-</li>
-<li>Getting Started<ol class="arabic">
-<li><a class="reference external" href="user/TestingMultithreaded.html">Testing Complex Multi-Threaded Programs</a></li>
-<li><a class="reference external" href="user/RunningInCluster.html">Running Cloud9 in a Cluster</a></li>
-<li><a class="reference external" href="user/CompilingLLVM.html">A General Guide to Compiling LLVM Targets</a></li>
-</ol>
-</li>
+<li>Build every component statically.  This is generally configured via the <tt class="docutils literal">./configure</tt> script of the target (if any).</li>
+<li>Explicitly disable the shared versions of the components, if possible.  Some <tt class="docutils literal">./configure</tt> scripts have the <tt class="docutils literal"><span class="pre">--disable-shared</span></tt> option that achieves this.</li>
+<li>Make sure the LLVM GCC front-end binary is in <tt class="docutils literal">$PATH</tt>, and set the compiler to <tt class="docutils literal"><span class="pre">llvm-gcc</span> <span class="pre">-flto</span> <span class="pre">-use-gold-plugin</span> <span class="pre">-Wl,-plugin-opt=also-emit-llvm</span></tt>.</li>
+<li>Set the <tt class="docutils literal">ar</tt> tool parameters to <tt class="docutils literal"><span class="pre">--plugin</span> &lt;LLVM GCC <span class="pre">front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so</span> <span class="pre">-cru</span></tt>.</li>
+<li>Set the <tt class="docutils literal">ranlib</tt> tool to be instead <tt class="docutils literal">ar <span class="pre">--plugin</span> &lt;LLVM GCC <span class="pre">front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so</span> <span class="pre">-s</span></tt>. This is required due to a bug in the original <tt class="docutils literal">ranlib</tt> that prevents it from recognizing the Gold plugin.</li>
 </ul>
+</div>
+<div class="section" id="case-studies">
+<h1>Case Studies</h1>
+<div class="section" id="apache-httpd-server">
+<h2>Apache <tt class="docutils literal">httpd</tt> Server</h2>
+<p>We consider the original Apache <tt class="docutils literal">httpd</tt> 2.2.16 distribution. Unpack the archive and configure Apache as follows:</p>
+<pre class="literal-block">
+./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; RANLIB=&quot;ar --plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; AR_FLAGS=&quot;--plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
+</pre>
+<p>Then run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</p>
+</div>
+</div>
 </div>
 </body>
 </html>

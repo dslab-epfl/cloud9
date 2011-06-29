@@ -2,14 +2,18 @@
 Installing Cloud9
 =================
 
-In order to install Cloud9, you need to perform the steps presented in the following sections (we assume an Ubuntu 10.10 x64 setup).
+In order to install Cloud9, you need to perform the steps presented in the following sections.
 
 Building LLVM
 -------------
 
-Cloud9 requires LLVM 2.9. You should first download the GCC front-end binaries_, and make sure your $PATH variable points to the ``bin/`` directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your ``~/.profile`` configuration file.
+Cloud9 requires LLVM 2.9. You should first download the GCC front-end binaries_, and make sure your ``$PATH`` variable points to the ``bin/`` directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your ``~/.profile`` configuration file.
 
-Then download the LLVM 2.9 source_, run ``./configure --enable-optimized --enable-assertions``, then ``make -jN``, where ``N`` is the number of available cores on the machine (for speeding up the build process).  Add then the resulting ``Release+Asserts/bin`` directory to your $PATH.
+Then download the LLVM 2.9 source_, and run ``./configure --enable-optimized --enable-assertions`` (add the ``--with-binutils-include=/usr/src/binutils/binutils-2.20.51.20100908/include`` option if you plan to compile LLVM targets).
+
+Run ``make`` (you can also run ``make -jN``, where ``N`` is the number of cores on the machine, to speed up the build process).  Add then the resulting ``Release+Asserts/bin`` directory to your ``$PATH``.
+
+For LLVM targets, you also need to copy ``LLVMgold.so`` and ``libLTO.so`` from LLVM's ``Release+Asserts/bin`` directory to ``libexec/gcc/x86_64-unknown-linux-gnu/4.2.1`` in the LLVM GCC front-end binary installation.
 
 Building The Klee C Library
 ---------------------------

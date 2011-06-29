@@ -307,8 +307,9 @@ ul.auto-toc {
 <div class="document" id="prerequisites">
 <h1 class="title">Prerequisites</h1>
 
-<p>Cloud9 works on 64-bit Linux distributions.  It has been extensively tested on Ubuntu 10.10, and it should work with other distros as well.</p>
+<p>Cloud9 works on 64-bit Linux distributions.  It has been extensively tested on Ubuntu 10.10, and it should work with other distros as well.  Except where otherwise noted, all snippets and examples from this documentation refer to Ubuntu 10.10 64-bit.</p>
 <p>In order to properly build and run Cloud9, you need to install the following packages: <tt class="docutils literal">dejagnu</tt>, <tt class="docutils literal">flex</tt>, <tt class="docutils literal">bison</tt>, <tt class="docutils literal"><span class="pre">protobuf-compiler</span></tt>, <tt class="docutils literal"><span class="pre">libprotobuf-dev</span></tt>, <tt class="docutils literal"><span class="pre">libboost-thread-dev</span></tt>, <tt class="docutils literal"><span class="pre">libboost-system-dev</span></tt>.</p>
+<p>If you also plan to compile testing targets to LLVM, you also need to install <tt class="docutils literal"><span class="pre">binutils-gold</span></tt> and <tt class="docutils literal"><span class="pre">binutils-source</span></tt>. After installing the <tt class="docutils literal">binutils</tt> source code, go to <tt class="docutils literal">/usr/src/binutils</tt>, and run <tt class="docutils literal">tar <span class="pre">-xJvf</span> <span class="pre">binutils-2.20.51.tar.xz</span></tt>. You should obtain the <tt class="docutils literal"><span class="pre">binutils-2.20.51.20100908</span></tt> directory.</p>
 </div>
 </body>
 </html>

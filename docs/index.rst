@@ -11,3 +11,4 @@ Cloud9 User Guide
 
   1. `Testing Complex Multi-Threaded Programs <user/TestingMultithreaded.html>`_
   2. `Running Cloud9 in a Cluster <user/RunningInCluster.html>`_
+  3. `A General Guide to Compiling LLVM Targets <user/CompilingLLVM.html>`_
