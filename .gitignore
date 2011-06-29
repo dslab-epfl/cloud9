@@ -2,7 +2,9 @@
 *.a
 
 Release/
+Release+Asserts/
 Debug/
+Debug+Asserts/
 
 Makefile.config
 config.log
