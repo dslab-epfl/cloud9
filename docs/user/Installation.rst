@@ -13,7 +13,7 @@ Then download the LLVM 2.9 source_, and run ``./configure --enable-optimized --e
 
 Run ``make`` (you can also run ``make -jN``, where ``N`` is the number of cores on the machine, to speed up the build process).  Add then the resulting ``Release+Asserts/bin`` directory to your ``$PATH``.
 
-For LLVM targets, you also need to copy ``LLVMgold.so`` and ``libLTO.so`` from LLVM's ``Release+Asserts/bin`` directory to ``libexec/gcc/x86_64-unknown-linux-gnu/4.2.1`` in the LLVM GCC front-end binary installation.
+For LLVM targets, you also need to copy ``LLVMgold.so`` and ``libLTO.so`` from LLVM's ``Release+Asserts/lib`` directory to ``libexec/gcc/x86_64-unknown-linux-gnu/4.2.1`` in the LLVM GCC front-end binary installation.
 
 Building The Klee C Library
 ---------------------------
