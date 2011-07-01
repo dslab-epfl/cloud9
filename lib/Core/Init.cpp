@@ -476,6 +476,8 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
   mainModule = klee::linkWithLibrary(mainModule, Path.c_str());
   assert(mainModule && "unable to link with simple model");
 
+  std::map<std::string, GlobalValue*> underlyingFn;
+
   for (Module::iterator it = mainModule->begin(); it != mainModule->end(); it++) {
     Function *f = it;
     StringRef fName = f->getName();
@@ -494,6 +496,8 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
           continue; // TODO: support bitcasted aliases
         modelF = const_cast<GlobalValue*>(GV);
       }
+
+      underlyingFn[newName.str()] = modelF;
 
       CLOUD9_DEBUG("Patching " << fName.str());
       modelF->getType()->dump();
@@ -515,7 +519,11 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
 
     CLOUD9_DEBUG("Patching " << fName.str());
 
-    Value *originalF = mainModule->getNamedValue(newName);
+    GlobalValue *originalF;
+    if (underlyingFn.count(newName.str()) > 0)
+      originalF = underlyingFn[newName.str()];
+    else
+      originalF = mainModule->getNamedValue(newName);
 
     if (originalF) {
       f->replaceAllUsesWith(originalF);
