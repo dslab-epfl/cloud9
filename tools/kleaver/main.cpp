@@ -24,6 +24,9 @@
 #include "llvm/Support/system_error.h"
 #endif
 
+#include <fstream>
+#include <iostream>
+
 using namespace llvm;
 using namespace klee;
 using namespace klee::expr;
@@ -169,7 +172,8 @@ static bool EvaluateInputAST(const char *Filename,
 
   // FIXME: Support choice of solver.
   Solver *S, *STP = S = 
-    UseDummySolver ? createDummySolver() : new STPSolver(true);
+    UseDummySolver ? createDummySolver() : new STPSolver(false, false);
+
   if (UseSTPQueryPCLog)
     S = createPCLoggingSolver(S, "stp-queries.pc");
   if (UseFastCexSolver)
@@ -215,8 +219,11 @@ static bool EvaluateInputAST(const char *Filename,
       } else {
         std::vector< std::vector<unsigned char> > result;
         
-        if (S->getInitialValues(Query(ConstraintManager(QC->Constraints), 
-                                      QC->Query),
+        ConstraintManager originalCM = ConstraintManager(QC->Constraints);
+        Query origQuery = Query(originalCM,
+            QC->Query);
+
+        if (S->getInitialValues(origQuery,
                                 QC->Objects, result)) {
           std::cout << "INVALID\n";
 
