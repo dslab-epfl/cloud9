@@ -100,15 +100,15 @@ static void ReplaceIntIntrinsicWithCall(CallInst *CI, const char *Fname,
 		switch(itype->getBitWidth()) {
 			case 16:
     		ReplaceCallWith(Fname, CI, CS.arg_begin(), CS.arg_end(),
-                  StructType::get(CI->getContext(), itype, btype, endType));
+                  StructType::get(CI->getContext(), itype, btype, endType, NULL));
     		break;
   		case 32:
     		ReplaceCallWith(Dname, CI, CS.arg_begin(), CS.arg_end(),
-                  StructType::get(CI->getContext(), itype, btype, endType));
+                  StructType::get(CI->getContext(), itype, btype, endType, NULL));
     		break;
   		case 64:
     		ReplaceCallWith(LDname, CI, CS.arg_begin(), CS.arg_end(),
-                  StructType::get(CI->getContext(), itype, btype, endType));
+                  StructType::get(CI->getContext(), itype, btype, endType, NULL));
     		break;
 		}
 		break;
