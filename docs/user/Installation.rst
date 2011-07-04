@@ -28,4 +28,4 @@ Now it's time to build the actual Cloud9 codebase. Clone the Cloud9 Git reposito
 
 .. _binaries: http://llvm.org/releases/2.9/llvm-gcc4.2-2.9-x86_64-linux.tar.bz2
 .. _source: http://llvm.org/releases/2.9/llvm-2.9.tgz
-.. _uClibc: https://cloud9.epfl.ch/attachments/download/108/klee-c9-uclibc.tar.gz
+.. _uClibc: https://dslabredmine.epfl.ch/attachments/download/136/klee-c9-uclibc.tar.gz

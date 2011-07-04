@@ -317,7 +317,7 @@ ul.auto-toc {
 </div>
 <div class="section" id="building-the-klee-c-library">
 <h1>Building The Klee C Library</h1>
-<p>Cloud9 relies on a modified Klee C Library (uClibc) to provide the API implementation for the POSIX interface that doesn't need a model.  You should download our custom <a class="reference external" href="https://cloud9.epfl.ch/attachments/download/108/klee-c9-uclibc.tar.gz">uClibc</a> library, then run <tt class="docutils literal">./configure <span class="pre">--with-llvm=&lt;Your</span> LLVM Path&gt;</tt>.  Finally, run <tt class="docutils literal">make</tt> and check that the <tt class="docutils literal">lib/libc.a</tt> file is correctly generated (run <tt class="docutils literal"><span class="pre">llvm-nm</span> lib/libc.a</tt> to see the LLVM symbols listing).</p>
+<p>Cloud9 relies on a modified Klee C Library (uClibc) to provide the API implementation for the POSIX interface that doesn't need a model.  You should download our custom <a class="reference external" href="https://dslabredmine.epfl.ch/attachments/download/136/klee-c9-uclibc.tar.gz">uClibc</a> library, then run <tt class="docutils literal">./configure <span class="pre">--with-llvm=&lt;Your</span> LLVM Path&gt;</tt>.  Finally, run <tt class="docutils literal">make</tt> and check that the <tt class="docutils literal">lib/libc.a</tt> file is correctly generated (run <tt class="docutils literal"><span class="pre">llvm-nm</span> lib/libc.a</tt> to see the LLVM symbols listing).</p>
 </div>
 <div class="section" id="building-cloud9">
 <h1>Building Cloud9</h1>
