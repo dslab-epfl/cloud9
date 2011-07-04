@@ -172,7 +172,7 @@ static bool EvaluateInputAST(const char *Filename,
 
   // FIXME: Support choice of solver.
   Solver *S, *STP = S = 
-    UseDummySolver ? createDummySolver() : new STPSolver(false, false);
+    UseDummySolver ? createDummySolver() : new STPSolver(false);
 
   if (UseSTPQueryPCLog)
     S = createPCLoggingSolver(S, "stp-queries.pc");
