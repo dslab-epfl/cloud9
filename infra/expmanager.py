@@ -51,9 +51,9 @@ DEFAULT_EXP_DURATION = 3600
 DEFAULT_INTER_SLEEP = 5
 MONITOR_INCREMENT = 3
 
-WORKER_PATH = "Release/bin/c9-worker"
-LB_PATH = "Release/bin/c9-lb"
-KLEE_PATH = "Release/bin/klee"
+WORKER_PATH = "Release+Asserts/bin/c9-worker"
+LB_PATH = "Release+Asserts/bin/c9-lb"
+KLEE_PATH = "Release+Asserts/bin/klee"
 
 class ExperimentManager:
     def __init__(self, hostsName, cmdlinesName, expName, kleeCmdName, coverableName,
