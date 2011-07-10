@@ -503,7 +503,6 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   f = module->getFunction("memset");
   if (f && f->use_empty()) f->eraseFromParent();
 
-
   // Write out the .ll assembly file. We truncate long lines to work
   // around a kcachegrind parsing bug (it puts them on new lines), so
   // that source browsing works.

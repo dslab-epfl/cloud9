@@ -118,8 +118,8 @@ static void ReplaceIntIntrinsicWithCall(CallInst *CI, const char *Fname,
 bool IntrinsicCleanerPass::runOnModule(Module &M) {
   bool dirty = false;
   for (Module::iterator f = M.begin(), fe = M.end(); f != fe; ++f)
-    for (Function::iterator b = f->begin(), be = f->end(); b != be; ++b)
-      dirty |= runOnBasicBlock(*b);
+    for (Function::iterator b = f->begin(), be = f->end(); b != be;)
+      dirty |= runOnBasicBlock(*(b++));
   return dirty;
 }
 
@@ -236,9 +236,65 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b) {
     		break;
   		case Intrinsic::trap:
     		// Link with abort
- 				ReplaceCallWith("abort", ii, CS.arg_end(), CS.arg_end(), Type::getVoidTy(getGlobalContext()));
+        ReplaceCallWith("abort", ii, CS.arg_end(), CS.arg_end(),
+                        Type::getVoidTy(getGlobalContext()));
 				dirty = true;
-    		break;
+        break;
+      case Intrinsic::memset:
+      case Intrinsic::memcpy:
+      case Intrinsic::memmove: {
+        LLVMContext &Ctx = ii->getContext();
+
+        Value *dst = ii->getArgOperand(0);
+        Value *src = ii->getArgOperand(1);
+        Value *len = ii->getArgOperand(2);
+
+        BasicBlock *BB = ii->getParent();
+        Function *F = BB->getParent();
+
+        BasicBlock *exitBB = BB->splitBasicBlock(ii);
+        BasicBlock *headerBB = BasicBlock::Create(Ctx, Twine(), F, exitBB);
+        BasicBlock *bodyBB  = BasicBlock::Create(Ctx, Twine(), F, exitBB);
+
+        // Enter the loop header
+        BB->getTerminator()->eraseFromParent();
+        BranchInst::Create(headerBB, BB);
+
+        // Create loop index
+        PHINode *idx = PHINode::Create(len->getType(), Twine(), headerBB);
+        idx->addIncoming(ConstantInt::get(len->getType(), 0), BB);
+
+        // Check loop condition, then move to the loop body or exit the loop
+        Value *loopCond = ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_ULT,
+                                           idx, len, Twine(), headerBB);
+        BranchInst::Create(bodyBB, exitBB, loopCond, headerBB);
+
+        // Get value to store
+        Value *val;
+        if (ii->getIntrinsicID() == Intrinsic::memset) {
+          val = src;
+        } else {
+          Value *srcPtr = GetElementPtrInst::Create(src, idx, Twine(), bodyBB);
+          val = new LoadInst(srcPtr, Twine(), bodyBB);
+        }
+
+        // Store the value
+        Value* dstPtr = GetElementPtrInst::Create(dst, idx, Twine(), bodyBB);
+        new StoreInst(val, dstPtr, bodyBB);
+
+        // Update index and branch back
+        Value* newIdx = BinaryOperator::Create(Instruction::Add,
+                    idx, ConstantInt::get(len->getType(), 1), Twine(), bodyBB);
+        BranchInst::Create(headerBB, bodyBB);
+        idx->addIncoming(newIdx, bodyBB);
+
+        ii->eraseFromParent();
+
+        // Update iterators to continue in the next BB
+        i = exitBB->begin();
+        ie = exitBB->end();
+        break;
+      }
       default:
         if (LowerIntrinsics)
           IL->LowerIntrinsicCall(ii);
