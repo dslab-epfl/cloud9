@@ -1,3 +1,7 @@
+// RUN: %llvmgcc -I../../../../../runtime/POSIX %s -emit-llvm -c -o %t.bc
+// RUN: %klee  --exit-on-error --posix-runtime --libc=uclibc --no-output --simplify-sym-indices --output-module --disable-inlining --allow-external-sym-calls %t.bc
+
+
 /*
  * Cloud9 Parallel Symbolic Execution Engine
  *

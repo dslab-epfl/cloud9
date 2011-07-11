@@ -66,7 +66,12 @@ void assert_fail(const char* message)
   const char* errno_as_string = strerror(errno);
   __print(errno_as_string);
   __print("\n\n");
-  exit(-1);
+
+#ifdef _IS_LLVM
+  klee_report_error("", 0, message, "test_fail");
+#else
+  exit(-1);  
+#endif
 }
 
 //TODO: ah: remove copy-paste: call my_assert
