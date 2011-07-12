@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Common.h"
+
 #include "AddressSpace.h"
 #include "CoreStats.h"
 #include "Memory.h"
@@ -342,7 +344,10 @@ bool AddressSpace::copyInConcretes(AddressPool *pool) {
 
       if (memcmp(address, os->concreteStore, mo->size)!=0) {
         if (os->readOnly) {
-          return false;
+					//Only cout structures are declared constant at the moment, they may be modified by system, try to continue
+					klee_warning("Read only object %s written to by external. Leaving old state",mo->name.c_str());
+					continue;
+          //return false;
         } else {
           ObjectState *wos = getWriteable(mo, os);
           memcpy(wos->concreteStore, address, mo->size);
