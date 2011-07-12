@@ -1,5 +1,5 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t1.bc
-// RUN: %klee %t1.bc > %t1.log
+// RUN: %klee --posix-runtime %t1.bc > %t1.log
 // RUN: grep -c START %t1.log | grep 1
 // RUN: grep -c END %t1.log | grep 2
 
@@ -9,7 +9,8 @@
 
 void start(int x) {
   printf("START\n");
-  if (x == 53)
+  fflush(stdout); //otherwise you can get 'START' printed twice
+  if (x == 53) 
     exit(1);
 }
 
@@ -20,11 +21,12 @@ void end(int status) {
 }
 
 
-int main() {
+int main(int argc, char** argv) {
   int x;
   klee_make_symbolic(&x, sizeof(x), "x");
 
   klee_alias_function("exit", "end");
+  
   start(x);
   end(0);
 }
