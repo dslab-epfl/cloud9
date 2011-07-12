@@ -28,9 +28,7 @@
 #include "llvm/Type.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/InstrTypes.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 7)
 #include "llvm/LLVMContext.h"
-#endif
 
 #include <errno.h>
 #include <stdarg.h>

@@ -9,11 +9,7 @@
 
 #include "klee/Internal/System/Time.h"
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Process.h"
-#else
 #include "llvm/Support/Process.h"
-#endif
 
 using namespace llvm;
 using namespace klee;

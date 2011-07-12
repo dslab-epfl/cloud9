@@ -17,12 +17,8 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Signals.h"
-#else
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/system_error.h"
-#endif
 
 #include <fstream>
 #include <iostream>
@@ -281,20 +277,12 @@ int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   std::string ErrorStr;
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-  MemoryBuffer *MB = MemoryBuffer::getFileOrSTDIN(InputFile.c_str(), &ErrorStr);
-  if (!MB) {
-    std::cerr << argv[0] << ": error: " << ErrorStr << "\n";
-    return 1;
-  }
-#else
   OwningPtr<MemoryBuffer> MB;
   error_code ec=MemoryBuffer::getFileOrSTDIN(InputFile.c_str(), MB);
   if (ec) {
     std::cerr << argv[0] << ": error: " << ec.message() << "\n";
     return 1;
   }
-#endif
 
   ExprBuilder *Builder = 0;
   switch (BuilderKind) {
@@ -314,38 +302,21 @@ int main(int argc, char **argv) {
 
   switch (ToolAction) {
   case PrintTokens:
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-    PrintInputTokens(MB);
-#else
     PrintInputTokens(MB.get());
-#endif
     break;
   case PrintAST:
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-    success = PrintInputAST(InputFile=="-" ? "<stdin>" : InputFile.c_str(), MB,
-                            Builder);
-#else
     success = PrintInputAST(InputFile=="-" ? "<stdin>" : InputFile.c_str(), MB.get(),
                             Builder);
-#endif
     break;
   case Evaluate:
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-    success = EvaluateInputAST(InputFile=="-" ? "<stdin>" : InputFile.c_str(),
-                               MB, Builder);
-#else
     success = EvaluateInputAST(InputFile=="-" ? "<stdin>" : InputFile.c_str(),
                                MB.get(), Builder);
-#endif
     break;
   default:
     std::cerr << argv[0] << ": error: Unknown program action!\n";
   }
 
   delete Builder;
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-  delete MB;
-#endif
 
   llvm::llvm_shutdown();
   return success ? 0 : 1;

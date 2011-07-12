@@ -37,11 +37,7 @@
 #include "cloud9/Protocols.h"
 
 #include "llvm/Support/CommandLine.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 
 #include <string>
 
@@ -88,13 +84,7 @@ void LBConnection::registerWorker() {
   reg->set_port(LocalPort);
   reg->set_wants_updates(UseGlobalCoverage);
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  llvm::sys::Path progPath(InputFile);
-
-  reg->set_prog_name(progPath.getBasename());
-#else
   reg->set_prog_name(llvm::sys::path::parent_path(InputFile));
-#endif
   reg->set_stat_id_count(jobManager->getCoverageIDCount());
   reg->set_prog_crc(jobManager->getModuleCRC());
 

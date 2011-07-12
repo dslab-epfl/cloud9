@@ -50,19 +50,13 @@
 #include "llvm/Function.h"
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
-#endif
 #include "llvm/Module.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Process.h"
-#else
 #include "llvm/Support/Process.h"
-#endif
 #include "llvm/Target/TargetData.h"
 
 #include "cloud9/instrum/InstrumentationManager.h"
@@ -1418,25 +1412,7 @@ Function* Executor::getCalledFunction(CallSite &cs, ExecutionState &state) {
 }
 
 static bool isDebugIntrinsic(const Function *f, KModule *KM) {
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  // Fast path, getIntrinsicID is slow.
-  if (f == KM->dbgStopPointFn)
-    return true;
-
-  switch (f->getIntrinsicID()) {
-  case Intrinsic::dbg_stoppoint:
-  case Intrinsic::dbg_region_start:
-  case Intrinsic::dbg_region_end:
-  case Intrinsic::dbg_func_start:
-  case Intrinsic::dbg_declare:
-    return true;
-
-  default:
-    return false;
-  }
-#else
   return false;
-#endif
 }
 
 static inline const llvm::fltSemantics * fpWidthToSemantics(unsigned width) {
@@ -2016,14 +1992,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
  
     // Memory instructions...
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  case Instruction::Malloc:
-  case Instruction::Alloca: {
-    AllocationInst *ai = cast<AllocationInst>(i);
-#else
   case Instruction::Alloca: {
     AllocaInst *ai = cast<AllocaInst>(i);
-#endif
     unsigned elementSize = 
       kmodule->targetData->getTypeStoreSize(ai->getAllocatedType());
     ref<Expr> size = Expr::createPointer(elementSize);
@@ -2032,16 +2002,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       count = Expr::createCoerceToPointerType(count);
       size = MulExpr::create(size, count);
     }
-    bool isLocal = i->getOpcode()==Instruction::Alloca;
-    executeAlloc(state, size, isLocal, ki);
+    executeAlloc(state, size, true, ki);
     break;
   }
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  case Instruction::Free: {
-    executeFree(state, eval(ki, 0, state).value);
-    break;
-  }
-#endif
 
   case Instruction::Load: {
     ref<Expr> base = eval(ki, 0, state).value;

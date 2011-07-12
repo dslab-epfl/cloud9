@@ -15,20 +15,12 @@
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Linker.h"
 #include "llvm/Module.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
-#include "llvm/Assembly/AsmAnnotationWriter.h"
-#else
 #include "llvm/Assembly/AssemblyAnnotationWriter.h"
-#endif
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/ValueTracking.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 
 #include <map>
 #include <iostream>
@@ -73,13 +65,8 @@ Function *klee::getDirectCallTarget(const Instruction *i) {
 }
 
 static bool valueIsOnlyCalled(const Value *v) {
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
-  for (Value::use_const_iterator it = v->use_begin(), ie = v->use_end();
-       it != ie; ++it) {
-#else
   for (Value::const_use_iterator it = v->use_begin(), ie = v->use_end();
        it != ie; ++it) {
-#endif
     if (const Instruction *instr = dyn_cast<Instruction>(*it)) {
       if (instr->getOpcode()==0) continue; // XXX function numbering inst
       if (!isa<CallInst>(instr) && !isa<InvokeInst>(instr)) return false;

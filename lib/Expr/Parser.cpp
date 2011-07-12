@@ -1496,17 +1496,9 @@ ExprResult ParserImpl::ParseNumberToken(Expr::Width Type, const Token &Tok) {
     Val = -Val;
 
   if (Type < Val.getBitWidth())
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-    Val.trunc(Type);
-#else
     Val=Val.trunc(Type);
-#endif
   else if (Type > Val.getBitWidth())
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-   Val.zext(Type);
-#else
    Val=Val.zext(Type);
-#endif
 
   return ExprResult(Builder->Constant(Val));
 }

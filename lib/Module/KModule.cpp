@@ -23,23 +23,15 @@
 
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Instructions.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
-#endif
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
 #include "llvm/ValueSymbolTable.h"
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/Support/raw_os_ostream.h"
-#endif
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
 
@@ -155,11 +147,7 @@ bool KModule::isVulnerablePoint(KInstruction *kinst) {
     return false;
 
   Path sourceFile(kinst->info->file);
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  program_point_t cpoint = std::make_pair(sourceFile.getLast(), kinst->info->line);
-#else
   program_point_t cpoint = std::make_pair(llvm::sys::path::filename(StringRef(sourceFile.str())), kinst->info->line);
-#endif
 
   if (vulnerablePoints[target->getNameStr()].count(cpoint) == 0)
     return false;
@@ -510,38 +498,6 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
     std::ostream *os = ih->openOutputFile("assembly.ll");
     assert(os && os->good() && "unable to open source output");
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 6)
-    // We have an option for this in case the user wants a .ll they
-    // can compile.
-    if (NoTruncateSourceLines) {
-      os << *module;
-    } else {
-      bool truncated = false;
-      std::string string;
-      llvm::raw_string_ostream rss(string);
-      rss << *module;
-      rss.flush();
-      const char *position = string.c_str();
-
-      for (;;) {
-        const char *end = index(position, '\n');
-        if (!end) {
-          os << position;
-          break;
-        } else {
-          unsigned count = (end - position) + 1;
-          if (count<255) {
-            os->write(position, count);
-          } else {
-            os->write(position, 254);
-            os << "\n";
-            truncated = true;
-          }
-          position = end+1;
-        }
-      }
-    }
-#else
     llvm::raw_os_ostream *ros = new llvm::raw_os_ostream(*os);
 
     // We have an option for this in case the user wants a .ll they
@@ -575,7 +531,6 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
       }
     }
     delete ros;
-#endif
 
     delete os;
   }
@@ -621,13 +576,8 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
       }
 
       Path sourceFile(ki->info->file);
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-      program_point_t pPoint = std::make_pair(sourceFile.getLast(),
-          ki->info->line);
-#else
       program_point_t pPoint = std::make_pair(llvm::sys::path::filename(StringRef(sourceFile.str())),
           ki->info->line);
-#endif
 
       ki->originallyCovered = coveredLines.count(pPoint) > 0;
     }

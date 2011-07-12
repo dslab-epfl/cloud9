@@ -51,11 +51,7 @@
 #include "klee/ExecutionState.h"
 
 #include "llvm/Support/CommandLine.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 
 #include "cloud9/instrum/InstrumentationManager.h"
 #include "cloud9/instrum/LocalFileWriter.h"
@@ -149,11 +145,7 @@ KleeHandler::KleeHandler(int argc, char **argv) :
 	}
 
 	sys::Path p(theDir);
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-	if (!p.isAbsolute()) {
-#else
   if (!llvm::sys::path::is_absolute(Twine(p.c_str()))) {
-#endif
 		sys::Path cwd = sys::Path::GetCurrentDirectory();
 		cwd.appendComponent(theDir);
 		p = cwd;
@@ -452,11 +444,7 @@ void KleeHandler::getOutFiles(std::string path,
 	}
 	for (std::set<llvm::sys::Path>::iterator it = contents.begin(), ie =
 			contents.end(); it != ie; ++it) {
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR == 6)
-		std::string f = it->toString();
-#else
 		std::string f = it->str();
-#endif
 		if (f.substr(f.size() - 6, f.size()) == ".ktest") {
 			results.push_back(f);
 		}

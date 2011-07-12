@@ -10,15 +10,11 @@
 #include "Passes.h"
 
 #include "llvm/InlineAsm.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
-#endif
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetLowering.h"
 #include "llvm/Target/TargetRegistry.h"
-#endif
 
 using namespace llvm;
 using namespace klee;
@@ -44,37 +40,8 @@ bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
 	      I->eraseFromParent();
 	      return true;
       }  
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
       (void) ia;
       return TLI && TLI->ExpandInlineAsm(ci);
-#else
-      const std::string &cs = ia->getConstraintString();
-      const llvm::Type *T = ci->getType();
-
-      // bswaps
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
-      unsigned NumOperands = ci->getNumOperands();
-      llvm::Value *Arg0 = NumOperands > 1 ? ci->getOperand(1) : 0;
-#else
-      unsigned NumOperands = ci->getNumArgOperands() + 1;
-      llvm::Value *Arg0 = NumOperands > 1 ? ci->getArgOperand(0) : 0;
-#endif
-      if (Arg0 && T == Arg0->getType() &&
-          ((T == llvm::Type::getInt16Ty(getGlobalContext()) && 
-            as == "rorw $$8, ${0:w}" &&
-            cs == "=r,0,~{dirflag},~{fpsr},~{flags},~{cc}") ||
-           (T == llvm::Type::getInt32Ty(getGlobalContext()) &&
-            as == "rorw $$8, ${0:w};rorl $$16, $0;rorw $$8, ${0:w}" &&
-            cs == "=r,0,~{dirflag},~{fpsr},~{flags},~{cc}"))) {
-        Function *F = getIntrinsic(M, Intrinsic::bswap, Arg0->getType());
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
-        ci->setOperand(0, F);
-#else
-        ci->setCalledFunction(F);
-#endif
-        return true;
-      }
-#endif
     }
   }
 
@@ -84,7 +51,6 @@ bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
 bool RaiseAsmPass::runOnModule(Module &M) {
   bool changed = false;
   
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 9)
   std::string Err;
   std::string HostTriple = llvm::sys::getHostTriple();
   const Target *NativeTarget = TargetRegistry::lookupTarget(HostTriple, Err);
@@ -95,7 +61,6 @@ bool RaiseAsmPass::runOnModule(Module &M) {
     TargetMachine *TM = NativeTarget->createTargetMachine(HostTriple, "");
     TLI = TM->getTargetLowering();
   }
-#endif
 
   for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; ++fi) {
     for (Function::iterator bi = fi->begin(), be = fi->end(); bi != be; ++bi) {

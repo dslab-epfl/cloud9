@@ -33,6 +33,14 @@
 #include "cloud9/worker/KleeCommon.h"
 
 #include "cloud9/Logger.h"
+
+// FIXME: Ugh, this is gross. But otherwise our config.h conflicts with LLVMs.
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/ADT/SmallString.h"

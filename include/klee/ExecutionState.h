@@ -18,11 +18,7 @@
 #include "../../lib/Core/AddressSpace.h"
 #include "klee/Internal/Module/KInstIterator.h"
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/TimeValue.h"
-#else
 #include "llvm/Support/TimeValue.h"
-#endif
 
 #include "klee/Threading.h"
 #include "klee/MultiProcess.h"

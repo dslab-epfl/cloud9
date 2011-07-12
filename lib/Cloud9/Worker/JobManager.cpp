@@ -63,20 +63,10 @@
 #include "llvm/Function.h"
 #include "llvm/Module.h"
 #include "llvm/Instructions.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/TimeValue.h"
-#else
 #include "llvm/Support/TimeValue.h"
-#endif
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 #include "llvm/Support/CommandLine.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/Support/raw_os_ostream.h"
-#endif
 
 #include "klee/Interpreter.h"
 #include "klee/Statistics.h"

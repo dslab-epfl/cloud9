@@ -37,11 +37,7 @@
 #include <ostream>
 #include <iostream>
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/TimeValue.h"
-#else
 #include "llvm/Support/TimeValue.h"
-#endif
 
 #define CLOUD9_DEFAULT_LOG_PREFIX			"Cloud9:\t"
 #define CLOUD9_DEFAULT_ERROR_PREFIX			"ERROR:\t"

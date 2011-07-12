@@ -46,29 +46,16 @@
 #undef PACKAGE_VERSION
 
 #include "llvm/Support/CommandLine.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Path.h"
-#else
 #include "llvm/Support/Path.h"
-#endif
 #include "llvm/Module.h"
 #include "llvm/Type.h"
 #include "llvm/InstrTypes.h"
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-#include "llvm/ModuleProvider.h"
-#endif
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR >= 7)
 #include "llvm/LLVMContext.h"
-#endif
 #include "llvm/Support/MemoryBuffer.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Signals.h"
-#else
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/system_error.h"
-#endif
 #include "llvm/Bitcode/ReaderWriter.h"
 
 #include <iostream>
@@ -699,30 +686,6 @@ static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
 }
 
 Module* loadByteCode() {
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  std::string ErrorMsg;
-  ModuleProvider *MP = 0;
-  if (MemoryBuffer *Buffer = MemoryBuffer::getFileOrSTDIN(InputFile, &ErrorMsg)) {
-    MP = getBitcodeModuleProvider(Buffer, getGlobalContext(), &ErrorMsg);
-    if (!MP) delete Buffer;
-  }
-
-  if (!MP)
-    klee_error("error loading program '%s': %s", InputFile.c_str(), ErrorMsg.c_str());
-
-  Module *mainModule = MP->materializeModule();
-  MP->releaseModule();
-  delete MP;
-#else
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-  std::string ErrorMsg;
-  Module *mainModule = 0;
-  MemoryBuffer *Buffer = MemoryBuffer::getFileOrSTDIN(InputFile, &ErrorMsg);
-  if (Buffer) {
-    mainModule = getLazyBitcodeModule(Buffer, getGlobalContext(), &ErrorMsg);
-    if (!mainModule) delete Buffer;
-  }
-#else
   std::string ErrorMsg;
   Module *mainModule = 0;
   OwningPtr<MemoryBuffer> BufferPtr;
@@ -732,8 +695,6 @@ Module* loadByteCode() {
                ec.message().c_str());
   }
   mainModule = getLazyBitcodeModule(BufferPtr.take(), getGlobalContext(), &ErrorMsg);
-#endif
-#endif
   if (mainModule) {
     if (mainModule->MaterializeAllPermanently(&ErrorMsg)) {
       delete mainModule;

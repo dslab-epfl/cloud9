@@ -18,9 +18,7 @@
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
-#endif
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Type.h"
@@ -122,11 +120,7 @@ static Value *CreateAbsDiff(IRBuilder<> &builder, bool isSigned, const IntegerTy
   return builder.CreateSelect(lmrIsNeg, builder.CreateNeg(lmr), lmr);
 }
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 8)
-#define GET_ARG_OPERAND(INST, NUM) (INST)->getOperand((NUM)+1)
-#else
 #define GET_ARG_OPERAND(INST, NUM) (INST)->getArgOperand(NUM)
-#endif
 
 bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) { 
   bool dirty = false;

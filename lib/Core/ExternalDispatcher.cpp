@@ -21,20 +21,11 @@
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Instructions.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-#include "llvm/ModuleProvider.h"
-#endif
-#if !(LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
 #include "llvm/LLVMContext.h"
-#endif
 #include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/Support/CallSite.h"
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/DynamicLibrary.h"
-#else
 #include "llvm/Support/DynamicLibrary.h"
-#endif
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetSelect.h"
 #include <setjmp.h>
@@ -90,16 +81,9 @@ void *ExternalDispatcher::resolveSymbol(const std::string &name) {
 
 ExternalDispatcher::ExternalDispatcher() {
   dispatchModule = new Module("ExternalDispatcher", getGlobalContext());
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  ExistingModuleProvider* MP = new ExistingModuleProvider(dispatchModule);
-#endif
 
   std::string error;
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 7)
-  executionEngine = ExecutionEngine::createJIT(MP, &error);
-#else
   executionEngine = ExecutionEngine::createJIT(dispatchModule, &error);
-#endif
   if (!executionEngine) {
     std::cerr << "unable to make jit: " << error << "\n";
     abort();

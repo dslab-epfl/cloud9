@@ -21,11 +21,7 @@
 #include "klee/util/ExprUtil.h"
 #include "klee/Internal/Support/Timer.h"
 
-#if (LLVM_VERSION_MAJOR == 2 && LLVM_VERSION_MINOR < 9)
-#include "llvm/System/Process.h"
-#else
 #include "llvm/Support/Process.h"
-#endif
 
 #include "cloud9/instrum/Timing.h"
 #include "cloud9/instrum/InstrumentationManager.h"
