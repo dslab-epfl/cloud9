@@ -11,6 +11,13 @@
 #include "klee/util/ExprPPrinter.h"
 #include "klee/util/ExprVisitor.h"
 
+// FIXME: Ugh, this is gross. But otherwise our config.h conflicts with LLVMs.
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CommandLine.h"
