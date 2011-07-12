@@ -96,6 +96,27 @@ static std::string strip(std::string &in) {
     return in.substr(lead, trail - lead);
 }
 
+static llvm::Module *patchArgsToMain(llvm::Module *mainModule) {
+	Function *mainFn = mainModule->getFunction("main");
+	if(!WithPOSIXRuntime || mainFn->getFunctionType()->getNumParams() != 0)
+		return mainModule;	
+	mainFn->setName("__argless_main");
+
+	//Create stub with proper parameters
+	std::vector<const Type*> fArgs;
+	fArgs.push_back(Type::getInt32Ty(getGlobalContext())); // argc
+	fArgs.push_back(PointerType::getUnqual(PointerType::getUnqual(Type::getInt8Ty(getGlobalContext())))); // argv
+	Function *stub = Function::Create(FunctionType::get(Type::getInt32Ty(getGlobalContext()), fArgs, false),
+	GlobalVariable::ExternalLinkage, "main", mainModule);
+	
+	BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", stub);	
+	std::vector<llvm::Value*> args;
+	CallInst* call = CallInst::Create(mainFn, args.begin(), args.begin(), "", bb);
+	ReturnInst::Create(getGlobalContext(), call, bb);
+
+	return mainModule;
+}
+
 static int patchMain(Module *mainModule) {
   /*
     nArgcP = alloc oldArgc->getType()
@@ -713,6 +734,8 @@ Module* prepareModule(Module *module) {
     InitEnv = true;
 
   llvm::sys::Path LibraryDir(getKleeLibraryPath());
+
+	module = patchArgsToMain(module);
 
   switch (Libc) {
   case NoLibc: /* silence compiler warning */
