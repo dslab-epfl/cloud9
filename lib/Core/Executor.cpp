@@ -1045,6 +1045,15 @@ ref<klee::ConstantExpr> Executor::evalConstant(Constant *c) {
 	      result = next->Concat(result);
       }
       return result; 
+    }else if (const ConstantVector *cv = dyn_cast<ConstantVector>(c)) { 
+      if(cv->getNumOperands() == 0)
+	      return Expr::createPointer(0);
+      ref<klee::ConstantExpr> result = evalConstant(cv->getOperand(0));
+      for (unsigned k=1, e=cv->getNumOperands(); k != e; ++k){
+	      ref<klee::ConstantExpr> next = evalConstant(cv->getOperand(k));
+	      result = next->Concat(result);
+      }
+      return result; 
     } else {
       // Constant{Array,Struct,Vector}
       assert(0 && "invalid argument to evalConstant()");
