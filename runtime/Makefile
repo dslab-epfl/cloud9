@@ -15,7 +15,7 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-PARALLEL_DIRS=Intrinsic klee-libc Runtest
+PARALLEL_DIRS=Intrinsic Runtest
 
 include $(LEVEL)/Makefile.config
 
