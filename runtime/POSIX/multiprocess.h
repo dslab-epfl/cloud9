@@ -123,6 +123,7 @@ typedef struct {
 
   char taken;
   unsigned int owner;
+	int count;
   unsigned int queued;
 
   char allocated;
@@ -152,6 +153,14 @@ typedef struct {
   unsigned int nr_writers_queued;
   int writer;
 } rwlock_data_t;
+typedef struct {
+  wlist_id_t wlist;
+
+	int count;
+  char allocated;
+	int thread_level;
+	pid_t owner;
+} sem_data_t;
 
 typedef struct {
   thread_data_t threads[MAX_THREADS];

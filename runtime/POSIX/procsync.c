@@ -198,3 +198,119 @@ int semtimedop(int semid, struct sembuf *sops, size_t nsops,
     const struct timespec *timeout) {
   assert(0 && "not implemented");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// POSIX Semaphores
+////////////////////////////////////////////////////////////////////////////////
+#define SEM_VALUE_MAX 32000
+# define __SIZEOF_SEM_T	32
+typedef union
+{
+  char __size[__SIZEOF_SEM_T];
+  long int __align;
+} sem_posix_t;
+
+static void _sem_init(sem_posix_t *sem, int pshared, unsigned int value) {
+  sem_data_t *sdata = (sem_data_t*)malloc(sizeof(sem_data_t));
+  memset(sdata, 0, sizeof(sem_data_t));
+
+  *((sem_data_t**)sem) = sdata;
+
+  sdata->wlist = klee_get_wlist();
+  sdata->count = value;
+	if(!pshared) {
+		sdata->thread_level = 1;
+		sdata->owner = getpid();
+	}
+}
+
+static sem_data_t *_get_sem_data(sem_posix_t *sem) {
+  sem_data_t *sdata = *((sem_data_t**)sem);
+
+  return sdata;
+}
+
+int sem_init(sem_posix_t *sem, int pshared, unsigned int value) {
+	if(value > SEM_VALUE_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+	
+	_sem_init(sem, pshared, value);
+
+	return 0;
+}
+
+int sem_destroy(sem_posix_t *sem) {
+  sem_data_t *sdata = _get_sem_data(sem);
+
+  free(sdata);
+
+  return 0;
+}
+
+static int _atomic_sem_lock(sem_data_t *sdata, char try) {
+	if(sdata->thread_level  &&  sdata->owner != getpid()) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	sdata->count--;
+  if (sdata->count < 0) {
+    if (try) {
+			sdata->count++;
+      errno = EBUSY;
+      return -1;
+    } else {
+      __thread_sleep(sdata->wlist);
+    }
+  }
+
+  return 0;
+}
+
+int sem_wait(sem_posix_t *sem) {
+  sem_data_t *sdata = _get_sem_data(sem);
+
+  int res = _atomic_sem_lock(sdata, 0);
+
+  if (res == 0)
+    __thread_preempt(0);
+
+  return res;
+}
+
+int sem_trywait(sem_posix_t *sem) {
+  sem_data_t *sdata = _get_sem_data(sem);
+
+  int res = _atomic_sem_lock(sdata, 1);
+
+  if (res == 0)
+    __thread_preempt(0);
+
+  return res;
+}
+
+static int _atomic_sem_unlock(sem_data_t *sdata) {
+	if(sdata->thread_level  &&  sdata->owner != getpid()) {
+		errno = EINVAL;
+		return -1;
+	}
+
+  sdata->count++;
+
+  if (sdata->count <= 0)
+    __thread_notify_one(sdata->wlist);
+
+  return 0;
+}
+
+int sem_post(sem_posix_t *sem) {
+  sem_data_t *sdata = _get_sem_data(sem);
+
+  int res = _atomic_sem_unlock(sdata);
+
+  __thread_preempt(0);
+
+  return res;
+}

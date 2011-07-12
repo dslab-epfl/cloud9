@@ -54,7 +54,7 @@
 
 #define MAX_PENDING_CONN    4
 
-#define MAX_MMAPS           4
+#define MAX_MMAPS           32
 
 #define MAX_STDINSIZE       16
 
