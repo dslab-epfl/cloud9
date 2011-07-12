@@ -42,6 +42,10 @@
 #include <iostream>
 #include <tr1/cstdint>
 
+//Loads the GTK shared libraries for GUI applications
+//May not work perfectly, but allows application to continue
+//#define USES_GTK
+
 using namespace llvm;
 using namespace klee;
 
@@ -111,6 +115,16 @@ ExternalDispatcher::ExternalDispatcher() {
     // to the function tells DynamicLibrary to load the program, not a library.
     sys::DynamicLibrary::LoadLibraryPermanently(0);
   }
+
+#ifdef USE_GTK
+	bool err;
+	err = sys::DynamicLibrary::LoadLibraryPermanently("libgtk-x11-2.0.so",&error);
+	if(err)
+		std::cerr << "Unable to load dynamic library libgtk: " << error << "\n";
+	err = sys::DynamicLibrary::LoadLibraryPermanently("libgdk-x11-2.0.so",&error);
+	if(err)
+		std::cerr << "Unable to load dynamic library libgdk: " << error << "\n";
+#endif
 
 #ifdef WINDOWS
   preboundFunctions["getpid"] = (void*) (long) getpid;
