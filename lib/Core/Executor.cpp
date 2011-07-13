@@ -2390,14 +2390,79 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     break;
   }
  
-    // Other instructions...
-    // Unhandled
-  case Instruction::ExtractElement:
-  case Instruction::InsertElement:
-  case Instruction::ShuffleVector:
-    terminateStateOnError(state, "XXX vector instructions unhandled",
-                          "xxx.err");
+  case Instruction::ExtractElement: {
+    ExtractElementInst *eei = cast<ExtractElementInst>(i);
+    ref<Expr> vec = eval(ki, 0, state).value;
+    ref<Expr> idx = eval(ki, 1, state).value;
+
+    assert(isa<ConstantExpr>(idx) && "symbolic index unsupported");
+    ConstantExpr *cIdx = cast<ConstantExpr>(idx);
+    uint64_t iIdx = cIdx->getZExtValue();
+
+    const llvm::VectorType *vt = eei->getVectorOperandType();
+    unsigned EltBits = getWidthForLLVMType(vt->getElementType());
+
+    ref<Expr> Result = ExtractExpr::create(vec, EltBits*iIdx, EltBits);
+
+    bindLocal(ki, state, Result);
     break;
+  }
+  case Instruction::InsertElement: {
+    InsertElementInst *iei = cast<InsertElementInst>(i);
+    ref<Expr> vec = eval(ki, 0, state).value;
+    ref<Expr> newElt = eval(ki, 1, state).value;
+    ref<Expr> idx = eval(ki, 2, state).value;
+
+    assert(isa<ConstantExpr>(idx) && "symbolic index unsupported");
+    ConstantExpr *cIdx = cast<ConstantExpr>(idx);
+    uint64_t iIdx = cIdx->getZExtValue();
+
+    const llvm::VectorType *vt = iei->getType();
+    unsigned EltBits = getWidthForLLVMType(vt->getElementType());
+
+    unsigned ElemCount = vt->getNumElements();
+    ref<Expr> *elems = new ref<Expr>[vt->getNumElements()];
+    for (unsigned i = 0; i < ElemCount; ++i)
+      elems[ElemCount-i-1] = i == iIdx
+                             ? newElt
+                             : ExtractExpr::create(vec, EltBits*i, EltBits);
+
+    ref<Expr> Result = ConcatExpr::createN(ElemCount, elems);
+    delete[] elems;
+
+    bindLocal(ki, state, Result);
+    break;
+  }
+  case Instruction::ShuffleVector: {
+    ShuffleVectorInst *svi = cast<ShuffleVectorInst>(i);
+
+    ref<Expr> vec1 = eval(ki, 0, state).value;
+    ref<Expr> vec2 = eval(ki, 1, state).value;
+    const llvm::VectorType *vt = svi->getType();
+    unsigned EltBits = getWidthForLLVMType(vt->getElementType());
+
+    unsigned ElemCount = vt->getNumElements();
+    ref<Expr> *elems = new ref<Expr>[vt->getNumElements()];
+    for (unsigned i = 0; i < ElemCount; ++i) {
+      int MaskValI = svi->getMaskValue(i);
+      ref<Expr> &el = elems[ElemCount-i-1];
+      if (MaskValI < 0)
+	el = ConstantExpr::alloc(0, EltBits);
+      else {
+	unsigned MaskVal = (unsigned) MaskValI;
+	if (MaskVal < ElemCount)
+          el = ExtractExpr::create(vec1, EltBits*MaskVal, EltBits);
+        else
+	  el = ExtractExpr::create(vec2, EltBits*(MaskVal-ElemCount), EltBits);
+      }
+    }
+
+    ref<Expr> Result = ConcatExpr::createN(ElemCount, elems);
+    delete[] elems;
+
+    bindLocal(ki, state, Result);
+    break;
+  }
  
   default:
     terminateStateOnExecError(state, "illegal instruction");
