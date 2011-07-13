@@ -106,6 +106,8 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   }
   mdata->taken = 1;
   mdata->owner = pthread_self();
+	if(mdata->count == 0)
+		mdata->count = 1;
 
   return 0;
 }
