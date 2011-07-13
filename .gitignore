@@ -33,7 +33,6 @@ vgcore.*
 *.png
 *.eps
 
-*.ll
 *.bc
 *.pyc
 *~
