@@ -2,42 +2,42 @@ float powif(float v, int e)
 {
 	if (e == 0)
 		return 1;
-	float r = v;
-	int i = e;
+	float res = 1;
+	int pos_e = e;
 	if(e < 0)
-		i = -e;
-	while(i > 1)
+		pos_e = -e;
+	unsigned long bit_flag = 1;
+	while(bit_flag <= pos_e)
 	{
-		if(i % 1 == 0)
-			r = r * r;
-		else
-			r = r * r * v;
-		i /= 2;
+		if(bit_flag & pos_e)
+			res *= v;
+		v *= v;
+		bit_flag <<= 1;
 	}
 	if(e < 0)
-		return 1/r;
+		return 1/res;
 	else
-		return r;
+		return res;
 }
 
 double powi(double v, int e)
 {
 	if (e == 0)
 		return 1;
-	double r = v;
-	int i = e;
+	double res = 1;
+	int pos_e = e;
 	if(e < 0)
-		i = -e;
-	while(i > 1)
+		pos_e = -e;
+	unsigned long bit_flag = 1;
+	while(bit_flag <= pos_e)
 	{
-		if(i % 1 == 0)
-			r = r * r;
-		else
-			r = r * r * v;
-		i /= 2;
+		if(bit_flag & pos_e)
+			res *= v;
+		v *= v;
+		bit_flag <<= 1;
 	}
 	if(e < 0)
-		return 1/r;
+		return 1/res;
 	else
-		return r;
+		return res;
 }
