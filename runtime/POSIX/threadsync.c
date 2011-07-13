@@ -44,6 +44,38 @@
 // POSIX Mutexes
 ////////////////////////////////////////////////////////////////////////////////
 
+static void _mutexattr_init(pthread_mutexattr_t *attr) {
+  memset(attr,0,sizeof(pthread_mutexattr_t));
+}
+
+static int _get_mutexattr_data(const pthread_mutexattr_t *attr) {
+  return attr->__align;
+}
+
+static void _set_mutexattr_data(pthread_mutexattr_t *attr, int val) {
+  attr->__align = val;
+}
+
+int pthread_mutexattr_init(pthread_mutexattr_t *attr)
+{
+  if (INJECT_FAULT(pthread_mutexattr_init, ENOMEM, EPERM)) {
+    return -1;
+  }
+
+  _mutexattr_init(attr);
+
+  return 0;
+}
+int pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
+{
+	return 0;
+}
+int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
+{
+	_set_mutexattr_data(attr, type);
+	return 0;
+}
+
 static void _mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) {
   mutex_data_t *mdata = (mutex_data_t*)malloc(sizeof(mutex_data_t));
   memset(mdata, 0, sizeof(mutex_data_t));
@@ -53,8 +85,12 @@ static void _mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
   mdata->wlist = klee_get_wlist();
   mdata->taken = 0;
 	mdata->queued = 0;
-	if(attr != 0 && attr->__align == PTHREAD_MUTEX_RECURSIVE)
-		mdata->count = 0;
+	if(attr != 0) {
+		if(_get_mutexattr_data(attr) == PTHREAD_MUTEX_RECURSIVE)
+			mdata->count = 0;
+		else
+			mdata->count = -1;
+	}
 	else
 		mdata->count = -1;
 }
@@ -106,7 +142,7 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   }
   mdata->taken = 1;
   mdata->owner = pthread_self();
-	if(mdata->count == 0)
+	if(mdata->count != -1)
 		mdata->count = 1;
 
   return 0;
@@ -161,20 +197,6 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex) {
   __thread_preempt(0);
 
   return res;
-}
-
-int pthread_mutexattr_init(pthread_mutexattr_t *attr)
-{
-	return 0;
-}
-int pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
-{
-	return 0;
-}
-int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
-{
-	attr->__align = type;
-	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

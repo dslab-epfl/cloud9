@@ -33,6 +33,8 @@ int main(int argc, char **argv) {
   pthread_t thread[num_threads];
 
 	pthread_mutexattr_t attr;
+	err = pthread_mutexattr_init(&attr);
+	assert(err == 0 && "Attribute init");
 	err = pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_RECURSIVE);
 	assert(err == 0 && "Settype");
 	err = pthread_mutex_init(&mutex, &attr);
@@ -52,5 +54,7 @@ int main(int argc, char **argv) {
 
   err = pthread_mutex_destroy(&mutex);
 	assert(err == 0 && "Mutex destroy");
+	err = pthread_mutexattr_destroy(&attr);
+	assert(err == 0 && "Attribute destroy");
   return 0;
 }
