@@ -229,6 +229,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         break;
       }
 
+			case Intrinsic::x86_sse_cvtss2si:
       case Intrinsic::x86_sse2_cvtsd2si: {
         const Type *i32 = Type::getInt32Ty(getGlobalContext());
 
@@ -673,6 +674,37 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
           Value *rx = builder.CreateSExt(rb, i32);
           Value *rf = builder.CreateBitCast(rx, f32);
           res = builder.CreateInsertElement(res, rf, ic);
+        }
+
+        ii->replaceAllUsesWith(res);
+
+        ii->removeFromParent();
+        delete ii;
+        break;
+      }
+
+			case Intrinsic::x86_sse2_pavg_b:
+      case Intrinsic::x86_sse2_pavg_w: {
+        Value *src1 = GET_ARG_OPERAND(ii, 0);
+        Value *src2 = GET_ARG_OPERAND(ii, 1);
+
+        const VectorType *vt = cast<VectorType>(src1->getType());
+        unsigned elCount = vt->getNumElements();
+
+        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+
+        assert(src2->getType() == vt);
+        assert(ii->getType() == vt);
+
+        Value *res = UndefValue::get(vt);
+
+        for (unsigned i = 0; i < elCount; i++) {
+          Constant *ic = ConstantInt::get(i32, i);
+          Value *v1 = builder.CreateExtractElement(src1, ic);
+          Value *v2 = builder.CreateExtractElement(src2, ic);
+					Value *s = builder.CreateAdd(v1, v2);
+					Value *avg = builder.CreateAShr(s, 1);
+          res = builder.CreateInsertElement(res, avg, ic);
         }
 
         ii->replaceAllUsesWith(res);
