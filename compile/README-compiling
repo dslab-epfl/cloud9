@@ -1,11 +1,5 @@
+NOTE: This directory used to contain scripts necessary to compile testing targets
+using LLVM. It is no longer necessary to use those scripts; instead, please
+follow the steps described at: 
 
-Very quick way to compile to LLVM:
-
-	tar xf xyz.tar.gz
-	cd xyz
-	mkdir obj-llvm
-	cd obj-llvm
-	../configure CFLAGS="-g"
-	$CLOUD9_ROOT/prepare
-	make -j 2
-
+https://cloud9.epfl.ch/embedded/cloud9/user/CompilingLLVM.html
