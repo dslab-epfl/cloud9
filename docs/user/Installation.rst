@@ -7,13 +7,11 @@ In order to install Cloud9, you need to perform the steps presented in the follo
 Building LLVM
 -------------
 
-Cloud9 requires LLVM 2.9. You should first download the GCC front-end binaries_, and make sure your ``$PATH`` variable points to the ``bin/`` directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your ``~/.profile`` configuration file.
-
-Then download the LLVM 2.9 source_, and run ``./configure --enable-optimized --enable-assertions`` (add the ``--with-binutils-include=/usr/src/binutils/binutils-2.20.51.20100908/include`` option if you plan to compile LLVM targets).
-
-Run ``make`` (you can also run ``make -jN``, where ``N`` is the number of cores on the machine, to speed up the build process).  Add then the resulting ``Release+Asserts/bin`` directory to your ``$PATH``.
-
-For LLVM targets, you also need to copy ``LLVMgold.so`` and ``libLTO.so`` from LLVM's ``Release+Asserts/lib`` directory to ``libexec/gcc/x86_64-unknown-linux-gnu/4.2.1`` in the LLVM GCC front-end binary installation.
+1. Cloud9 requires LLVM 2.9. You should first download the GCC front-end binaries_, and make sure your ``$PATH`` variable points to the ``bin/`` directory of the binaries distribution.  For convenience, you may make this setup permanent by adding it to your ``~/.profile`` configuration file.
+2. Then download the LLVM 2.9 source_, and run ``./configure --enable-optimized --enable-assertions`` (add the ``--with-binutils-include=/usr/src/binutils/binutils-2.20.51.20100908/include`` option if you plan to compile LLVM targets).
+3. Run ``make`` (you can also run ``make -jN``, where ``N`` is the number of cores on the machine, to speed up the build process).
+4. Add then the resulting ``Release+Asserts/bin`` directory to your ``$PATH``.
+5. For LLVM targets, you also need to copy ``LLVMgold.so`` and ``libLTO.so`` from LLVM's ``Release+Asserts/lib`` directory to ``libexec/gcc/x86_64-unknown-linux-gnu/4.2.1`` in the LLVM GCC front-end binary installation.
 
 Building The Klee C Library
 ---------------------------
