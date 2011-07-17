@@ -61,7 +61,7 @@ void DIMACSSerializer::serialize(std::ostream &os) {
 }
 
 void DIMACSSerializer::serialize(std::string fileName) {
-  std::ofstream fs(fileName);
+  std::ofstream fs(fileName.c_str());
 
   assert(!fs.fail());
 

@@ -8,7 +8,7 @@
 // -*- c++ -*-
 
 #include "AST.h"
-#include <cstdint>
+#include <tr1/cstdint>
 
 namespace BEEV {
   //some global variables that are set through commandline options. it

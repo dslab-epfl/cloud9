@@ -27,14 +27,8 @@ endif
 
 LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib
 
-#AVOID_STDCPP0X:=1
-ifeq ($(AVOID_STDCPP0X), 1)
-CXX.Flags += -DLLVM_23 -fexceptions
-else
-CXX.Flags += -DLLVM_23 -fexceptions -std=c++0x
-endif
+CXX.Flags += -DLLVM_23 -fexceptions -fno-omit-frame-pointer -DEXT_HASH_MAP
 CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include
-CXX.Flags += -fno-omit-frame-pointer -DEXT_HASH_MAP
 
 PROTOC ?= protoc
 

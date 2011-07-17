@@ -9,7 +9,7 @@ ifneq ($(shell uname -s), Darwin)
   CFLAGS += -static
 endif
 
-CXXFLAGS += -Wall -DEXT_HASH_MAP -std=c++0x -fno-omit-frame-pointer
+CXXFLAGS += -Wall -DEXT_HASH_MAP -fno-omit-frame-pointer
 
 LEX := flex
 YACC := bison -d -y --debug -v
