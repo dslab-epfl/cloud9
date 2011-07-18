@@ -48,6 +48,12 @@
 #include <assert.h>
 #include <sys/syscall.h>
 
+// __NR_lseek was removed in ubuntu 11.04
+#ifdef __NR3264_lseek
+#define __NR_lseek __NR3264_lseek
+#endif
+
+
 #define CHECK_IS_FILE(fd) \
   do { \
     if (!STATIC_LIST_CHECK(__fdt, (unsigned)fd)) { \
