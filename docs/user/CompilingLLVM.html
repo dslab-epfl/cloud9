@@ -321,16 +321,51 @@ ul.auto-toc {
 </div>
 <div class="section" id="case-studies">
 <h1>Case Studies</h1>
+<p>For the following case studies, we assume that the LLVM GCC frontend path is stored in the <tt class="docutils literal">$LLVM_GCC_ROOT</tt> shell variable.</p>
 <div class="section" id="apache-httpd-server">
 <h2>Apache <tt class="docutils literal">httpd</tt> Server</h2>
-<p>We consider the original Apache <tt class="docutils literal">httpd</tt> 2.2.16 distribution. Unpack the archive and configure Apache as follows:</p>
+<ol class="arabic simple">
+<li>Download the original Apache <a class="reference external" href="http://archive.apache.org/dist/httpd/httpd-2.2.16.tar.bz2">httpd 2.2.16</a> distribution, and unpack it.</li>
+<li>Configure Apache as follows:</li>
+</ol>
 <pre class="literal-block">
 ./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
    --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; \
-   RANLIB=&quot;ar --plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
-   AR_FLAGS=&quot;--plugin &lt;LLVM GCC front-end&gt;/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
+   RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
+   AR_FLAGS=&quot;--plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
 </pre>
-<p>Then run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</p>
+<ol class="arabic simple" start="3">
+<li>Run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</li>
+</ol>
+</div>
+<div class="section" id="the-memcached-memory-caching-system">
+<h2>The <tt class="docutils literal">memcached</tt> Memory Caching System</h2>
+<ol class="arabic simple">
+<li><tt class="docutils literal">memcached</tt> requires <tt class="docutils literal">libevent</tt>, so we'll have to generate a static <tt class="docutils literal">libevent</tt> library that we will link in the final executable. Download <a class="reference external" href="http://monkey.org/~provos/libevent-1.4.14b-stable.tar.gz">libevent 1.4.14b</a> and unpack it. From now on, we assume the source directory of libevent is in the <tt class="docutils literal">$LIBEVENT_ROOT</tt> shell variable.</li>
+<li>Configure it as follows:</li>
+</ol>
+<pre class="literal-block">
+./configure --disable-shared CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; \
+   RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
+   AR=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so&quot;
+</pre>
+<ol class="arabic simple" start="3">
+<li>Run <tt class="docutils literal">make</tt>. At the end of the compilation, you should have the static <tt class="docutils literal">.libs/libevent.a</tt> archive.</li>
+<li>Download <a class="reference external" href="http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz">memcached 1.4.5</a>, and unpack the archive.</li>
+<li>Configure <tt class="docutils literal">memcached</tt> as follows:</li>
+</ol>
+<pre class="literal-block">
+./configure --disable-sasl --enable-64bit --disable-docs --disable-dtrace CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; \
+   CFLAGS=&quot;-g&quot; RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
+   AR=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so&quot;
+</pre>
+<ol class="arabic simple" start="6">
+<li>Due to a glitch in the Memcached linking process, the LLVM bitcode isn't statically linked with the previously compiled libevent library.  To fix this, in the generated <tt class="docutils literal">Makefile</tt>, (1) replace the <tt class="docutils literal">LIBS</tt> variable contents from <tt class="docutils literal"><span class="pre">-levent</span></tt> to <tt class="docutils literal"><span class="pre">$LIBEVENT_ROOT/.libs/libevent.a</span> <span class="pre">-lrt</span></tt>, and (2) set the <tt class="docutils literal">LDFLAGS</tt> variable to <tt class="docutils literal"><span class="pre">-static</span></tt>.  Alternatively, run the scripts below to do this automatically for you:</li>
+</ol>
+<pre class="literal-block">
+sed -i -e &quot;s/^LIBS[ ]*=[ ]*-levent\$/LIBS = ${LIBEVENT_ROOT//\//\\/}\/.libs\/libevent.a -lrt/&quot; Makefile
+sed -i -e 's/^LDFLAGS[ ]*=[ ]*$/LDFLAGS = -lrt/' Makefile
+</pre>
 </div>
 </div>
 </div>
