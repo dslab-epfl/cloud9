@@ -395,12 +395,12 @@ public:
     }    
   }
 
-  void print(const ref<Expr> &e, PrintContext &PC, bool printConstWidth=false) {
+  void print(const ref<Expr> &e, PrintContext &PC, bool printConstWidth = false) {
     if (ConstantExpr *CE = dyn_cast<ConstantExpr>(e))
       printConst(CE, PC, printConstWidth);
     else {
-      std::map<ref<Expr>, unsigned>::iterator it = bindings.find(e);
-      if (it!=bindings.end()) {
+      std::map<ref<Expr> , unsigned>::iterator it = bindings.find(e);
+      if (it != bindings.end()) {
         PC << 'N' << it->second;
       } else {
         if (!hasScan || shouldPrint.count(e)) {
@@ -416,21 +416,21 @@ public:
         // or they are (base + offset) and base will get printed with
         // a declaration.
         if (PCMultibyteReads && e->getKind() == Expr::Concat) {
-	  const ReadExpr *base = hasOrderedReads(e, -1);
-	  int isLSB = (base != NULL);
-	  if (!isLSB)
-	    base = hasOrderedReads(e, 1);
-	  if (base) {
-	    PC << "(Read" << (isLSB ? "LSB" : "MSB");
-	    printWidth(PC, e);
-	    PC << ' ';
-	    printRead(base, PC, PC.pos);
-	    PC << ')';
-	    return;
-	  }
+          const ReadExpr *base = hasOrderedReads(e, -1);
+          int isLSB = (base != NULL);
+          if (!isLSB)
+            base = hasOrderedReads(e, 1);
+          if (base) {
+            PC << "(Read" << (isLSB ? "LSB" : "MSB");
+            printWidth(PC, e);
+            PC << ' ';
+            printRead(base, PC, PC.pos);
+            PC << ')';
+            return;
+          }
         }
 
-	PC << '(' << e->getKind();
+        PC << '(' << e->getKind();
         printWidth(PC, e);
         PC << ' ';
 
@@ -442,9 +442,9 @@ public:
         } else if (const ExtractExpr *ee = dyn_cast<ExtractExpr>(e)) {
           printExtract(ee, PC, indent);
         } else if (e->getKind() == Expr::Concat || e->getKind() == Expr::SExt)
-	  printExpr(e.get(), PC, indent, true);
-	else
-          printExpr(e.get(), PC, indent);	
+          printExpr(e.get(), PC, indent, true);
+        else
+          printExpr(e.get(), PC, indent);
         PC << ")";
       }
     }
