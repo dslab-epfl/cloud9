@@ -75,6 +75,10 @@ namespace {
   WarnAllExternals("warn-all-externals",
                    cl::desc("Give initial warning for all externals."));
 
+  cl::opt<bool>
+  DebugModelPatches("debug-model-patches",
+                   cl::desc("Shows information about the patching of modeled library functions."));
+
   cl::opt<std::string>
   Environ("environ", cl::desc("Parse environ from given file (in \"env\" format)"));
 
@@ -507,9 +511,11 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
 
       underlyingFn[newName.str()] = modelF;
 
-      CLOUD9_DEBUG("Patching " << fName.str());
-      modelF->getType()->dump();
-      f->getType()->dump();
+      if (DebugModelPatches) {
+        CLOUD9_DEBUG("Patching " << fName.str());
+        modelF->getType()->dump();
+        f->getType()->dump();
+      }
       modelF->replaceAllUsesWith(f);
     }
   }
@@ -525,7 +531,8 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
 
     StringRef newName = fName.substr(strlen("__klee_original_"));
 
-    CLOUD9_DEBUG("Patching " << fName.str());
+    if (DebugModelPatches)
+      CLOUD9_DEBUG("Patching " << fName.str());
 
     GlobalValue *originalF;
     if (underlyingFn.count(newName.str()) > 0)
