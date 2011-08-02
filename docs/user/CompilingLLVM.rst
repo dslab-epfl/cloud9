@@ -118,4 +118,7 @@ Therefore, we need to add a client for memcached in our symbolic execution conte
 Client-Server Testing
 ~~~~~~~~~~~~~~~~~~~~~
 
-``memcached`` comes with a test suite that includes a set of test cases written in C. We will use those as our starting point for writing the client-server symbolic execution scenario.
+``memcached`` comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.
+
+1. Open the ``memcached.c`` source file and rename the ``main`` function to ``server_main``.  This function will be invoked later by our new main function.
+2. 
