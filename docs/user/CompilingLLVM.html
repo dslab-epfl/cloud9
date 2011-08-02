@@ -340,8 +340,8 @@ ul.auto-toc {
 </div>
 <div class="section" id="the-memcached-memory-caching-system">
 <h2>The <tt class="docutils literal">memcached</tt> Memory Caching System</h2>
-<div class="section" id="compiling-memcached">
-<h3>Compiling <tt class="docutils literal">memcached</tt></h3>
+<div class="section" id="compiling-libevent">
+<h3>Compiling <tt class="docutils literal">libevent</tt></h3>
 <ol class="arabic simple">
 <li><tt class="docutils literal">memcached</tt> requires <tt class="docutils literal">libevent</tt>, so we'll have to generate a static <tt class="docutils literal">libevent</tt> library that we will link in the final executable. Download <a class="reference external" href="http://monkey.org/~provos/libevent-1.4.14b-stable.tar.gz">libevent 1.4.14b</a> and unpack it. From now on, we assume the source directory of libevent is in the <tt class="docutils literal">$LIBEVENT_ROOT</tt> shell variable.</li>
 <li>Since Cloud9's POSIX model supports file descriptor polling through the use of <tt class="docutils literal">select()</tt> calls, we'll first have to disable any other calls in <tt class="docutils literal">libevent</tt>. In order to do that, locate the <tt class="docutils literal">eventops</tt> static array in <tt class="docutils literal">event.c</tt>, and comment out all polling mechanisms except for <tt class="docutils literal">select</tt>.</li>
@@ -354,6 +354,11 @@ ul.auto-toc {
 </pre>
 <ol class="arabic simple" start="4">
 <li>Run <tt class="docutils literal">make</tt>. At the end of the compilation, you should have the static <tt class="docutils literal">.libs/libevent.a</tt> archive.</li>
+</ol>
+</div>
+<div class="section" id="compiling-memcached">
+<h3>Compiling <tt class="docutils literal">memcached</tt></h3>
+<ol class="arabic simple">
 <li>Download <a class="reference external" href="http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz">memcached 1.4.5</a>, and unpack the archive.</li>
 <li>Configure <tt class="docutils literal">memcached</tt> as follows:</li>
 </ol>
@@ -362,14 +367,14 @@ ul.auto-toc {
    CFLAGS=&quot;-g&quot; RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
    AR=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so&quot;
 </pre>
-<ol class="arabic simple" start="7">
+<ol class="arabic simple" start="3">
 <li>Due to a glitch in the Memcached linking process, the LLVM bitcode isn't statically linked with the previously compiled libevent library.  To fix this, in the generated <tt class="docutils literal">Makefile</tt>, (1) replace the <tt class="docutils literal">LIBS</tt> variable contents from <tt class="docutils literal"><span class="pre">-levent</span></tt> to <tt class="docutils literal"><span class="pre">$LIBEVENT_ROOT/.libs/libevent.a</span> <span class="pre">-lrt</span></tt>, and (2) set the <tt class="docutils literal">LDFLAGS</tt> variable to <tt class="docutils literal"><span class="pre">-static</span></tt>.  Alternatively, run the scripts below to do this automatically for you:</li>
 </ol>
 <pre class="literal-block">
 sed -i -e &quot;s/^LIBS[ ]*=[ ]*-levent\$/LIBS = ${LIBEVENT_ROOT//\//\\/}\/.libs\/libevent.a -lrt/&quot; Makefile
 sed -i -e 's/^LDFLAGS[ ]*=[ ]*$/LDFLAGS = -lrt/' Makefile
 </pre>
-<ol class="arabic simple" start="8">
+<ol class="arabic simple" start="4">
 <li>Run <tt class="docutils literal">make</tt>. At the end of the compilation, the <tt class="docutils literal">memcached</tt> and <tt class="docutils literal"><span class="pre">memcached-debug</span></tt> executables should be produced in the base directory, together with their corresponding LLVM <tt class="docutils literal">.bc</tt> binaries.  From now on, we will use <tt class="docutils literal"><span class="pre">memcached-debug.bc</span></tt> as our testing target.</li>
 </ol>
 <table class="docutils field-list" frame="void" rules="none">
@@ -420,7 +425,9 @@ klee --libc=uclibc --posix-runtime memcached-debug.bc -v -p 11211 -U 0 -u root
 </div>
 <div class="section" id="client-server-testing">
 <h3>Client-Server Testing</h3>
-<p><tt class="docutils literal">memcached</tt> comes with a test suite that includes a set of test cases written in C. We will use those as our starting point for writing the client-server symbolic execution scenario.</p>
+<p><tt class="docutils literal">memcached</tt> comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.</p>
+<p>1. Open the <tt class="docutils literal">memcached.c</tt> source file and rename the <tt class="docutils literal">main</tt> function to <tt class="docutils literal">server_main</tt>.  This function will be invoked later by our new main function.
+2.</p>
 </div>
 </div>
 </div>

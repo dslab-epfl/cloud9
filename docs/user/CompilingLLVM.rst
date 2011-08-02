@@ -39,8 +39,8 @@ Apache ``httpd`` Server
 The ``memcached`` Memory Caching System
 ---------------------------------------
 
-Compiling ``memcached``
-~~~~~~~~~~~~~~~~~~~~~~~
+Compiling ``libevent``
+~~~~~~~~~~~~~~~~~~~~~~
 
 1. ``memcached`` requires ``libevent``, so we'll have to generate a static ``libevent`` library that we will link in the final executable. Download `libevent 1.4.14b <http://monkey.org/~provos/libevent-1.4.14b-stable.tar.gz>`_ and unpack it. From now on, we assume the source directory of libevent is in the ``$LIBEVENT_ROOT`` shell variable.
 
@@ -56,9 +56,12 @@ Compiling ``memcached``
 
 4. Run ``make``. At the end of the compilation, you should have the static ``.libs/libevent.a`` archive.
 
-5. Download `memcached 1.4.5 <http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz>`_, and unpack the archive.
+Compiling ``memcached``
+~~~~~~~~~~~~~~~~~~~~~~~
 
-6. Configure ``memcached`` as follows:
+1. Download `memcached 1.4.5 <http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz>`_, and unpack the archive.
+
+2. Configure ``memcached`` as follows:
 
 ::
 
@@ -66,14 +69,14 @@ Compiling ``memcached``
      CFLAGS="-g" RANLIB="ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s" \
      AR="ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so"
 
-7. Due to a glitch in the Memcached linking process, the LLVM bitcode isn't statically linked with the previously compiled libevent library.  To fix this, in the generated ``Makefile``, (1) replace the ``LIBS`` variable contents from ``-levent`` to ``$LIBEVENT_ROOT/.libs/libevent.a -lrt``, and (2) set the ``LDFLAGS`` variable to ``-static``.  Alternatively, run the scripts below to do this automatically for you:
+3. Due to a glitch in the Memcached linking process, the LLVM bitcode isn't statically linked with the previously compiled libevent library.  To fix this, in the generated ``Makefile``, (1) replace the ``LIBS`` variable contents from ``-levent`` to ``$LIBEVENT_ROOT/.libs/libevent.a -lrt``, and (2) set the ``LDFLAGS`` variable to ``-static``.  Alternatively, run the scripts below to do this automatically for you:
 
 ::
 
   sed -i -e "s/^LIBS[ ]*=[ ]*-levent\$/LIBS = ${LIBEVENT_ROOT//\//\\/}\/.libs\/libevent.a -lrt/" Makefile
   sed -i -e 's/^LDFLAGS[ ]*=[ ]*$/LDFLAGS = -lrt/' Makefile
 
-8. Run ``make``. At the end of the compilation, the ``memcached`` and ``memcached-debug`` executables should be produced in the base directory, together with their corresponding LLVM ``.bc`` binaries.  From now on, we will use ``memcached-debug.bc`` as our testing target.
+4. Run ``make``. At the end of the compilation, the ``memcached`` and ``memcached-debug`` executables should be produced in the base directory, together with their corresponding LLVM ``.bc`` binaries.  From now on, we will use ``memcached-debug.bc`` as our testing target.
  
 :Note: You can easily check whether the resulting executable has been correctly compiled by checking whether the ``libevent`` symbols are defined:
 
