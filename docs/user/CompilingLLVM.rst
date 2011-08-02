@@ -21,21 +21,6 @@ Case Studies
 
 For the following case studies, we assume that the LLVM GCC frontend path is stored in the ``$LLVM_GCC_ROOT`` shell variable.
 
-Apache ``httpd`` Server
------------------------
-
-1. Download the original Apache `httpd 2.2.16 <http://archive.apache.org/dist/httpd/httpd-2.2.16.tar.bz2>`_ distribution, and unpack it. 
-2. Configure Apache as follows:
-
-::
-
-  ./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
-     --enable-static-htpasswd CC="llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm" CFLAGS="-g" \
-     RANLIB="ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s" \
-     AR_FLAGS="--plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru"
-
-3. Run ``make`` and at the end of the compilation, ``httpd.bc`` should be in the base directory of httpd.
-
 The ``memcached`` Memory Caching System
 ---------------------------------------
 
@@ -121,7 +106,36 @@ Therefore, we need to add a client for memcached in our symbolic execution conte
 Client-Server Testing
 ~~~~~~~~~~~~~~~~~~~~~
 
-``memcached`` comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.
+``memcached`` comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.  Note also that, from now on, we will build only the ``memcached-debug.bc`` executable (using ``rm -f memcached-debug.bc && make clean && make memcached-debug``), since the client test harness assumes the ``NDEBUG`` macro variable to be undefined.
+
+Below is a summary of the steps performed to prepare the client-server testing setup for ``memcached``:  
 
 1. Open the ``memcached.c`` source file and rename the ``main`` function to ``server_main``.  This function will be invoked later by our new main function.
-2. 
+2. Copy-paste the contents of the ``testapp.c`` file at the end of ``memcached.c``.  This file also contains the new main function of the entire bundle.
+3. Replace the server invocation code from ``exec()``-based to calling directly the ``server_main`` function.
+4. The client needs to wait for the server to initialize.  Replace the original file-based synchronization with a pipe-based one.
+5. Disable a number of test cases for which Cloud9 doesn't yet offer full support: ``issue_44``, ``issue_101``, ``stop_server`` (no ``kill()`` support yet), ``binary_flush``, ``binary_flushq`` (no proper ``sleep()`` support yet).
+
+The exact result can be downloaded as a full ``memcached`` archive here. Please consult the ``README.cloud9`` file in the archive root for more usage information.
+
+Symbolic Packet Injection
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to generate symbolic packets to send to ``memcached``, we need to prepare a buffer to store the packet, initialize it with concrete data, and then mark portions of it as being symbolic using the ``klee_make_symbolic`` special call.  Since Klee does not allow partially symbolic buffers, we use ``klee_make_symbolic`` on separate smaller buffers, which we then copy into the right place in the packet buffer.
+
+The ``memcached`` archive that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult ``README.cloud9`` for more information on how to perform symbolic tests on ``memcached``.
+
+Apache ``httpd`` Server
+-----------------------
+
+1. Download the original Apache `httpd 2.2.16 <http://archive.apache.org/dist/httpd/httpd-2.2.16.tar.bz2>`_ distribution, and unpack it. 
+2. Configure Apache as follows:
+
+::
+
+  ./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
+     --enable-static-htpasswd CC="llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm" CFLAGS="-g" \
+     RANLIB="ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s" \
+     AR_FLAGS="--plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru"
+
+3. Run ``make`` and at the end of the compilation, ``httpd.bc`` should be in the base directory of httpd.

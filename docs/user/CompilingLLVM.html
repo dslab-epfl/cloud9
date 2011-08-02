@@ -322,22 +322,6 @@ ul.auto-toc {
 <div class="section" id="case-studies">
 <h1>Case Studies</h1>
 <p>For the following case studies, we assume that the LLVM GCC frontend path is stored in the <tt class="docutils literal">$LLVM_GCC_ROOT</tt> shell variable.</p>
-<div class="section" id="apache-httpd-server">
-<h2>Apache <tt class="docutils literal">httpd</tt> Server</h2>
-<ol class="arabic simple">
-<li>Download the original Apache <a class="reference external" href="http://archive.apache.org/dist/httpd/httpd-2.2.16.tar.bz2">httpd 2.2.16</a> distribution, and unpack it.</li>
-<li>Configure Apache as follows:</li>
-</ol>
-<pre class="literal-block">
-./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
-   --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; \
-   RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
-   AR_FLAGS=&quot;--plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
-</pre>
-<ol class="arabic simple" start="3">
-<li>Run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</li>
-</ol>
-</div>
 <div class="section" id="the-memcached-memory-caching-system">
 <h2>The <tt class="docutils literal">memcached</tt> Memory Caching System</h2>
 <div class="section" id="compiling-libevent">
@@ -425,10 +409,38 @@ klee --libc=uclibc --posix-runtime memcached-debug.bc -v -p 11211 -U 0 -u root
 </div>
 <div class="section" id="client-server-testing">
 <h3>Client-Server Testing</h3>
-<p><tt class="docutils literal">memcached</tt> comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.</p>
-<p>1. Open the <tt class="docutils literal">memcached.c</tt> source file and rename the <tt class="docutils literal">main</tt> function to <tt class="docutils literal">server_main</tt>.  This function will be invoked later by our new main function.
-2.</p>
+<p><tt class="docutils literal">memcached</tt> comes with a test suite that includes a set of test cases written in C.  We will use those as our starting point for writing the client-server symbolic execution scenario.  You might also notice that some steps in our solution can be considered bad programming practice; however, an elegant implementation is not the focus of the tutorial, and it is left as an engineering exercise.  Note also that, from now on, we will build only the <tt class="docutils literal"><span class="pre">memcached-debug.bc</span></tt> executable (using <tt class="docutils literal">rm <span class="pre">-f</span> <span class="pre">memcached-debug.bc</span> &amp;&amp; make clean &amp;&amp; make <span class="pre">memcached-debug</span></tt>), since the client test harness assumes the <tt class="docutils literal">NDEBUG</tt> macro variable to be undefined.</p>
+<p>Below is a summary of the steps performed to prepare the client-server testing setup for <tt class="docutils literal">memcached</tt>:</p>
+<ol class="arabic simple">
+<li>Open the <tt class="docutils literal">memcached.c</tt> source file and rename the <tt class="docutils literal">main</tt> function to <tt class="docutils literal">server_main</tt>.  This function will be invoked later by our new main function.</li>
+<li>Copy-paste the contents of the <tt class="docutils literal">testapp.c</tt> file at the end of <tt class="docutils literal">memcached.c</tt>.  This file also contains the new main function of the entire bundle.</li>
+<li>Replace the server invocation code from <tt class="docutils literal">exec()</tt>-based to calling directly the <tt class="docutils literal">server_main</tt> function.</li>
+<li>The client needs to wait for the server to initialize.  Replace the original file-based synchronization with a pipe-based one.</li>
+<li>Disable a number of test cases for which Cloud9 doesn't yet offer full support: <tt class="docutils literal">issue_44</tt>, <tt class="docutils literal">issue_101</tt>, <tt class="docutils literal">stop_server</tt> (no <tt class="docutils literal">kill()</tt> support yet), <tt class="docutils literal">binary_flush</tt>, <tt class="docutils literal">binary_flushq</tt> (no proper <tt class="docutils literal">sleep()</tt> support yet).</li>
+</ol>
+<p>The exact result can be downloaded as a full <tt class="docutils literal">memcached</tt> archive here. Please consult the <tt class="docutils literal">README.cloud9</tt> file in the archive root for more usage information.</p>
 </div>
+<div class="section" id="symbolic-packet-injection">
+<h3>Symbolic Packet Injection</h3>
+<p>In order to generate symbolic packets to send to <tt class="docutils literal">memcached</tt>, we need to prepare a buffer to store the packet, initialize it with concrete data, and then mark portions of it as being symbolic using the <tt class="docutils literal">klee_make_symbolic</tt> special call.  Since Klee does not allow partially symbolic buffers, we use <tt class="docutils literal">klee_make_symbolic</tt> on separate smaller buffers, which we then copy into the right place in the packet buffer.</p>
+<p>The <tt class="docutils literal">memcached</tt> archive that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult <tt class="docutils literal">README.cloud9</tt> for more information on how to perform symbolic tests on <tt class="docutils literal">memcached</tt>.</p>
+</div>
+</div>
+<div class="section" id="apache-httpd-server">
+<h2>Apache <tt class="docutils literal">httpd</tt> Server</h2>
+<ol class="arabic simple">
+<li>Download the original Apache <a class="reference external" href="http://archive.apache.org/dist/httpd/httpd-2.2.16.tar.bz2">httpd 2.2.16</a> distribution, and unpack it.</li>
+<li>Configure Apache as follows:</li>
+</ol>
+<pre class="literal-block">
+./configure --disable-shared --with-mpm=worker --enable-proxy-balancer --enable-proxy --enable-static-support \
+   --enable-static-htpasswd CC=&quot;llvm-gcc -flto -use-gold-plugin -Wl,-plugin-opt=also-emit-llvm&quot; CFLAGS=&quot;-g&quot; \
+   RANLIB=&quot;ar --plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -s&quot; \
+   AR_FLAGS=&quot;--plugin $LLVM_GCC_ROOT/libexec/gcc/x86_64-unknown-linux-gnu/4.2.1/LLVMgold.so -cru&quot;
+</pre>
+<ol class="arabic simple" start="3">
+<li>Run <tt class="docutils literal">make</tt> and at the end of the compilation, <tt class="docutils literal">httpd.bc</tt> should be in the base directory of httpd.</li>
+</ol>
 </div>
 </div>
 </div>
