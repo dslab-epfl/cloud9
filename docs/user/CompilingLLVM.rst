@@ -116,14 +116,14 @@ Below is a summary of the steps performed to prepare the client-server testing s
 4. The client needs to wait for the server to initialize.  Replace the original file-based synchronization with a pipe-based one.
 5. Disable a number of test cases for which Cloud9 doesn't yet offer full support: ``issue_44``, ``issue_101``, ``stop_server`` (no ``kill()`` support yet), ``binary_flush``, ``binary_flushq`` (no proper ``sleep()`` support yet).
 
-The exact result can be downloaded as a full ``memcached`` archive here. Please consult the ``README.cloud9`` file in the archive root for more usage information.
+The exact result can be downloaded as a full ``memcached`` archive `here <https://dslabredmine.epfl.ch/attachments/download/140/memcached-1.4.5-llvm_deps.tar.gz>`_. Please consult the ``README.cloud9`` file in the archive root for more usage information.
 
 Symbolic Packet Injection
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to generate symbolic packets to send to ``memcached``, we need to prepare a buffer to store the packet, initialize it with concrete data, and then mark portions of it as being symbolic using the ``klee_make_symbolic`` special call.  Since Klee does not allow partially symbolic buffers, we use ``klee_make_symbolic`` on separate smaller buffers, which we then copy into the right place in the packet buffer.
 
-The ``memcached`` archive that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult ``README.cloud9`` for more information on how to perform symbolic tests on ``memcached``.
+The ``memcached`` `archive <https://dslabredmine.epfl.ch/attachments/download/140/memcached-1.4.5-llvm_deps.tar.gz>`_ that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult ``README.cloud9`` for more information on how to perform symbolic tests on ``memcached``.
 
 Apache ``httpd`` Server
 -----------------------

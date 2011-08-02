@@ -418,12 +418,12 @@ klee --libc=uclibc --posix-runtime memcached-debug.bc -v -p 11211 -U 0 -u root
 <li>The client needs to wait for the server to initialize.  Replace the original file-based synchronization with a pipe-based one.</li>
 <li>Disable a number of test cases for which Cloud9 doesn't yet offer full support: <tt class="docutils literal">issue_44</tt>, <tt class="docutils literal">issue_101</tt>, <tt class="docutils literal">stop_server</tt> (no <tt class="docutils literal">kill()</tt> support yet), <tt class="docutils literal">binary_flush</tt>, <tt class="docutils literal">binary_flushq</tt> (no proper <tt class="docutils literal">sleep()</tt> support yet).</li>
 </ol>
-<p>The exact result can be downloaded as a full <tt class="docutils literal">memcached</tt> archive here. Please consult the <tt class="docutils literal">README.cloud9</tt> file in the archive root for more usage information.</p>
+<p>The exact result can be downloaded as a full <tt class="docutils literal">memcached</tt> archive <a class="reference external" href="https://dslabredmine.epfl.ch/attachments/download/140/memcached-1.4.5-llvm_deps.tar.gz">here</a>. Please consult the <tt class="docutils literal">README.cloud9</tt> file in the archive root for more usage information.</p>
 </div>
 <div class="section" id="symbolic-packet-injection">
 <h3>Symbolic Packet Injection</h3>
 <p>In order to generate symbolic packets to send to <tt class="docutils literal">memcached</tt>, we need to prepare a buffer to store the packet, initialize it with concrete data, and then mark portions of it as being symbolic using the <tt class="docutils literal">klee_make_symbolic</tt> special call.  Since Klee does not allow partially symbolic buffers, we use <tt class="docutils literal">klee_make_symbolic</tt> on separate smaller buffers, which we then copy into the right place in the packet buffer.</p>
-<p>The <tt class="docutils literal">memcached</tt> archive that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult <tt class="docutils literal">README.cloud9</tt> for more information on how to perform symbolic tests on <tt class="docutils literal">memcached</tt>.</p>
+<p>The <tt class="docutils literal">memcached</tt> <a class="reference external" href="https://dslabredmine.epfl.ch/attachments/download/140/memcached-1.4.5-llvm_deps.tar.gz">archive</a> that we provided above also includes test cases for injecting symbolic packets, but they are not enabled by default.  Please consult <tt class="docutils literal">README.cloud9</tt> for more information on how to perform symbolic tests on <tt class="docutils literal">memcached</tt>.</p>
 </div>
 </div>
 <div class="section" id="apache-httpd-server">
