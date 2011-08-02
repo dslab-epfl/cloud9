@@ -51,30 +51,26 @@
 // Sleeping Operations
 ////////////////////////////////////////////////////////////////////////////////
 
-int usleep(useconds_t usec) {
-  klee_warning("yielding instead of usleep()-ing");
+void _yield_sleep(unsigned sec, unsigned usec) {
+  uint64_t amount = ((uint64_t)sec)*1000000 + (uint64_t)usec;
 
   uint64_t tstart = klee_get_time();
   __thread_preempt(1);
   uint64_t tend = klee_get_time();
 
-  if (tend - tstart < (uint64_t)usec)
-    klee_set_time(tstart + usec);
+  if (tend - tstart < amount)
+    klee_set_time(tstart + amount);
+}
 
+int usleep(useconds_t usec) {
+  klee_warning("yielding instead of usleep()-ing");
+  _yield_sleep(0, usec);
   return 0;
 }
 
 unsigned int sleep(unsigned int seconds) {
   klee_warning("yielding instead of sleep()-ing");
-
-  uint64_t tstart = klee_get_time();
-  __thread_preempt(1);
-  uint64_t tend = klee_get_time();
-
-  if (tend - tstart < ((uint64_t)seconds)*1000000) {
-    klee_set_time(tstart + ((uint64_t)seconds) * 1000000);
-  }
-
+  _yield_sleep(seconds, 0);
   return 0;
 }
 

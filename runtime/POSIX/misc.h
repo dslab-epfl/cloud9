@@ -51,5 +51,7 @@ extern mmap_block_t __mmaps[MAX_MMAPS];
 
 void klee_init_mmap(void);
 
+void _yield_sleep(unsigned sec, unsigned usec);
+
 
 #endif /* MISC_H_ */

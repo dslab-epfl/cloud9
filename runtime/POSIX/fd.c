@@ -39,6 +39,7 @@
 #include "pipes.h"
 #include "buffers.h"
 #include "signals.h"
+#include "misc.h"
 
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
@@ -737,7 +738,7 @@ DEFINE_MODEL(int, select, int nfds, fd_set *readfds, fd_set *writefds,
     klee_warning("simulating timeout");
     // We just return timeout
     if (timeout->tv_sec != 0 || timeout->tv_usec != 0)
-      __thread_preempt(1);
+      _yield_sleep(timeout->tv_sec, timeout->tv_usec);
 
     return 0;
   }
