@@ -72,6 +72,7 @@ using namespace klee::expr;
 using namespace std;
 using namespace boost;
 
+#ifdef HAVE_EXT_STP
 namespace {
 
 cl::opt<string> inputFileName(
@@ -305,3 +306,9 @@ int main(int argc, char** argv) {
 
 	return 0;
 }
+#else
+int main(int argc, char** argv) {
+  std::cout << "kleaver2smt converter requires external STP" << std::endl;
+  return 0;
+}
+#endif
