@@ -60,7 +60,7 @@
 
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/System/Signals.h"
+#include "llvm/Support/Signals.h"
 #include "llvm/Support/system_error.h"
 #include "llvm/ADT/OwningPtr.h"
 
