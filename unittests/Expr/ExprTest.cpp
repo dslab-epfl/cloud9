@@ -11,6 +11,10 @@
 #include "gtest/gtest.h"
 
 #include "klee/Expr.h"
+#include "klee/ExprBuilder.h"
+
+#include <boost/scoped_ptr.hpp>
+
 
 using namespace klee;
 
@@ -108,6 +112,13 @@ TEST(ExprTest, ExtractConcat) {
   EXPECT_EQ(10U, concat2->getWidth());
   EXPECT_EQ(Expr::Extract, concat2->getKid(0)->getKind());
   EXPECT_EQ(Expr::Extract, concat2->getKid(1)->getKind());
+}
+
+TEST(ExprTest, TrueFalseExpr) {
+  boost::scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
+
+  ref<Expr> trueExpr = exprBuilder->True();
+  ASSERT_TRUE(trueExpr->isTrue());
 }
 
 }

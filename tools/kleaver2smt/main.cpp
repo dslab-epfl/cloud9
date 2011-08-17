@@ -204,8 +204,6 @@ static bool convertDeclarations(const vector<Decl*>& kleeQueries,
       //unsat will mean valid
       ref<Expr> queryToCheck = andConstraintsNotQuery(queryCmd->Constraints, queryCmd->Query);
 
-      stringstream ss(stringstream::in | stringstream::out);
-
       klee::ExprHandle exprHandle = stpBuilder->construct(queryToCheck);
       scoped_ptr<char> str(vc_printSMTLIB(vc, exprHandle));
       smtQueries.push_back(string(str.get()));
