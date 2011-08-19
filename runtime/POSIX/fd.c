@@ -886,7 +886,7 @@ DEFINE_MODEL(int, fcntl, int fd, int cmd, ...) {
   }
 
   fd_entry_t *fde = &__fdt[fd];
-  int res;
+  int res = 0;
 
   switch (cmd) {
   case F_DUPFD:
@@ -905,7 +905,7 @@ DEFINE_MODEL(int, fcntl, int fd, int cmd, ...) {
     if (arg & FD_CLOEXEC) {
       fde->attr |= FD_CLOSE_ON_EXEC;
     }
-    // Go through the next case
+    break;
   case F_GETFD:
     res = (fde->attr & FD_CLOSE_ON_EXEC) ? FD_CLOEXEC : 0;
     break;
@@ -917,7 +917,7 @@ DEFINE_MODEL(int, fcntl, int fd, int cmd, ...) {
       return -1;
     }
     fde->io_object->flags |= (arg & (O_APPEND | O_ASYNC | O_DIRECT | O_NOATIME | O_NONBLOCK));
-    // Go through the next case
+    break;
   case F_GETFL:
     res = fde->io_object->flags;
     break;
