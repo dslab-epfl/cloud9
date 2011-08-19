@@ -14,6 +14,8 @@ int main(int argc, char** argv) {
   fclose(f);
   
   f = fopen("A", "r");
+  if (!f)
+    klee_silent_exit(0); // Write-only files?
   fread(buf, sizeof("Hello"), 1, f);
   fclose(f);
 

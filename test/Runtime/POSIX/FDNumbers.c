@@ -5,8 +5,13 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 int main(int argc, char **argv) {
-  int fd = open("A", O_TRUNC);
+  int fd = open("A", O_TRUNC | O_RDWR);
   assert(fd == 3);
   assert(!close(0));
   assert(!close(1));

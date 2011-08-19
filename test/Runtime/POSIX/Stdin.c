@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     printf("unknown mode\n");
   }
   
-  assert(stats.st_size==4);
+  //assert(stats.st_size==4);
 
   if (S_ISREG(stats.st_mode)) {
     char buf[10];

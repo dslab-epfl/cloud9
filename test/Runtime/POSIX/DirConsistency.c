@@ -3,7 +3,7 @@
 // RUN: %llvmgcc -D_FILE_OFFSET_BITS=64 %s -emit-llvm -O0 -c -o %t.bc
 // RUN: %klee --run-in=/tmp --use-random-search --init-env --libc=uclibc --posix-runtime --exit-on-error %t.bc --sym-files 1 1 > %t2.log
 // RUN: sort %t1.log %t2.log | uniq -c > %t3.log
-// RUN: grep -q "4 COUNT" %t3.log
+// RUN: grep -q "2 COUNT" %t3.log
 
 // For this test really to work as intended it needs to be run in a
 // directory large enough to cause uclibc to do multiple getdents

@@ -16,11 +16,12 @@ int main(int argc, char** argv) {
   assert(x == 0);
   
   int fd = open("A", O_RDONLY);
-  assert(fd != -1);
+  klee_assume(fd != -1);
 
   // EFAULT buf is outside your accessible address space. (man page)
-  x = read(fd, 0, 1);
-  assert(x == -1 && errno == EFAULT);
+  // CLOUD9: We don't honor this spec, we just let the state terminate with a memory error
+  //x = read(fd, 0, 1);
+  //assert(x == -1 && errno == EFAULT);
  
   // EBADF  fd is not a valid file descriptor (man page)
   x = read(-1, buf, 1);
