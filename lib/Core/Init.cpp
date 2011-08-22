@@ -765,8 +765,8 @@ Module* prepareModule(Module *module) {
   }
 
   if (WithPOSIXRuntime) {
-    module = linkWithPOSIX(module);
     module = linkWithUclibc(module);
+    module = linkWithPOSIX(module);
   }
 
   if (InitEnv) {
