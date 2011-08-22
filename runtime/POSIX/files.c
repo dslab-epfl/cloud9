@@ -483,6 +483,8 @@ int _open_concrete(int concrete_fd, int flags) {
   file->storage = NULL;
   file->concrete_fd = concrete_fd;
 
+  fde->io_object = (file_base_t*)file;
+
   // Check to see if the concrete FD is a char/PIPE/socket
   struct stat s;
   int res = CALL_UNDERLYING(fstat, concrete_fd, &s);
@@ -499,8 +501,6 @@ int _open_concrete(int concrete_fd, int flags) {
   if (flags & O_CLOEXEC) {
     fde->attr |= FD_CLOSE_ON_EXEC;
   }
-
-  fde->io_object = (file_base_t*)file;
 
   return fd;
 }
@@ -810,19 +810,17 @@ int __getdents64(unsigned int fd, struct dirent *dirp, unsigned int count)
 
 int __xstat(int ver, const char * path, struct stat * stat_buf) {
   assert(ver == 1);
-  return CALL_MODEL(stat, path, stat_buf);
+  return syscall(__NR_stat, path, (struct kernel_stat *) stat_buf);
 }
 
 int __lxstat(int ver, const char * path, struct stat * stat_buf) {
   assert(ver == 1);
-
-  return CALL_MODEL(lstat, path, stat_buf);
+  return syscall(__NR_lstat, path, (struct kernel_stat *) stat_buf);
 }
 
 int __fxstat(int ver, int fildes, struct stat * stat_buf) {
   assert(ver == 1);
-
-  return CALL_MODEL(fstat, fildes, stat_buf);
+  return syscall(__NR_fstat, fildes, (struct kernel_stat *) stat_buf);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
