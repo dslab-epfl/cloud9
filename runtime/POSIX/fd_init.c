@@ -65,6 +65,8 @@ static void _init_fdt(void) {
   int fd;
 
   fd = _open_symbolic(&__stdin_file, O_RDONLY, 0);
+  if (fd == -1)
+    klee_silent_exit(0);
   assert(fd == 0);
 
   fd = _open_concrete(1, O_WRONLY);
@@ -106,7 +108,7 @@ static void _init_symfiles(unsigned n_files, unsigned file_length) {
 
   // Create the stdin symbolic file
   klee_make_shared(&__stdin_file, sizeof(disk_file_t));
-  __init_disk_file(&__stdin_file, MAX_STDINSIZE, "STDIN", &s, 0);
+  __init_disk_file(&__stdin_file, MAX_STDINSIZE, "STDIN", &s, 1);
 }
 
 static void _init_network(void) {
@@ -122,7 +124,8 @@ static void _init_network(void) {
   STATIC_LIST_INIT(__unix_net.end_points);
 }
 
-void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe) {
+void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe,
+    char overlapped) {
   _init_symfiles(n_files, file_length);
   _init_network();
 
@@ -130,4 +133,6 @@ void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe) {
 
   // Setting the unsafe (allow external writes) flag
   __fs.unsafe = unsafe;
+  // Setting the overlapped (keep per-state concrete file offsets) flag
+  __fs.overlapped = overlapped;
 }

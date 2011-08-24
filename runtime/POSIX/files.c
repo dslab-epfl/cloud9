@@ -255,7 +255,7 @@ ssize_t _write_file(file_t *file, const void *buf, size_t count, off_t offset) {
 
     if (offset >= 0)
       res = CALL_UNDERLYING(pwrite, file->concrete_fd, buf, count, offset);
-    if (file->offset >= 0)
+    else if (file->offset >= 0)
       res = CALL_UNDERLYING(pwrite, file->concrete_fd, buf, count, file->offset);
     else
       res = CALL_UNDERLYING(write, file->concrete_fd, buf, count);
@@ -374,7 +374,7 @@ int _ioctl_file(file_t *file, unsigned long request, char *argp) {
   }
 
   klee_warning("operation not supported on symbolic files");
-  errno = EINVAL;
+  errno = ENOTTY;
   return -1;
 }
 
@@ -488,7 +488,8 @@ int _open_concrete(int concrete_fd, int flags) {
   int res = CALL_UNDERLYING(fstat, concrete_fd, &s);
   assert(res == 0);
 
-  if (S_ISCHR(s.st_mode) || S_ISFIFO(s.st_mode) || S_ISSOCK(s.st_mode)) {
+  if ((S_ISREG(s.st_mode) && !__fs.overlapped) || (S_ISCHR(s.st_mode) || S_ISFIFO(s.st_mode) ||
+      S_ISSOCK(s.st_mode))) {
     file->offset = -1;
   } else {
     file->offset = CALL_UNDERLYING(lseek, concrete_fd, 0, SEEK_CUR);

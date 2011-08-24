@@ -52,6 +52,7 @@ typedef struct {
   disk_file_t **files;
 
   char unsafe;
+  char overlapped;
 } filesystem_t;
 
 extern filesystem_t __fs;

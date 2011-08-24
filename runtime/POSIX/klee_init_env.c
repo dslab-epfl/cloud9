@@ -83,7 +83,7 @@ static void __add_arg(int *argc, char **argv, char *arg, int argcMax) {
 
 void klee_init_env(int argc, char **argv) {
   unsigned sym_files = 0, sym_file_len = 0;
-  char unsafe_flag = 0;
+  char unsafe_flag = 0, overlapped_flag = 0;
   int k=0;
 
   while (k < argc) {
@@ -102,13 +102,17 @@ void klee_init_env(int argc, char **argv) {
       unsafe_flag = 1;
       k++;
     }
+    else if (__streq(argv[k], "--overlapped") || __streq(argv[k], "-overlapped")) {
+      overlapped_flag = 1;
+      k++;
+    }
     else {
       k++;
     }
   }
 
   klee_init_processes();
-  klee_init_fds(sym_files, sym_file_len, unsafe_flag);
+  klee_init_fds(sym_files, sym_file_len, unsafe_flag, overlapped_flag);
   klee_init_mmap();
 }
 
@@ -162,6 +166,9 @@ void klee_process_args(int* argcPtr, char*** argvPtr) {
       k++;
     }
     else if (__streq(argv[k], "--unsafe") || __streq(argv[k], "-unsafe")) {
+      k++;
+    }
+    else if (__streq(argv[k], "--overlapped") || __streq(argv[k], "-overlapped")) {
       k++;
     }
     else {

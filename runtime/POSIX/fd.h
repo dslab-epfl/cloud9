@@ -58,7 +58,7 @@ typedef struct {
 
 extern fd_entry_t __fdt[MAX_FDS];
 
-void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe);
+void klee_init_fds(unsigned n_files, unsigned file_length, char unsafe, char overlapped);
 
 void __adjust_fds_on_fork(void);
 void __close_fds(void);
