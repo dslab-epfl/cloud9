@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   if (S_ISREG(stats.st_mode)) {
     char buf[10];
     int n = read(0, buf, 5);
-    assert(n == 4);
+    assert(n >= 4);
     
     if (strcmp(buf, "HI!")) {
       printf("read:sym:yes\n");

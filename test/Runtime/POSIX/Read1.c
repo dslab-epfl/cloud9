@@ -16,7 +16,8 @@ int main(int argc, char** argv) {
   assert(x == 0);
   
   int fd = open("A", O_RDONLY);
-  klee_assume(fd != -1);
+  if (fd == -1)
+    klee_silent_exit(0);
 
   // EFAULT buf is outside your accessible address space. (man page)
   // CLOUD9: We don't honor this spec, we just let the state terminate with a memory error

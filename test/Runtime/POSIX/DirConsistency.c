@@ -3,7 +3,7 @@
 // RUN: %llvmgcc -D_FILE_OFFSET_BITS=64 %s -emit-llvm -O0 -c -o %t.bc
 // RUN: %klee --run-in=/tmp --use-random-search --init-env --libc=uclibc --posix-runtime --exit-on-error %t.bc --sym-files 1 1 > %t2.log
 // RUN: sort %t1.log %t2.log | uniq -c > %t3.log
-// RUN: grep -q "2 COUNT" %t3.log
+// RUN: grep -q "4 COUNT" %t3.log
 
 // For this test really to work as intended it needs to be run in a
 // directory large enough to cause uclibc to do multiple getdents
@@ -38,13 +38,13 @@ int main(int argc, char **argv) {
   int snum = 1;
   if (klee_range(0,2,"range")) {
     snum = 2;
-    printf("state%d\n", snum);
+    //printf("state%d\n", snum);
   }
 
   int foundA = 0, count = 0;
   struct dirent *de;
   while ((de = readdir(d))) {
-    //    printf("state%d: dirent: %s\n", snum, de->d_name);
+    //printf("state%d: dirent: %s\n", snum, de->d_name);
     if (strcmp(de->d_name, "A") == 0)
       foundA = 1;
     count++;

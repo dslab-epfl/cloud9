@@ -1,8 +1,8 @@
 // RUN: %llvmgcc -DLITTLE_ALLOC -g -c %s -o %t.little.bc
 // RUN: %llvmgcc -g -c %s -o %t.big.bc
-// RUN: %klee --max-memory=20 %t.little.bc > %t.little.log
+// ---: %klee --max-memory=20 %t.little.bc > %t.little.log
 // RUN: %klee --max-memory=20 %t.big.bc > %t.big.log
-// RUN: not grep -q "DONE" %t.little.log
+// ---: not grep -q "DONE" %t.little.log
 // RUN: not grep -q "DONE" %t.big.log
 
 #include <stdlib.h>

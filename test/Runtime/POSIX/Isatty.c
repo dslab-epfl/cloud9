@@ -1,10 +1,10 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t.bc
-// RUN: %klee --libc=uclibc --posix-runtime --init-env %t.bc --sym-files 0 10 --sym-stdout &>%t.log
+// RUN: %klee --libc=uclibc --posix-runtime --init-env %t.bc --sym-files 0 10 --sym-stdout >%t.log
 
 // RUN: test -f klee-last/test000001.ktest
 
 // RUN: grep -q "stdin is NOT a tty" %t.log
-// RUN: grep -q "stdout is a tty" %t.log
+// RUN: grep -q "stdout is NOT a tty" %t.log
 
 #include <unistd.h>
 #include <stdio.h>
