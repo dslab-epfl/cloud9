@@ -509,6 +509,17 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
         modelF = const_cast<GlobalValue*>(GV);
       }
 
+#if 0
+      if (modelF->getType() != f->getType()) {
+        FunctionType *modelFType = dyn_cast<FunctionType>(modelF->getType()->getElementType());
+        FunctionType *FType = dyn_cast<FunctionType>(f->getType()->getElementType());
+        assert(modelFType);
+        assert(FType);
+
+        assert(modelFType->getNumParams() == FType->getNumParams());
+      }
+#endif
+
       underlyingFn[newName.str()] = modelF;
 
       if (DebugModelPatches) {
