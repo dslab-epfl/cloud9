@@ -412,7 +412,7 @@ void JobManager::initialize(llvm::Module *module, llvm::Function *_mainFn,
   interpreter = klee::Interpreter::create(iOpts, kleeHandler);
   kleeHandler->setInterpreter(interpreter);
 
-  symbEngine = dyn_cast<SymbolicEngine> (interpreter);
+  symbEngine = dynamic_cast<SymbolicEngine*> (interpreter);
   interpreter->setModule(module, mOpts);
 
   kleeModule = symbEngine->getModule();
