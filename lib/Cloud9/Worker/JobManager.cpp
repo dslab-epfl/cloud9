@@ -1054,13 +1054,13 @@ long JobManager::stepInNode(boost::unique_lock<boost::mutex> &lock,
     }
 
     // Execute the instruction
+    state->_instrSinceFork++;
     lock.unlock();
 
-    symbEngine->stepInState(state->getKleeState());
+    symbEngine->stepInState(state->getKleeState()); // After this point, state may be destroyed
 
     lock.lock();
 
-    state->_instrSinceFork++;
     totalExec++;
     cloud9::instrum::theInstrManager.incStatistic(
         cloud9::instrum::TotalProcInstructions);

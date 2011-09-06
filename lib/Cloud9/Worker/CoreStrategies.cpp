@@ -229,7 +229,7 @@ SymbolicState* KleeStrategy::onNextStateSelection() {
 WeightedRandomStrategy::WeightedRandomStrategy(WeightType _type,
         WorkerTree *_tree, SymbolicEngine *_engine) : KleeStrategy(_tree) {
 
-    klee::Executor *executor = dyn_cast<klee::Executor>(_engine); // XXX I should be ashamed of this
+    klee::Executor *executor = dynamic_cast<klee::Executor*>(_engine); // XXX I should be ashamed of this
     searcher = new WeightedRandomSearcher(*executor,
             static_cast<klee::WeightedRandomSearcher::WeightType>(_type)); // XXX This is truly ugly
 
