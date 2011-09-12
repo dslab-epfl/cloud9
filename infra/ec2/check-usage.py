@@ -46,7 +46,7 @@ Status for Amazon EC2 account %(account)s on %(date)s
 !!TOTAL RUNNING INSTANCES: %(tirunning)d (out of %(ti)d)
 
 
-* Instance State Distribution:
+* State Distribution:
 %(states)s
 
 * AMI Distribution:
@@ -77,12 +77,13 @@ def generate_report(conn):
         "date": datetime.today().strftime("%A, %d %b %Y, %H:%M"),
         "tirunning": len(filter(lambda i: i.state == "running", inst)),
         "ti": len(inst),
-        "states": "\n".join([" %s: %d" % (s.capitalize(), 
-                                          len(filter(lambda i: i.state == s, inst))) 
+        "states": "\n".join([" %-12s: %3d" % (s.capitalize(), 
+                                   len(filter(lambda i: i.state == s, inst))) 
                              for s in sorted(inst_states)]),
-        "images": "\n".join([" %s: %d (%d running)" % (("%s [%s]" % (img.name, img.id)) if img.name else img.id,
-                                          len(filter(lambda i: i.image_id == img.id, inst)),
-                                          len(filter(lambda i: i.image_id == img.id and i.state == "running", inst)))
+        "images": "\n".join([" %s: %3d (%3d running) %s" % (img.id,
+                                   len(filter(lambda i: i.image_id == img.id, inst)),
+                                   len(filter(lambda i: i.image_id == img.id and i.state == "running", inst)),
+                                   ("- %s" % img.name) if img.name else "")
                              for img in sorted(images, key=lambda img: img.id)])
         }
 
