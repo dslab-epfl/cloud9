@@ -105,7 +105,7 @@ def main():
 
     parser = ArgumentParser(description="Check EC2 status.")
     parser.add_argument("--email", help="Send an e-mail with the status to the designated recipient.")
-    parser.add_argument("--sender", default="DSLab EC2 <ec2-no-reply@dslabpc10.epfl.ch", help="E-mail sender.")
+    parser.add_argument("--sender", default="DSLab EC2 <ec2-no-reply@dslabpc10.epfl.ch>", help="E-mail sender.")
     parser.add_argument("--subject", default="[ec2] Account Activity", help="E-mail subject.")
     parser.add_argument("--smtp", default="mail.epfl.ch", help="SMTP server name.")
 
