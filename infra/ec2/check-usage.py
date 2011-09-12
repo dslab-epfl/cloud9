@@ -37,13 +37,17 @@ import logging
 import boto.ec2
 import boto
 
+import smtplib
+from email.mime.text import MIMEText
+
 from argparse import ArgumentParser
 from datetime import datetime
 
 REPORT = """
-Status for Amazon EC2 account %(account)s on %(date)s
+EC2 Account: %(account)s
+Date: %(date)s
 
-!!TOTAL RUNNING INSTANCES: %(tirunning)d (out of %(ti)d)
+TOTAL RUNNING INSTANCES: %(tirunning)d (out of %(ti)d)
 
 
 * State Distribution:
@@ -77,8 +81,8 @@ def generate_report(conn):
         "date": datetime.today().strftime("%A, %d %b %Y, %H:%M"),
         "tirunning": len(filter(lambda i: i.state == "running", inst)),
         "ti": len(inst),
-        "states": "\n".join([" %-12s: %3d" % (s.capitalize(), 
-                                   len(filter(lambda i: i.state == s, inst))) 
+        "states": "\n".join([" %-12s: %3d" % (s.capitalize(),
+                                   len(filter(lambda i: i.state == s, inst)))
                              for s in sorted(inst_states)]),
         "images": "\n".join([" %s: %3d (%3d running) %s" % (img.id,
                                    len(filter(lambda i: i.image_id == img.id, inst)),
@@ -101,6 +105,9 @@ def main():
 
     parser = ArgumentParser(description="Check EC2 status.")
     parser.add_argument("--email", help="Send an e-mail with the status to the designated recipient.")
+    parser.add_argument("--sender", default="DSLab EC2 <ec2-no-reply@dslabpc10.epfl.ch", help="E-mail sender.")
+    parser.add_argument("--subject", default="[ec2] Account Activity", help="E-mail subject.")
+    parser.add_argument("--smtp", default="mail.epfl.ch", help="SMTP server name.")
 
     args = parser.parse_args()
 
@@ -112,6 +119,14 @@ def main():
     report = generate_report(conn)
 
     print report
+
+    if (args.email):
+        msg = MIMEText(report)
+        msg["Subject"] = args.subject
+        msg["From"] = args.sender
+        msg["To"] = args.email
+        s = smtplib.SMTP(args.smtp)
+        s.sendmail(args.sender, [args.email], msg.as_string())
 
     return 0
 
