@@ -43,15 +43,32 @@ from email.mime.text import MIMEText
 from argparse import ArgumentParser
 from datetime import datetime
 
+INSTANCE_TYPES = {
+    "m1.small": ("Small", 0.085),
+    "m1.large": ("Large", 0.34),
+    "m1.xlarge": ("Extra Large", 0.68),
+    "t1.micro": ("Micro", 0.02),
+    "m2.xlarge": ("High-Memory Extra Large", 0.50),
+    "m2.2xlarge": ("High-Memory Double Extra Large", 1.00),
+    "m2.4xlarge": ("High-Memory Quadruple Extra Large", 2.00),
+    "c1.medium": ("High-CPU Medium", 0.17),
+    "c1.xlarge": ("High-CPU Extra Large", 0.68),
+    "cc1.4xlarge": ("Cluster Compute Quadruple Extra Large", 1.60),
+    "cg1.4xlarge": ("Cluster GPU Quadruple Extra Large", 2.10)
+}
+
 REPORT = """
 EC2 Account: %(account)s
 Date: %(date)s
 
 TOTAL RUNNING INSTANCES: %(tirunning)d (out of %(ti)d)
-
+INSTANT COST: $%(cost).2f/hour
 
 * State Distribution:
 %(states)s
+
+* Type Distribution:
+%(types)s
 
 * AMI Distribution:
 %(images)s
@@ -72,6 +89,9 @@ def generate_report(conn, aggressive=False):
     inst_states.add("stopped")
     inst_states.add("terminated")
 
+    # Active instance types
+    inst_types = set([i.instance_type for i in inst])
+
     # Active images
     image_ids = set([i.image_id for i in inst] + [img.id for img in conn.get_all_images(owners=["self"])])
     images = conn.get_all_images(list(image_ids))
@@ -84,9 +104,16 @@ def generate_report(conn, aggressive=False):
         "date": datetime.today().strftime("%A, %d %b %Y, %H:%M"),
         "tirunning": len(filter(lambda i: i.state == "running", inst)),
         "ti": len(inst),
+        "cost": sum([INSTANCE_TYPES.get(ty, (ty, 0.0))[1] 
+                     for ty in [i.instance_type 
+                                for i in inst if i.state == "running"]]),
         "states": "\n".join([" %-12s: %3d" % (s.capitalize(),
                                    len(filter(lambda i: i.state == s, inst)))
                              for s in sorted(inst_states)]),
+        "types": "\n".join([" %-12s: %3d (%3d running)" % (INSTANCE_TYPES.get(ty, (ty, 0.0))[0],
+                                   len(filter(lambda i: i.instance_type == ty, inst)),
+                                   len(filter(lambda i: i.instance_type == ty and i.state == "running", inst)))
+                            for ty in sorted(inst_types)]),
         "images": "\n".join([" %s: %3d (%3d running) %s" % (img.id,
                                    len(filter(lambda i: i.image_id == img.id, inst)),
                                    len(filter(lambda i: i.image_id == img.id and i.state == "running", inst)),
