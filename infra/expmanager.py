@@ -237,7 +237,7 @@ class ExperimentManager:
 
     def _killAllRemote(self, host, signal="SIGINT", aggressive=False, freq=5):
         proc = runBashScript("""
-            ssh %(user)s@%(host)s 'bash -s' <<EOF
+            ssh -o StrictHostKeyChecking=no %(user)s@%(host)s 'bash -s' <<EOF
             # The code below is run remotely
             while true; do
               DONE="true"
@@ -275,7 +275,7 @@ class ExperimentManager:
 
     def _prepareRemoteHost(self, host, cleanCores=True):
         proc = runBashScript("""
-            ssh %(user)s@%(host)s 'bash -s' <<EOF && \
+            ssh -o StrictHostKeyChecking=no %(user)s@%(host)s 'bash -s' <<EOF && \
             scp %(coverage)s %(user)s@%(host)s:%(expdir)s/%(newdir)s/$(basename %(coverage)s)
             # The code below is run remotely
             if [ ! -f %(root)s/%(worker)s ]; then echo "Cannot find the Cloud9 worker executable: %(root)s/%(worker)s";  exit 1; fi
@@ -352,7 +352,7 @@ class ExperimentManager:
 
         proc = runBashScript("""
             mkdir -p %(logdir)s
-            ssh %(user)s@%(host)s 'bash -s' <<EOF &>%(logfile)s
+            ssh -o StrictHostKeyChecking=no %(user)s@%(host)s 'bash -s' <<EOF &>%(logfile)s
             # The code below is run remotely
             mkdir -p %(expdir)s
             cd %(expdir)s

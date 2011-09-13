@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Remote configuration
-IMAGE_ID=ami-548c783d
+IMAGE_ID=ami-27ff3c4e
 CORE_COUNT=2
 C9_ROOT=/home/ubuntu/cloud9
 USER_NAME=ubuntu
