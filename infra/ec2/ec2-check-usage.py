@@ -57,11 +57,14 @@ TOTAL RUNNING INSTANCES: %(tirunning)d (out of %(ti)d)
 %(images)s
 """
 
-def generate_report(conn):
+def generate_report(conn, aggressive=False):
     # Enumerating all instances
     inst = []
     for r in conn.get_all_instances():
         inst.extend(r.instances)
+
+    if not aggressive and not len(filter(lambda i: i.state == "running", inst)):
+        return None
 
     # Setting up the possible states list
     inst_states = set([i.state for i in inst])
@@ -92,6 +95,7 @@ def generate_report(conn):
         }
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     # Checking environment variables
     if not "AWS_ACCESS_KEY_ID" in os.environ or \
             not "AWS_SECRET_ACCESS_KEY" in os.environ:
@@ -105,9 +109,10 @@ def main():
 
     parser = ArgumentParser(description="Check EC2 status.")
     parser.add_argument("--email", help="Send an e-mail with the status to the designated recipient.")
-    parser.add_argument("--sender", default="DSLab EC2 <ec2-no-reply@dslabpc10.epfl.ch>", help="E-mail sender.")
+    parser.add_argument("--sender", default="EC2 <ec2-no-reply@example.com>", help="E-mail sender.")
     parser.add_argument("--subject", default="[ec2] Account Activity", help="E-mail subject.")
-    parser.add_argument("--smtp", default="mail.epfl.ch", help="SMTP server name.")
+    parser.add_argument("--smtp", default="mail.example.com", help="SMTP server name.")
+    parser.add_argument("--aggressive", default=False, action="store_true", help="Send e-mail even with 0 running instances.")
 
     args = parser.parse_args()
 
@@ -116,7 +121,11 @@ def main():
     conn = boto.connect_ec2(region=region)
 
     # Enumerating all instances
-    report = generate_report(conn)
+    report = generate_report(conn, aggressive=args.aggressive)
+
+    if not report:
+        logging.info("No running instances, aborting.")
+        return 0
 
     print report
 
@@ -127,6 +136,7 @@ def main():
         msg["To"] = args.email
         s = smtplib.SMTP(args.smtp)
         s.sendmail(args.sender, [args.email], msg.as_string())
+        logging.info("E-mail sent to %s." % args.email)
 
     return 0
 
