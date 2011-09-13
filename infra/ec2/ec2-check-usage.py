@@ -74,6 +74,13 @@ INSTANT COST: $%(cost).2f/hour
 %(images)s
 """
 
+class EC2Report:
+    def __init__(self, text, tinst, trunning, tcost):
+        self.text = text
+        self.total_inst = tinst
+        self.total_running = trunning
+        self.total_cost = tcost
+
 def generate_report(conn, aggressive=False):
     # Enumerating all instances
     inst = []
@@ -99,14 +106,17 @@ def generate_report(conn, aggressive=False):
     # The Amazon account ID
     account = conn.get_all_images(owners=["self"])[0].owner_id
 
-    return REPORT % {
+    # Total costs
+    costs = sum([INSTANCE_TYPES.get(ty, (ty, 0.0))[1] 
+                     for ty in [i.instance_type 
+                                for i in inst if i.state == "running"]])
+
+    text = REPORT % {
         "account": account,
         "date": datetime.today().strftime("%A, %d %b %Y, %H:%M"),
         "tirunning": len(filter(lambda i: i.state == "running", inst)),
         "ti": len(inst),
-        "cost": sum([INSTANCE_TYPES.get(ty, (ty, 0.0))[1] 
-                     for ty in [i.instance_type 
-                                for i in inst if i.state == "running"]]),
+        "cost": costs,
         "states": "\n".join([" %-12s: %3d" % (s.capitalize(),
                                    len(filter(lambda i: i.state == s, inst)))
                              for s in sorted(inst_states)]),
@@ -120,6 +130,10 @@ def generate_report(conn, aggressive=False):
                                    ("- %s" % img.name) if img.name else "")
                              for img in sorted(images, key=lambda img: img.id)])
         }
+
+    return EC2Report(text, len(inst), 
+                     len(filter(lambda i: i.state == "running", inst)),
+                     costs)
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -154,11 +168,12 @@ def main():
         logging.info("No running instances, aborting.")
         return 0
 
-    print report
+    print report.text
 
     if (args.email):
-        msg = MIMEText(report)
-        msg["Subject"] = args.subject
+        msg = MIMEText(report.text)
+        msg["Subject"] = "%s: %d Instance%s Running" % (args.subject, report.total_running, 
+                                                        "s" if report.total_running != 1 else "")
         msg["From"] = args.sender
         msg["To"] = args.email
         s = smtplib.SMTP(args.smtp)
