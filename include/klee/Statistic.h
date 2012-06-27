@@ -58,8 +58,14 @@ namespace klee {
     /// operator++ - Increment the statistic by 1.
     Statistic &operator ++() { return (*this += 1); }
 
+    /// operator-- - Decrement the statistic by 1.
+    Statistic &operator --() { return (*this -= 1); }
+
     /// operator+= - Increment the statistic by \arg addend.
     Statistic &operator +=(const uint64_t addend);
+
+    /// operator-= - Degrement the statistic by \arg addend.
+    Statistic &operator -=(const uint64_t addend);
   };
 }
 

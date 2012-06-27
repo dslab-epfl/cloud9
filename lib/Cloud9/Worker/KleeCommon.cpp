@@ -32,8 +32,6 @@
 
 #include "cloud9/worker/KleeCommon.h"
 
-#include "cloud9/Logger.h"
-
 // FIXME: Ugh, this is gross. But otherwise our config.h conflicts with LLVMs.
 #undef PACKAGE_BUGREPORT
 #undef PACKAGE_NAME
@@ -48,6 +46,8 @@
 
 #include <string>
 #include <cstdlib>
+
+#include <glog/logging.h>
 
 using llvm::sys::Path;
 using llvm::SmallString;
@@ -65,7 +65,7 @@ std::string getKleePath() {
 
   
   sys::fs::make_absolute(newPath);
-  CLOUD9_DEBUG("Using Klee path " << std::string(newPath.str()));
+  LOG(INFO) << "Using Klee path " << std::string(newPath.str());
   return newPath.str();
 }
 
@@ -87,6 +87,6 @@ std::string getUclibcPath() {
   SmallString<256> newPath(uclibcPathName);
 
   sys::fs::make_absolute(newPath);
-  CLOUD9_DEBUG("Using uClibc path " << std::string(newPath.str()));
+  LOG(INFO) << "Using uClibc path " << std::string(newPath.str());
   return newPath.str();
 }

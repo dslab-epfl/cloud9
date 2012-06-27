@@ -44,17 +44,17 @@
  * This is architecture dependent. We should do this
  * from autoconf or something similar.
  */
-#define BITS_PER_LONG 	64
-#define _NSIG_WORDS	_SIGSET_NWORDS
-#define _NSIG_BPW 	32
-#define SA_RESTORER 	0x04000000
+#define BITS_PER_LONG   64
+#define _NSIG_WORDS _SIGSET_NWORDS
+#define _NSIG_BPW   32
+#define SA_RESTORER   0x04000000
 
 #define siginmask(sig, mask) (sigmask(sig) & (mask))
 
 #ifdef SIGEMT
-#define SIGEMT_MASK 	sigmask(SIGEMT)
+#define SIGEMT_MASK   sigmask(SIGEMT)
 #else
-#define SIGEMT_MASK 	0
+#define SIGEMT_MASK   0
 #endif
 
 #define SIG_STOP_MASK (\
@@ -92,28 +92,28 @@
 
 #define valid_signal(x) ( ((x) <= _NSIG ? 1 : 0) && (x) >= 1 )
 
-#define _SIG_SET_BINOP(name, op)						\
-static inline void name(sigset_t *r, const sigset_t *a, const sigset_t *b)	\
-{										\
-  unsigned long a0, a1, a2, a3, b0, b1, b2, b3;					\
-										\
-  switch (_NSIG_WORDS) {							\
-    case 4:									\
-      a3 = a->__val[3]; a2 = a->__val[2];					\
-      b3 = b->__val[3]; b2 = b->__val[2];					\
-      r->__val[3] = op(a3, b3);							\
-      r->__val[2] = op(a2, b2);							\
-    case 2:									\
-      a1 = a->__val[1]; b1 = b->__val[1];					\
-      r->__val[1] = op(a1, b1);							\
-    case 1:									\
-      a0 = a->__val[0]; b0 = b->__val[0];					\
-      r->__val[0] = op(a0, b0);							\
-      break;									\
-  }                                                               		\
+#define _SIG_SET_BINOP(name, op)            \
+static inline void name(sigset_t *r, const sigset_t *a, const sigset_t *b)  \
+{                   \
+  unsigned long a0, a1, a2, a3, b0, b1, b2, b3;         \
+                    \
+  switch (_NSIG_WORDS) {              \
+    case 4:                 \
+      a3 = a->__val[3]; a2 = a->__val[2];         \
+      b3 = b->__val[3]; b2 = b->__val[2];         \
+      r->__val[3] = op(a3, b3);             \
+      r->__val[2] = op(a2, b2);             \
+    case 2:                 \
+      a1 = a->__val[1]; b1 = b->__val[1];         \
+      r->__val[1] = op(a1, b1);             \
+    case 1:                 \
+      a0 = a->__val[0]; b0 = b->__val[0];         \
+      r->__val[0] = op(a0, b0);             \
+      break;                  \
+  }                                                                   \
 }
 
-#define _sig_or(x,y)	((x) | (y))
+#define _sig_or(x,y)  ((x) | (y))
 _SIG_SET_BINOP(sigorsets, _sig_or)
 
 static inline void sigdelsetmask(__sigset_t *set, unsigned long mask) {

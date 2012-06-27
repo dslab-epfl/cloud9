@@ -1,5 +1,5 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t1.bc
-// RUN: %klee --posix-runtime %t1.bc > %t1.log
+// RUN: %klee --posix-runtime %t1.bc --no-overlapped > %t1.log
 // RUN: grep -c START %t1.log | grep 1
 // RUN: grep -c END %t1.log | grep 2
 
@@ -17,6 +17,7 @@ void start(int x) {
 void end(int status) {
   klee_alias_function("exit", "exit");
   printf("END: status = %d\n", status);
+	fflush(stdout);
   exit(status);
 }
 

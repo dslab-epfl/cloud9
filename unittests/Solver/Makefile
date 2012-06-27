@@ -14,7 +14,7 @@ ifeq ($(ENABLE_EXT_STP),0)
   USEDLIBS += $(STP_LIBS)
 endif
 
-USEDLIBS += cloud9instrum.a cloud9common.a
+USEDLIBS += cloud9common.a
 
 LINK_COMPONENTS := support
 

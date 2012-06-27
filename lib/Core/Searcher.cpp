@@ -7,15 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
 #include "klee/Searcher.h"
 
-#include "CoreStats.h"
-#include "klee/Executor.h"
 #include "PTree.h"
 #include "StatsTracker.h"
 
+#include "klee/CoreStats.h"
+#include "klee/Executor.h"
 #include "klee/ExecutionState.h"
 #include "klee/Statistics.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"

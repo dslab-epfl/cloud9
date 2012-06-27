@@ -12,5 +12,8 @@ LEVEL=../..
 LIBRARYNAME=kleaverSolver
 DONT_BUILD_RELINKED=1
 BUILD_ARCHIVE=1
+BUILT_SOURCES = \
+	smt_service.pb.cc \
+	smt_service.pb.h
 
 include $(LEVEL)/Makefile.common

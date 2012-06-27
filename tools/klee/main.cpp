@@ -1,8 +1,5 @@
 /* -*- mode: c++; c-basic-offset: 2; -*- */
 
-// FIXME: This does not belong here.
-#include "../lib/Core/Common.h"
-
 #include "klee/ExecutionState.h"
 #include "klee/Expr.h"
 #include "klee/Interpreter.h"
@@ -34,7 +31,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ManagedStatic.h"
 
-#include "llvm/Target/TargetSelect.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/system_error.h"
 #include "llvm/Support/CallSite.h"
@@ -57,8 +54,8 @@
 using namespace llvm;
 using namespace klee;
 
-#define CLOUD9_STATS_FILE_NAME		"c9-stats.txt"
-#define CLOUD9_EVENTS_FILE_NAME		"c9-events.txt"
+#define CLOUD9_STATS_FILE_NAME    "c9-stats.txt"
+#define CLOUD9_EVENTS_FILE_NAME   "c9-events.txt"
 
 namespace {
 
@@ -78,32 +75,6 @@ namespace {
   cl::list<std::string>
   ReadArgsFilesFake("read-args", 
                     cl::desc("File to read arguments from (one arg per line)"));
-    
-  cl::opt<bool>
-  ReplayKeepSymbolic("replay-keep-symbolic", 
-                     cl::desc("Replay the test cases only by asserting"
-                              "the bytes, not necessarily making them concrete."));
-    
-  cl::list<std::string>
-  ReplayOutFile("replay-out",
-                cl::desc("Specify an out file to replay"),
-                cl::value_desc("out file"));
-
-  cl::list<std::string>
-  ReplayOutDir("replay-out-dir",
-	       cl::desc("Specify a directory to replay .out files from"),
-	       cl::value_desc("output directory"));
-
-  cl::opt<std::string>
-  ReplayPathFile("replay-path",
-                 cl::desc("Specify a path file to replay"),
-                 cl::value_desc("path file"));
-
-  cl::list<std::string>
-  SeedOutFile("seed-out");
-  
-  cl::list<std::string>
-  SeedOutDir("seed-out-dir");
   
   cl::opt<unsigned>
   MakeConcreteSymbolic("make-concrete-symbolic",
@@ -245,6 +216,8 @@ int main(int argc, char **argv, char **envp) {
 
   atexit(llvm_shutdown);  // Call llvm_shutdown() on exit.
 
+  google::InitGoogleLogging(argv[0]);
+
   llvm::InitializeNativeTarget();
 
   parseArguments(argc, argv);
@@ -252,12 +225,12 @@ int main(int argc, char **argv, char **envp) {
 
   if (Watchdog) {
     if (MaxTime==0) {
-      klee_error("--watchdog used without --max-time");
+      LOG(FATAL) << "--watchdog used without --max-time";
     }
 
     int pid = fork();
     if (pid<0) {
-      klee_error("unable to fork watchdog");
+      LOG(FATAL) << "Unable to fork watchdog";
     } else if (pid) {
       fprintf(stderr, "KLEE: WATCHDOG: watching %d\n", pid);
       fflush(stderr);
@@ -333,10 +306,6 @@ int main(int argc, char **argv, char **envp) {
 
   std::vector<bool> replayPath;
 
-  if (ReplayPathFile != "") {
-    KleeHandler::loadPathFile(ReplayPathFile, replayPath);
-  }
-
   llvm::sys::Path libraryPath(getKleeLibraryPath());
 
   klee::Interpreter::ModuleOptions mOpts(libraryPath.c_str(),
@@ -360,10 +329,6 @@ int main(int argc, char **argv, char **envp) {
     interpreter->setModule(mainModule, mOpts);
   externalsAndGlobalsCheck(finalModule);
 
-  if (ReplayPathFile != "") {
-    interpreter->setReplayPath(&replayPath);
-  }
-
   char buf[256];
   time_t t[2];
   t[0] = time(NULL);
@@ -371,101 +336,14 @@ int main(int argc, char **argv, char **envp) {
   infoFile << buf;
   infoFile.flush();
 
-  if (!ReplayOutDir.empty() || !ReplayOutFile.empty()) {
-    assert(SeedOutFile.empty());
-    assert(SeedOutDir.empty());
 
-    std::vector<std::string> outFiles = ReplayOutFile;
-    for (std::vector<std::string>::iterator
-           it = ReplayOutDir.begin(), ie = ReplayOutDir.end();
-         it != ie; ++it)
-      KleeHandler::getOutFiles(*it, outFiles);    
-    std::vector<KTest*> kTests;
-    for (std::vector<std::string>::iterator
-           it = outFiles.begin(), ie = outFiles.end();
-         it != ie; ++it) {
-      KTest *out = kTest_fromFile(it->c_str());
-      if (out) {
-        kTests.push_back(out);
-      } else {
-        std::cerr << "KLEE: unable to open: " << *it << "\n";
-      }
-    }
-
-    if (RunInDir != "") {
-      int res = chdir(RunInDir.c_str());
-      if (res < 0) {
-        klee_error("Unable to change directory to: %s", RunInDir.c_str());
-      }
-    }
-
-    unsigned i=0;
-    for (std::vector<KTest*>::iterator
-           it = kTests.begin(), ie = kTests.end();
-         it != ie; ++it) {
-      KTest *out = *it;
-      interpreter->setReplayOut(out);
-      std::cerr << "KLEE: replaying: " << *it << " (" << kTest_numBytes(out) << " bytes)"
-                 << " (" << ++i << "/" << outFiles.size() << ")\n";
-      // XXX should put envp in .ktest ?
-      interpreter->runFunctionAsMain(mainFn, out->numArgs, out->args, pEnvp);
-      if (interrupted) break;
-    }
-    interpreter->setReplayOut(0);
-    while (!kTests.empty()) {
-      kTest_free(kTests.back());
-      kTests.pop_back();
-    }
-  } else {
-    std::vector<KTest *> seeds;
-    for (std::vector<std::string>::iterator
-           it = SeedOutFile.begin(), ie = SeedOutFile.end();
-         it != ie; ++it) {
-      KTest *out = kTest_fromFile(it->c_str());
-      if (!out) {
-        std::cerr << "KLEE: unable to open: " << *it << "\n";
-        exit(1);
-      }
-      seeds.push_back(out);
-    } 
-    for (std::vector<std::string>::iterator
-           it = SeedOutDir.begin(), ie = SeedOutDir.end();
-         it != ie; ++it) {
-      std::vector<std::string> outFiles;
-      KleeHandler::getOutFiles(*it, outFiles);
-      for (std::vector<std::string>::iterator
-             it2 = outFiles.begin(), ie = outFiles.end();
-           it2 != ie; ++it2) {
-        KTest *out = kTest_fromFile(it2->c_str());
-        if (!out) {
-          std::cerr << "KLEE: unable to open: " << *it2 << "\n";
-          exit(1);
-        }
-        seeds.push_back(out);
-      }
-      if (outFiles.empty()) {
-        std::cerr << "KLEE: seeds directory is empty: " << *it << "\n";
-        exit(1);
-      }
-    }
-       
-    if (!seeds.empty()) {
-      std::cerr << "KLEE: using " << seeds.size() << " seeds\n";
-      interpreter->useSeeds(&seeds);
-    }
-    if (RunInDir != "") {
-      int res = chdir(RunInDir.c_str());
-      if (res < 0) {
-        klee_error("Unable to change directory to: %s", RunInDir.c_str());
-      }
-    }
-    interpreter->runFunctionAsMain(mainFn, pArgc, pArgv, pEnvp);
-
-    while (!seeds.empty()) {
-      kTest_free(seeds.back());
-      seeds.pop_back();
+  if (RunInDir != "") {
+    int res = chdir(RunInDir.c_str());
+    if (res < 0) {
+      LOG(FATAL) << "Unable to change directory to: " << RunInDir.c_str();
     }
   }
+  interpreter->runFunctionAsMain(mainFn, pArgc, pArgv, pEnvp);
       
   t[1] = time(NULL);
   strftime(buf, sizeof(buf), "Finished: %Y-%m-%d %H:%M:%S\n", localtime(&t[1]));

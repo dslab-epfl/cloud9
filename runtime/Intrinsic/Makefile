@@ -12,9 +12,12 @@ LEVEL=../..
 LIBRARYNAME=kleeRuntimeIntrinsic
 DONT_BUILD_RELINKED=1
 BUILD_ARCHIVE=1
-BYTECODE_LIBRARY=1
+#BYTECODE_LIBRARY=1
 # Don't strip debug info from the module.
 DEBUG_RUNTIME=1
 NO_PEDANTIC=1
 
 include $(LEVEL)/Makefile.common
+
+CXXFLAGS += -emit-llvm
+CFLAGS += -emit-llvm

@@ -87,6 +87,7 @@ void ConstraintManager::simplifyForValidConstraint(ref<Expr> e) {
 }
 
 ref<Expr> ConstraintManager::simplifyExpr(ref<Expr> e) const {
+#if 0
   if (isa<ConstantExpr>(e))
     return e;
 
@@ -109,6 +110,9 @@ ref<Expr> ConstraintManager::simplifyExpr(ref<Expr> e) const {
   }
 
   return ExprReplaceVisitor2(equalities).visit(e);
+#else
+  return e;
+#endif
 }
 
 void ConstraintManager::addConstraintInternal(ref<Expr> e) {

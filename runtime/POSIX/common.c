@@ -33,6 +33,7 @@
 #include "common.h"
 
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <errno.h>
 #include <assert.h>
 
@@ -48,6 +49,12 @@ size_t __concretize_size(size_t s) {
   size_t sc = klee_get_valuel((long)s);
   klee_assume(sc == s);
   return sc;
+}
+
+off_t __concretize_offset(off_t o) {
+  off_t oc = klee_get_valuel((long)o);
+  klee_assume(oc == o);
+  return oc;
 }
 
 const char *__concretize_string(const char *s) {
@@ -99,4 +106,12 @@ unsigned __fork_values(unsigned min, unsigned max, int reason) {
   }
 
   return max;
+}
+
+size_t _count_iovec(const struct iovec *iov, int iovcnt) {
+  size_t result = 0;
+  int i;
+  for (i = 0; i < iovcnt; i++)
+    result += iov[i].iov_len;
+  return result;
 }

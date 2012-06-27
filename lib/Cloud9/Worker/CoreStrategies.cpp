@@ -36,8 +36,8 @@
 #include "cloud9/worker/WorkerCommon.h"
 #include "cloud9/worker/SymbolicEngine.h"
 #include "cloud9/worker/JobManager.h"
-#include "cloud9/Logger.h"
 
+#include "klee/CoreStats.h"
 #include "klee/Internal/ADT/RNG.h"
 #include "klee/Searcher.h"
 #include "klee/Statistics.h"
@@ -48,7 +48,6 @@
 ///XXX: ugly, remove this dependency
 #include "../../Core/CallPathManager.h"
 #include "../../Core/StatsTracker.h"
-#include "../../Core/CoreStats.h"
 
 
 using namespace klee;
@@ -172,6 +171,82 @@ void RandomStrategy::onStateDeactivated(SymbolicState *state) {
 
 SymbolicState* RandomPathStrategy::onNextStateSelection() {
   SymbolicState *state = selectRandomPathState(tree);
+
+  return state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Clustered Random Path Strategy
+////////////////////////////////////////////////////////////////////////////////
+
+SymbolicState* ClusteredRandomPathStrategy::onNextStateSelection() {
+  if (states.empty())
+      return NULL;
+
+  std::vector<WorkerTree::Node*> nodes;
+  nodes.reserve(states.size());
+
+  // TODO: Make this more efficient by implementing a custom iterator
+  for (state_set_t::iterator it = states.begin(); it != states.end(); it++) {
+    SymbolicState *state = *it;
+    nodes.push_back(state->getNode().get());
+  }
+
+  WorkerTree::Node *selNode = tree->selectRandomLeaf(WORKER_LAYER_STATES,
+      tree->getRoot(), theRNG, nodes.begin(), nodes.end());
+
+  SymbolicState *state = (**selNode).getSymbolicState();
+
+  assert(state != NULL);
+
+  return state;
+}
+
+void ClusteredRandomPathStrategy::onStateActivated(SymbolicState *state) {
+  states.insert(state);
+}
+
+void ClusteredRandomPathStrategy::onStateDeactivated(SymbolicState *state) {
+  states.erase(state);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Limited Flow Strategy
+////////////////////////////////////////////////////////////////////////////////
+
+void LimitedFlowStrategy::onStateActivated(SymbolicState *state) {
+  underStrat->onStateActivated(state);
+}
+
+void LimitedFlowStrategy::onStateDeactivated(SymbolicState *state) {
+  underStrat->onStateDeactivated(state);
+
+  if (activeStates.count(state) > 0) {
+    workingStrat->onStateDeactivated(state);
+    activeStates.erase(state);
+  }
+}
+
+SymbolicState* LimitedFlowStrategy::onNextStateSelection() {
+  // First, ask the underlying strategy...
+  SymbolicState *candidate = underStrat->onNextStateSelection();
+
+  if (!candidate) {
+    assert(activeStates.size() == 0);
+    return NULL;
+  }
+
+  if (activeStates.count(candidate) > 0)
+    return candidate;
+
+  if (activeStates.size() < maxCount) {
+    activeStates.insert(candidate);
+    workingStrat->onStateActivated(candidate);
+    return candidate;
+  }
+
+  SymbolicState *state = workingStrat->onNextStateSelection();
+  assert(state != NULL);
 
   return state;
 }

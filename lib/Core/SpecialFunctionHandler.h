@@ -63,6 +63,8 @@ namespace klee {
         ref<Expr> address, ref<Expr> size,
         const std::string &name, resolutions_ty &resList);
 
+    void makeSymbolic(ExecutionState &state, std::vector<ref<Expr> > &arguments);
+
     bool writeConcreteValue(ExecutionState &state,
         ref<Expr> address, uint64_t value, Expr::Width width);
 
@@ -79,6 +81,7 @@ namespace klee {
     HANDLER(handleAssert);
     HANDLER(handleAssertFail);
     HANDLER(handleAssume);
+    HANDLER(handleBeginChecked);
     HANDLER(handleBranch);
     HANDLER(handleCalloc);
     HANDLER(handleCheckMemoryAccess);
@@ -86,6 +89,7 @@ namespace klee {
     HANDLER(handleDefineFixedObject);
     HANDLER(handleDelete);    
     HANDLER(handleDeleteArray);
+    HANDLER(handleEndChecked);
     HANDLER(handleEvent);
     HANDLER(handleFork);
     HANDLER(handleFree);
@@ -100,6 +104,7 @@ namespace klee {
     HANDLER(handleMakeSymbolic);
     HANDLER(handleMalloc);
     HANDLER(handleMarkGlobal);
+    HANDLER(handleMemCmp);
     HANDLER(handleMerge);
     HANDLER(handleNew);
     HANDLER(handleNewArray);
@@ -110,6 +115,7 @@ namespace klee {
     HANDLER(handleProcessTerminate);
     HANDLER(handleRange);
     HANDLER(handleRealloc);
+    HANDLER(handleRecordExpr);
     HANDLER(handleReportError);
     HANDLER(handleRevirtObjects);
     HANDLER(handleSetForking);

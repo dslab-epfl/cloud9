@@ -1,0 +1,26 @@
+/*
+ * Copyright notice here.
+ */
+
+package klee.data;
+
+message StringTable {
+  message StringTableEntry {
+    required string value = 1;
+    required int32 id = 2;
+  }
+
+  repeated StringTableEntry entry = 1;
+}
+
+message DebugTable {
+	required StringTable file_table = 1;
+	required StringTable function_table = 2;
+}
+
+message DebugInfo {
+	optional int32 file_id = 1;
+	optional int32 function_id = 2;
+	optional int32 line_number = 3;
+	optional int32 assembly_number = 4;
+}

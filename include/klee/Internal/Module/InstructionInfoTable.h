@@ -13,6 +13,8 @@
 #include <map>
 #include <string>
 #include <set>
+#include <ostream>
+#include <tr1/unordered_map>
 
 namespace llvm {
   class Function;
@@ -21,46 +23,51 @@ namespace llvm {
 }
 
 namespace klee {
-
   /* Stores debug information for a KInstruction */
   struct InstructionInfo {
     unsigned id;
     const std::string &file;
+    int file_id;
     unsigned line;
     unsigned assemblyLine;
 
   public:
     InstructionInfo(unsigned _id,
                     const std::string &_file,
+                    int _file_id,
                     unsigned _line,
                     unsigned _assemblyLine)
       : id(_id), 
         file(_file),
+        file_id(_file_id),
         line(_line),
         assemblyLine(_assemblyLine) {
     }
   };
 
-  class InstructionInfoTable {
-    struct ltstr { 
-      bool operator()(const std::string *a, const std::string *b) const {
-        return *a<*b;
-      }
-    };
+  struct ltstr {
+    bool operator()(const std::string *a, const std::string *b) const {
+      return *a<*b;
+    }
+  };
 
+  typedef std::tr1::unordered_map<const llvm::Instruction*, InstructionInfo> InfoMap;
+  typedef std::map<const std::string*, int, ltstr> StringTable;
+
+  class InstructionInfoTable {
     struct ltfunc {
       bool operator()(const llvm::Function *f1, const llvm::Function *f2) const;
     };
 
     std::string dummyString;
     InstructionInfo dummyInfo;
-    std::map<const llvm::Instruction*, InstructionInfo> infos;
-    std::set<const std::string *, ltstr> internedStrings;
-
+    InfoMap infos;
   private:
-    const std::string *internString(std::string s);
+    int idCounter;
+    const std::string *internString(std::string s, int &ID);
     bool getInstructionDebugInfo(const llvm::Instruction *I,
-                                 const std::string *&File, unsigned &Line);
+                                 const std::string *&File, int &FileID,
+                                 unsigned &Line);
 
   public:
     InstructionInfoTable(llvm::Module *m);
@@ -69,6 +76,8 @@ namespace klee {
     unsigned getMaxID() const;
     const InstructionInfo &getInfo(const llvm::Instruction*) const;
     const InstructionInfo &getFunctionInfo(const llvm::Function*) const;
+
+    StringTable stringTable;
   };
 
 }

@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
 #include "StatsTracker.h"
 
+#include "klee/CoreStats.h"
 #include "klee/ExecutionState.h"
+#include "klee/SolverStats.h"
 #include "klee/Statistics.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
 #include "klee/Internal/Module/KModule.h"
@@ -19,12 +19,15 @@
 #include "klee/Internal/Support/ModuleUtil.h"
 #include "klee/Internal/System/Time.h"
 
+#include "klee/data/CoverageLogs.pb.h"
+#include "klee/data/DebugInfo.pb.h"
+#include "klee/data/Profiling.pb.h"
+#include "klee/data/Support.h"
+
 #include "CallPathManager.h"
-#include "CoreStats.h"
 #include "klee/Executor.h"
 #include "MemoryManager.h"
 #include "UserSearcher.h"
-#include "../Solver/SolverStats.h"
 
 #include "llvm/BasicBlock.h"
 #include "llvm/Function.h"
@@ -33,16 +36,22 @@
 #include "llvm/InlineAsm.h"
 #include "llvm/Module.h"
 #include "llvm/Type.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/Process.h"
 #include "llvm/Support/Path.h"
 
-#include "cloud9/instrum/InstrumentationManager.h"
 #include "cloud9/worker/WorkerCommon.h"
+
+#include <glog/logging.h>
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <ctime>
+#include <cstring>
+#include <cxxabi.h>
 
 using namespace klee;
 using namespace llvm;
@@ -65,6 +74,21 @@ namespace {
                cl::desc("Write instruction level statistics (in callgrind format)"),
                cl::init(true));
 
+  cl::opt<bool>
+  OutputDetailedCoverage("output-detailed-coverage",
+      cl::desc("Write periodic detailed coverage information"),
+      cl::init(true));
+
+  cl::opt<bool>
+  OutputProfileSnapshots("output-profile-snapshots",
+      cl::desc("Write periodic callgraph snapshots"),
+      cl::init(false));
+
+  cl::opt<bool>
+  OutputSolverQueries("output-solver-queries",
+      cl::desc("Write the log of solver queries"),
+      cl::init(true));
+
   cl::opt<double>
   StatsWriteInterval("stats-write-interval",
                      cl::desc("Approximate number of seconds between stats writes (default: 1.0)"),
@@ -76,9 +100,14 @@ namespace {
                       cl::init(10.));
 
   cl::opt<double>
-  CoverageUpdateInterval("cov-update-interval",
-      cl::desc("Approx. no. of secs between coverage updates (default: 3.0)"),
-      cl::init(3.0));
+  DetailedLogsInterval("detailed-logs-interval",
+      cl::desc("Approx. no. of secs between logging updates (default: 60.0)"),
+      cl::init(60.0));
+
+  cl::opt<double>
+  LogSummaryInterval("log-summary-interval",
+                     cl::desc("Approx. no. of secs between summary logs (default: 5.0)"),
+                     cl::init(5.0));
 
   /*
   cl::opt<double>
@@ -96,10 +125,11 @@ namespace {
   UseCallPaths("use-call-paths",
                cl::desc("Enable calltree tracking for instruction level statistics"),
                cl::init(true));
-  
-  cl::opt<bool>
-  DebugCoverableInstr("debug-coverable-instr", cl::init(false));
 
+  cl::opt<std::string>
+  CoverageFocus("coverage-focus",
+                cl::desc("The name of a file containing source code to focus on "
+                         "when measuring coverage"));
 }
 
 ///
@@ -116,7 +146,9 @@ namespace klee {
     WriteIStatsTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
     ~WriteIStatsTimer() {}
     
-    void run() { statsTracker->writeIStats(); }
+    void run() {
+      statsTracker->writeIStats();
+    }
   };
   
   class WriteStatsTimer : public Executor::Timer {
@@ -126,16 +158,21 @@ namespace klee {
     WriteStatsTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
     ~WriteStatsTimer() {}
     
-    void run() { statsTracker->writeStatsLine(); }
+    void run() {
+      statsTracker->writeStatsLine();
+      statsTracker->writeSolverQueries();
+    }
   };
 
-  class UpdateCoverageTimer: public Executor::Timer {
+  class DetailedLogsTimer: public Executor::Timer {
     StatsTracker *statsTracker;
   public:
-    UpdateCoverageTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
-    ~UpdateCoverageTimer() { }
+    DetailedLogsTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
+    ~DetailedLogsTimer() { }
 
-    void run() { statsTracker->computeCodeCoverage(); }
+    void run() {
+      statsTracker->commitDetailedLogs();
+    }
   };
 
   class UpdateReachableTimer : public Executor::Timer {
@@ -144,7 +181,21 @@ namespace klee {
   public:
     UpdateReachableTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
     
-    void run() { statsTracker->computeReachableUncovered(); }
+    void run() {
+      statsTracker->computeReachableUncovered();
+    }
+  };
+
+  class LogSummaryTimer : public Executor::Timer {
+    StatsTracker *statsTracker;
+
+  public:
+    LogSummaryTimer(StatsTracker *_statsTracker) : statsTracker(_statsTracker) {}
+    ~LogSummaryTimer() {}
+
+    void run() {
+      statsTracker->logSummary();
+    }
   };
  
 }
@@ -175,17 +226,32 @@ static bool instructionIsCoverable(Instruction *i) {
   return true;
 }
 
+static std::string CXXDemangle(const std::string &fnName) {
+  int status;
+  char *realname = abi::__cxa_demangle(fnName.c_str(), NULL, NULL, &status);
+
+  if (status == 0) {
+    std::string result(realname);
+    free(realname);
+    return result;
+  } else {
+    return fnName;
+  }
+}
+
 StatsTracker::StatsTracker(Executor &_executor, std::string _objectFilename,
                            bool _updateMinDistToUncovered)
   : executor(_executor),
     objectFilename(_objectFilename),
     statsFile(0),
     istatsFile(0),
+    detailedCoverageFile(0),
+    profileFile(0),
+    queriesFile(0),
     startWallTime(util::getWallTime()),
     numBranches(0),
     fullBranches(0),
-    partialBranches(0),
-    updateMinDistToUncovered(_updateMinDistToUncovered) {
+    partialBranches(0) {
   KModule *km = executor.kmodule;
 
   sys::Path module(objectFilename);
@@ -210,41 +276,17 @@ StatsTracker::StatsTracker(Executor &_executor, std::string _objectFilename,
       if (OutputIStats) {
         unsigned id = ki->info->id;
         theStatisticManager->setIndex(id);
-        if (kf->trackCoverage && instructionIsCoverable(ki->inst)) {
-          if (ki->originallyCovered) {
-            ++stats::locallyCoveredInstructions;
-            ++stats::globallyCoveredInstructions;
-          } else {
-            ++stats::locallyUncoveredInstructions;
-            ++stats::globallyUncoveredInstructions;
-          }
+        if (instructionIsCoverable(ki->inst)) {
+          ++stats::locallyUncoveredInstructions;
+          ++stats::globallyUncoveredInstructions;
         }
       }
-      
-      if (kf->trackCoverage) {
-        if (BranchInst *bi = dyn_cast<BranchInst>(ki->inst))
-          if (!bi->isUnconditional())
-            numBranches++;
-      }
+
+      if (BranchInst *bi = dyn_cast<BranchInst>(ki->inst))
+        if (!bi->isUnconditional())
+          numBranches++;
+
     }
-  }
-
-  if (DebugCoverableInstr) {
-    std::stringstream ss;
-
-    for (std::vector<KFunction*>::iterator it = km->functions.begin(),
-        ie = km->functions.end(); it != ie; ++it) {
-      KFunction *kf = *it;
-      for (unsigned i = 0; i < kf->numInstructions; ++i) {
-        KInstruction *ki = kf->instructions[i];
-        unsigned id = ki->info->id;
-        if (kf->trackCoverage && instructionIsCoverable(ki->inst)) {
-          ss << id << " ";
-        }
-      }
-    }
-
-    CLOUD9_DEBUG("Coverable instruction IDs: " << ss.str());
   }
 
   if (OutputStats) {
@@ -255,11 +297,12 @@ StatsTracker::StatsTracker(Executor &_executor, std::string _objectFilename,
 
     executor.addTimer(new WriteStatsTimer(this), StatsWriteInterval);
 
-    if (updateMinDistToUncovered) {
-      computeReachableUncovered();
-      executor.addTimer(new UpdateReachableTimer(this), UncoveredUpdateInterval);
-    }
+    pstatsFile = executor.interpreterHandler->openOutputFile("stats.bin");
+    assert(pstatsFile && "unable to open statistics protobuf file");
   }
+
+  computeReachableUncovered();
+  executor.addTimer(new UpdateReachableTimer(this), UncoveredUpdateInterval);
 
   if (OutputIStats) {
     istatsFile = executor.interpreterHandler->openOutputFile("run.istats");
@@ -268,7 +311,33 @@ StatsTracker::StatsTracker(Executor &_executor, std::string _objectFilename,
     executor.addTimer(new WriteIStatsTimer(this), IStatsWriteInterval);
   }
 
-  executor.addTimer(new UpdateCoverageTimer(this), CoverageUpdateInterval);
+  if (CoverageFocus != "") {
+    std::ifstream ifs(CoverageFocus.getValue().c_str());
+    assert(!ifs.fail() && "Could not open the coverage focus file");
+    readCoverageFocus(ifs);
+  }
+
+  if (OutputDetailedCoverage) {
+    detailedCoverageFile = executor.interpreterHandler->openOutputFile("coverage.bin");
+    assert(detailedCoverageFile && "unable to open detailed coverage file");
+    writeDetailedCoverageSnapshot(true);
+  }
+
+  if (OutputProfileSnapshots) {
+    profileFile = executor.interpreterHandler->openOutputFile("profile.bin");
+    assert(profileFile && "unable to open callgraph file");
+  }
+
+  if (OutputSolverQueries) {
+    queriesFile = executor.interpreterHandler->openOutputFile("queries.bin");
+    assert(queriesFile && "unable to open constraints file");
+  }
+
+  statesFile = executor.interpreterHandler->openOutputFile("states.bin");
+  assert(statesFile && "unable to open states file");
+
+  executor.addTimer(new DetailedLogsTimer(this), DetailedLogsInterval);
+  executor.addTimer(new LogSummaryTimer(this), LogSummaryInterval);
 }
 
 StatsTracker::~StatsTracker() {  
@@ -276,64 +345,69 @@ StatsTracker::~StatsTracker() {
     delete statsFile;
   if (istatsFile)
     delete istatsFile;
+  if (pstatsFile)
+    delete pstatsFile;
+  // TODO(bucur): Fix the rest of the leaks
 }
 
 void StatsTracker::done() {
-  computeCodeCoverage();
   if (statsFile)
     writeStatsLine();
   if (OutputIStats)
     writeIStats();
+  writeSolverQueries();
+  writeStates();
+  writeStatistics();
 }
 
 void StatsTracker::stepInstruction(ExecutionState &es) {
-	if (OutputIStats) {
-		if (TrackInstructionTime) {
-			static sys::TimeValue lastNowTime(0, 0), lastUserTime(0, 0);
+  if (OutputIStats) {
+    if (TrackInstructionTime) {
+      static sys::TimeValue lastNowTime(0, 0), lastUserTime(0, 0);
 
-			if (lastUserTime.seconds() == 0 && lastUserTime.nanoseconds() == 0) {
-				sys::TimeValue sys(0, 0);
-				sys::Process::GetTimeUsage(lastNowTime, lastUserTime, sys);
-			} else {
-				sys::TimeValue now(0, 0), user(0, 0), sys(0, 0);
-				sys::Process::GetTimeUsage(now, user, sys);
-				sys::TimeValue delta = user - lastUserTime;
-				sys::TimeValue deltaNow = now - lastNowTime;
-				stats::instructionTime += delta.usec();
-				stats::instructionRealTime += deltaNow.usec();
-				lastUserTime = user;
-				lastNowTime = now;
-			}
-		}
+      if (lastUserTime.seconds() == 0 && lastUserTime.nanoseconds() == 0) {
+        sys::TimeValue sys(0, 0);
+        sys::Process::GetTimeUsage(lastNowTime, lastUserTime, sys);
+      } else {
+        sys::TimeValue now(0, 0), user(0, 0), sys(0, 0);
+        sys::Process::GetTimeUsage(now, user, sys);
+        sys::TimeValue delta = user - lastUserTime;
+        sys::TimeValue deltaNow = now - lastNowTime;
+        stats::instructionTime += delta.usec();
+        stats::instructionRealTime += deltaNow.usec();
+        lastUserTime = user;
+        lastNowTime = now;
+      }
+    }
 
-		Instruction *inst = es.pc()->inst;
-		const InstructionInfo &ii = *es.pc()->info;
-		StackFrame &sf = es.stack().back();
-		theStatisticManager->setIndex(ii.id);
-		if (UseCallPaths)
-			theStatisticManager->setContext(&sf.callPathNode->statistics);
+    Instruction *inst = es.pc()->inst;
+    const InstructionInfo &ii = *es.pc()->info;
+    StackFrame &sf = es.stack().back();
+    theStatisticManager->setIndex(ii.id);
+    if (UseCallPaths)
+      theStatisticManager->setContext(&sf.callPathNode->statistics);
 
-		if (es.instsSinceCovNew)
-			++es.instsSinceCovNew;
+    if (es.instsSinceCovNew)
+      ++es.instsSinceCovNew;
 
-		if (sf.kf->trackCoverage && instructionIsCoverable(inst)) {
-			if (!theStatisticManager->getIndexedValue(
-					stats::locallyCoveredInstructions, ii.id)) {
-				// Checking for actual stoppoints avoids inconsistencies due
-				// to line number propogation.
-				es.coveredLines[&ii.file].insert(ii.line);
-				es.setCoveredNew();
-				es.instsSinceCovNew = 1;
-				++stats::locallyCoveredInstructions;
-				stats::locallyUncoveredInstructions += (uint64_t) -1;
+    if (instructionIsCoverable(inst)) {
+      if (!theStatisticManager->getIndexedValue(
+          stats::locallyCoveredInstructions, ii.id)) {
+        // Checking for actual stoppoints avoids inconsistencies due
+        // to line number propogation.
+        es.coveredLines[&ii.file].insert(ii.line);
+        es.setCoveredNew();
+        es.instsSinceCovNew = 1;
+        ++stats::locallyCoveredInstructions;
+        stats::locallyUncoveredInstructions += (uint64_t) -1;
 
-				if (!theStatisticManager->getIndexedValue(stats::globallyCoveredInstructions, ii.id)) {
-					++stats::globallyCoveredInstructions;
-					stats::globallyUncoveredInstructions += (uint64_t) -1;
-				}
-			}
-		}
-	}
+        if (!theStatisticManager->getIndexedValue(stats::globallyCoveredInstructions, ii.id)) {
+          ++stats::globallyCoveredInstructions;
+          stats::globallyUncoveredInstructions += (uint64_t) -1;
+        }
+      }
+    }
+  }
 }
 
 void StatsTracker::framePushed(StackFrame *frame, StackFrame *parentFrame) {
@@ -348,14 +422,12 @@ void StatsTracker::framePushed(StackFrame *frame, StackFrame *parentFrame) {
       cp->count++;
     }
 
-    if (updateMinDistToUncovered) {
-      uint64_t minDistAtRA = 0;
-      if (parentFrame)
-        minDistAtRA = parentFrame->minDistToUncoveredOnReturn;
+    uint64_t minDistAtRA = 0;
+    if (parentFrame)
+      minDistAtRA = parentFrame->minDistToUncoveredOnReturn;
 
-      frame->minDistToUncoveredOnReturn = frame->caller ?
-        computeMinDistToUncovered(frame->caller, minDistAtRA) : 0;
-    }
+    frame->minDistToUncoveredOnReturn = frame->caller ?
+      computeMinDistToUncovered(frame->caller, minDistAtRA) : 0;
   }
 }
 
@@ -444,6 +516,23 @@ void StatsTracker::writeStatsLine() {
   statsFile->flush();
 }
 
+void StatsTracker::recordStats() {
+  data::Statistic *statistic = currentStatisticsSet.add_statistic();
+
+  statistic->set_time_stamp(sys::TimeValue::now().toPosixTime());
+
+  statistic->set_instructions(stats::instructions);
+  statistic->set_full_branches(fullBranches);
+  statistic->set_partial_branches(partialBranches);
+  statistic->set_user_time(util::getUserTime());
+  statistic->set_num_states(executor.states.size());
+  statistic->set_num_queries(stats::queries);
+  statistic->set_num_query_constructs(stats::queryConstructs);
+  statistic->set_wall_time(elapsed());
+  statistic->set_covered_instructions(stats::locallyCoveredInstructions);
+  statistic->set_uncovered_instructions(stats::locallyUncoveredInstructions);
+}
+
 void StatsTracker::updateStateStatistics(uint64_t addend) {
   for (std::set<ExecutionState*>::iterator it = executor.states.begin(),
          ie = executor.states.end(); it != ie; ++it) {
@@ -521,7 +610,7 @@ void StatsTracker::writeIStats() {
   for (Module::iterator fnIt = m->begin(), fn_ie = m->end(); 
        fnIt != fn_ie; ++fnIt) {
     if (!fnIt->isDeclaration()) {
-      of << "fn=" << fnIt->getNameStr() << "\n";
+      of << "fn=" << CXXDemangle(fnIt->getName().str()) << "\n";
       for (Function::iterator bbIt = fnIt->begin(), bb_ie = fnIt->end(); 
            bbIt != bb_ie; ++bbIt) {
         for (BasicBlock::iterator it = bbIt->begin(), ie = bbIt->end(); 
@@ -554,7 +643,7 @@ void StatsTracker::writeIStats() {
   
                 if (fii.file!="" && fii.file!=sourceFile)
                   of << "cfl=" << fii.file << "\n";
-                of << "cfn=" << f->getNameStr() << "\n";
+                of << "cfn=" << CXXDemangle(f->getName().str()) << "\n";
                 of << "calls=" << csi.count << " ";
                 of << fii.assemblyLine << " ";
                 of << fii.line << "\n";
@@ -696,25 +785,21 @@ void StatsTracker::computeReachableUncovered() {
         } else {
           functionShortestPath[fnIt] = 1; // whatever
         }
+        continue;
       } else {
         functionShortestPath[fnIt] = 0;
       }
 
-      // Not sure if I should bother to preorder here. XXX I should.
-      for (Function::iterator bbIt = fnIt->begin(), bb_ie = fnIt->end(); 
-           bbIt != bb_ie; ++bbIt) {
-        for (BasicBlock::iterator it = bbIt->begin(), ie = bbIt->end(); 
-             it != ie; ++it) {
-          instructions.push_back(it);
-          unsigned id = infos.getInfo(it).id;
-          sm.setIndexedValue(stats::minDistToReturn, 
-                             id, 
-                             isa<ReturnInst>(it) || isa<UnwindInst>(it));
-        }
+      KFunction *kf = km->functionMap[fnIt];
+
+      for (unsigned i = 0; i < kf->numInstructions; ++i) {
+        Instruction *inst = kf->instrPostOrder[i]->inst;
+        instructions.push_back(inst);
+        sm.setIndexedValue(stats::minDistToReturn,
+                           kf->instrPostOrder[i]->info->id,
+                           isa<ReturnInst>(inst));
       }
     }
-  
-    std::reverse(instructions.begin(), instructions.end());
     
     // I'm so lazy it's not even worklisted.
     bool changed;
@@ -770,33 +855,36 @@ void StatsTracker::computeReachableUncovered() {
 
   // compute minDistToUncovered, 0 is unreachable
   std::vector<Instruction *> instructions;
+  std::vector<unsigned> ids;
+
   for (Module::iterator fnIt = m->begin(), fn_ie = m->end(); 
        fnIt != fn_ie; ++fnIt) {
-    // Not sure if I should bother to preorder here.
-    for (Function::iterator bbIt = fnIt->begin(), bb_ie = fnIt->end(); 
-         bbIt != bb_ie; ++bbIt) {
-      for (BasicBlock::iterator it = bbIt->begin(), ie = bbIt->end(); 
-           it != ie; ++it) {
-        unsigned id = infos.getInfo(it).id;
-        instructions.push_back(&*it);
-        sm.setIndexedValue(stats::minDistToGloballyUncovered, 
-                           id, 
-                           sm.getIndexedValue(stats::globallyUncoveredInstructions, id));
-      }
+    if (fnIt->isDeclaration())
+      continue;
+
+    KFunction *kf = km->functionMap[fnIt];
+
+    for (unsigned i = 0; i < kf->numInstructions; ++i) {
+      Instruction *inst = kf->instrPostOrder[i]->inst;
+      unsigned id = kf->instrPostOrder[i]->info->id;
+      instructions.push_back(inst);
+      ids.push_back(id);
+      sm.setIndexedValue(stats::minDistToGloballyUncovered,
+                         id,
+                         sm.getIndexedValue(stats::globallyUncoveredInstructions, id));
     }
   }
-  
-  std::reverse(instructions.begin(), instructions.end());
   
   // I'm so lazy it's not even worklisted.
   bool changed;
   do {
     changed = false;
-    for (std::vector<Instruction*>::iterator it = instructions.begin(),
-           ie = instructions.end(); it != ie; ++it) {
-      Instruction *inst = *it;
+    for (unsigned i = 0; i < instructions.size(); ++i) {
+      Instruction *inst = instructions[i];
+      unsigned id = ids[i];
+
       uint64_t best, cur = best = sm.getIndexedValue(stats::minDistToGloballyUncovered, 
-                                                     infos.getInfo(inst).id);
+                                                     id);
       unsigned bestThrough = 0;
       
       if (isa<CallInst>(inst) || isa<InvokeInst>(inst)) {
@@ -868,53 +956,368 @@ void StatsTracker::computeReachableUncovered() {
       currentFrameMinDist = computeMinDistToUncovered(kii, currentFrameMinDist);
     }
   }
+
+  LOG(INFO) << "Processed " << instructions.size() << " instructions in static analysis";
 }
 
-void StatsTracker::computeCodeCoverage() {
+
+void StatsTracker::computeDetailedCoverageSnapshot(data::CoverageInfo &coverageInfo,
+    bool complete) {
   KModule *km = executor.kmodule;
-  unsigned localCount = 0;
-  unsigned globalCount = 0;
-  unsigned grandTotal = 0;
 
-  for (std::vector<KFunction*>::iterator it = km->functions.begin();
-      it != km->functions.end(); it++) {
-    if (!(*it)->trackCoverage)
-      continue;
+  typedef std::map<int, std::set<int> > src_coverage_t;
 
-    std::pair<std::pair<unsigned, unsigned>, unsigned> cov = computeCodeCoverage(*it);
+  src_coverage_t global_source_coverage;
 
-    localCount += cov.first.first;
-    globalCount += cov.first.second;
-
-    grandTotal += cov.second;
+  if (complete) {
+    lastGlobalCoverage.total_asm_lines = 0;
+    lastGlobalCoverage.total_source_lines = 0;
+    lastFocusedCoverage.total_asm_lines = 0;
+    lastFocusedCoverage.total_source_lines = 0;
+  } else {
+    lastGlobalCoverage.covered_asm_lines = 0;
+    lastGlobalCoverage.covered_source_lines = 0;
+    lastFocusedCoverage.covered_asm_lines = 0;
+    lastFocusedCoverage.covered_source_lines = 0;
   }
 
-  cloud9::instrum::theInstrManager.updateCoverage("<local>", std::make_pair(localCount, grandTotal));
-  cloud9::instrum::theInstrManager.updateCoverage("<global>", std::make_pair(globalCount, grandTotal));
+  for (std::vector<KFunction*>::iterator fit = km->functions.begin(),
+      fie = km->functions.end(); fit != fie; fit++) {
+    KFunction* kf = *fit;
 
-  CLOUD9_DEBUG("Code coverage is " << localCount << "/" << grandTotal << " (local) and " << globalCount << "/" << grandTotal << " (global)...");
-}
+    src_coverage_t source_coverage;
+    data::FunctionCoverageInfo *fnCovInfo = coverageInfo.add_function_coverage();
+    fnCovInfo->set_function_id(kf->nameID);
 
-std::pair<std::pair<unsigned, unsigned>, unsigned> StatsTracker::computeCodeCoverage(KFunction *kf) {
-  unsigned localCount = 0;
-  unsigned globalCount = 0;
-  unsigned grandTotal = 0;
+    for (unsigned i = 0; i < kf->numInstructions; i++) {
+      if (!instructionIsCoverable(kf->instructions[i]->inst))
+        continue;
+      unsigned id = kf->instructions[i]->info->id;
+      if (!complete && !theStatisticManager->getIndexedValue(
+          stats::globallyCoveredInstructions, id))
+        continue;
 
-  for (unsigned i = 0; i < kf->numInstructions; i++) {
-    unsigned id = kf->instructions[i]->info->id;
+      int file_id = kf->instructions[i]->info->file_id;
+      unsigned line = kf->instructions[i]->info->line;
+      unsigned asm_line = kf->instructions[i]->info->assemblyLine;
 
-    if (!instructionIsCoverable(kf->instructions[i]->inst))
-      continue;
+      source_coverage[file_id].insert(line);
+      global_source_coverage[file_id].insert(line);
+      fnCovInfo->add_covered_asm_line(asm_line);
 
-    localCount += theStatisticManager->getIndexedValue(stats::locallyCoveredInstructions, id);
+      if (complete) {
+        lastGlobalCoverage.total_asm_lines++;
+        if (coverageFocus.count(file_id) > 0)
+          lastFocusedCoverage.total_asm_lines++;
+      } else {
+        lastGlobalCoverage.covered_asm_lines++;
+        if (coverageFocus.count(file_id) > 0)
+          lastFocusedCoverage.covered_asm_lines++;
+      }
+    }
 
-    globalCount += theStatisticManager->getIndexedValue(stats::globallyCoveredInstructions, id);
-    grandTotal++;
+    for (src_coverage_t::iterator cit = source_coverage.begin(),
+        cie = source_coverage.end(); cit != cie; ++cit) {
+      data::SourceFileCoverageInfo *srcCovInfo =
+          fnCovInfo->add_source_coverage();
+      srcCovInfo->set_file_id(cit->first);
+      for (std::set<int>::iterator lit = cit->second.begin(),
+          lie = cit->second.end(); lit != lie; ++lit) {
+        srcCovInfo->add_covered_line(*lit);
+      }
+    }
   }
 
-  cloud9::instrum::theInstrManager.updateCoverage(kf->function->getNameStr(),
-      std::make_pair(UseGlobalCoverage ? globalCount : localCount, grandTotal));
+  for (src_coverage_t::iterator cit = global_source_coverage.begin(),
+      cie = global_source_coverage.end(); cit != cie; ++cit) {
+    if (complete) {
+      lastGlobalCoverage.total_source_lines += cit->second.size();
+      if (coverageFocus.count(cit->first) > 0)
+        lastFocusedCoverage.total_source_lines += cit->second.size();
+    } else {
+      lastGlobalCoverage.covered_source_lines += cit->second.size();
+      if (coverageFocus.count(cit->first) > 0)
+        lastFocusedCoverage.covered_source_lines += cit->second.size();
+    }
+  }
 
-  return std::make_pair(std::make_pair(localCount, globalCount), grandTotal);
+  coverageInfo.set_time_stamp(::time(NULL));
+  coverageInfo.set_total_source_lines(lastGlobalCoverage.total_source_lines);
+  coverageInfo.set_total_asm_lines(lastGlobalCoverage.total_asm_lines);
+  coverageInfo.set_covered_source_lines(lastGlobalCoverage.covered_source_lines);
+  coverageInfo.set_covered_asm_lines(lastGlobalCoverage.covered_asm_lines);
 }
 
+void StatsTracker::writeDetailedCoverageSnapshot(bool is_header) {
+  data::CoverageInfo coverageInfo;
+  computeDetailedCoverageSnapshot(coverageInfo, is_header);
+  WriteProtoMessage(coverageInfo, *detailedCoverageFile, true);
+}
+
+void StatsTracker::writeCallgraphProfile() {
+  data::GlobalProfile globalProfile;
+  getCallgraphProfile(globalProfile);
+  WriteProtoMessage(globalProfile, *profileFile, true);
+}
+
+void StatsTracker::writeSolverQueries() {
+  if (!currentQuerySet.solver_query_size())
+    return;
+
+  WriteProtoMessage(currentQuerySet, *queriesFile, true);
+  currentQuerySet.Clear();
+}
+
+void StatsTracker::writeStatistics() {
+  if (!currentStatisticsSet.statistic_size())
+    return;
+
+  WriteProtoMessage(currentStatisticsSet, *statsFile, true);
+  currentStatisticsSet.Clear();
+}
+
+void StatsTracker::writeStates() {
+  flushAllStates();
+
+  if (!currentStatesSet.execution_state_size())
+    return;
+
+  WriteProtoMessage(currentStatesSet, *statesFile, true);
+  currentStatesSet.Clear();
+}
+
+// TODO(sbucur): Break this into multiple methods
+void StatsTracker::getCallgraphProfile(data::GlobalProfile &globalProfile) {
+  Module *m = executor.kmodule->module;
+  uint64_t istatsMask = 0;
+
+  StatisticManager &sm = *theStatisticManager;
+  unsigned nStats = sm.getNumStatistics();
+
+  istatsMask |= 1<<sm.getStatisticID("Queries");
+  istatsMask |= 1<<sm.getStatisticID("QueriesValid");
+  istatsMask |= 1<<sm.getStatisticID("QueriesInvalid");
+  istatsMask |= 1<<sm.getStatisticID("QueryTime");
+  istatsMask |= 1<<sm.getStatisticID("ResolveTime");
+  istatsMask |= 1<<sm.getStatisticID("Instructions");
+  istatsMask |= 1<<sm.getStatisticID("InstructionTimes");
+  istatsMask |= 1<<sm.getStatisticID("InstructionRealTimes");
+  istatsMask |= 1<<sm.getStatisticID("Forks");
+  istatsMask |= 1<<sm.getStatisticID("GloballyCoveredInstructions");
+  istatsMask |= 1<<sm.getStatisticID("GloballyUncoveredInstructions");
+  istatsMask |= 1<<sm.getStatisticID("States");
+  istatsMask |= 1<<sm.getStatisticID("MinDistToUncovered");
+
+  for (unsigned i=0; i<nStats; i++) {
+    if (istatsMask & (1<<i)) {
+      Statistic &s = sm.getStatistic(i);
+      globalProfile.add_cost_label(s.getName());
+    }
+  }
+
+  globalProfile.set_time_stamp(::time(NULL));
+
+  // set state counts, decremented after we process so that we don't
+  // have to zero all records each time.
+  if (istatsMask & (1<<stats::states.getID()))
+    updateStateStatistics(1);
+
+  CallSiteSummaryTable callSiteStats;
+  if (UseCallPaths)
+    callPathManager.getSummaryStatistics(callSiteStats);
+
+  for (Module::iterator fnIt = m->begin(), fn_ie = m->end();
+       fnIt != fn_ie; ++fnIt) {
+    if (fnIt->isDeclaration())
+      continue;
+
+    data::FunctionProfile *functionProfile = globalProfile.add_function_profile();
+    functionProfile->set_function_id(executor.kmodule->functionMap[&(*fnIt)]->nameID);
+
+    for (Function::iterator bbIt = fnIt->begin(), bb_ie = fnIt->end();
+         bbIt != bb_ie; ++bbIt) {
+      for (BasicBlock::iterator it = bbIt->begin(), ie = bbIt->end();
+           it != ie; ++it) {
+        Instruction *instr = &*it;
+        const InstructionInfo &ii = executor.kmodule->infos->getInfo(instr);
+        unsigned index = ii.id;
+
+        data::LineProfile *lineProfile = functionProfile->add_line_profile();
+        executor.kmodule->fillInstructionDebugInfo(
+            instr, *lineProfile->mutable_debug_info());
+
+        for (unsigned i=0; i<nStats; i++) {
+          if (istatsMask&(1<<i)) {
+            lineProfile->add_cost_value(
+                sm.getIndexedValue(sm.getStatistic(i), index));
+          }
+        }
+
+        if (UseCallPaths &&
+            (isa<CallInst>(instr) || isa<InvokeInst>(instr))) {
+          CallSiteSummaryTable::iterator it = callSiteStats.find(instr);
+          if (it!=callSiteStats.end()) {
+            for (std::map<llvm::Function*, CallSiteInfo>::iterator
+                   fit = it->second.begin(), fie = it->second.end();
+                 fit != fie; ++fit) {
+              Function *f = fit->first;
+              CallSiteInfo &csi = fit->second;
+
+              data::CallSiteProfile *callsiteProfile = lineProfile->add_call_site_profile();
+              executor.kmodule->fillFunctionDebugInfo(
+                  f, *callsiteProfile->mutable_debug_info());
+
+              callsiteProfile->set_call_count(csi.count);
+
+              for (unsigned i=0; i<nStats; i++) {
+                if (istatsMask&(1<<i)) {
+                  Statistic &s = sm.getStatistic(i);
+                  uint64_t value;
+
+                  // Hack, ignore things that don't make sense on
+                  // call paths.
+                  if (&s == &stats::globallyUncoveredInstructions) {
+                    value = 0;
+                  } else {
+                    value = csi.statistics.getValue(s);
+                  }
+
+                  callsiteProfile->add_cost_value(value);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (istatsMask & (1<<stats::states.getID()))
+    updateStateStatistics((uint64_t)-1);
+}
+
+void StatsTracker::commitDetailedLogs() {
+  if (OutputDetailedCoverage) {
+    writeDetailedCoverageSnapshot(false);
+  }
+  if (OutputProfileSnapshots) {
+    writeCallgraphProfile();
+  }
+  writeStates();
+}
+
+void StatsTracker::readCoverageFocus(std::istream &is) {
+  KModule *km = executor.kmodule;
+
+  while (!is.eof()) {
+    std::string file_name;
+    is >> file_name;
+
+    if (is.eof() && file_name.length() == 0)
+      break;
+
+    for (StringTable::iterator it = km->infos->stringTable.begin(),
+        ie = km->infos->stringTable.end(); it != ie; ++it) {
+      const std::string *str = it->first;
+      if (str->rfind(file_name) != std::string::npos)
+        coverageFocus.insert(it->second);
+    }
+  }
+}
+
+std::string StatsTracker::formatCoverageInfo(unsigned total, unsigned covered) {
+  std::stringstream oss;
+
+  if (total) {
+    oss << (100L * covered / total);
+    oss << "%";
+  } else {
+    oss << "-";
+  }
+  oss << " (" << covered << "/" << total << ")";
+
+  return oss.str();
+}
+
+void StatsTracker::logSummary() {
+  LOG(INFO) << "[STATS] StateCount: " << executor.states.size()
+      << " InstructionCount: " << stats::instructions
+      << " QueryCount: " << stats::queries;
+
+  LOG(INFO) << "[GLOBAL COVERAGE] "
+      << "Source: " << formatCoverageInfo(lastGlobalCoverage.total_source_lines,
+                                          lastGlobalCoverage.covered_source_lines)
+      << " Instructions: " << formatCoverageInfo(lastGlobalCoverage.total_asm_lines,
+                                                 lastGlobalCoverage.covered_asm_lines);
+  LOG(INFO) << "[FOCUSED COVERAGE] "
+      << "Source: " << formatCoverageInfo(lastFocusedCoverage.total_source_lines,
+                                          lastFocusedCoverage.covered_source_lines)
+      << " Instructions: " << formatCoverageInfo(lastFocusedCoverage.total_asm_lines,
+                                                 lastFocusedCoverage.covered_asm_lines);
+}
+
+void StatsTracker::recordSolverQuery(uint64_t time_stamp, uint64_t solving_time,
+    data::QueryReason reason, data::QueryOperation operation,
+    bool shadow, const ExecutionState &state) {
+  data::SolverQuery *query = currentQuerySet.add_solver_query();
+
+  query->set_time_stamp(time_stamp);
+  query->set_solving_time(solving_time);
+  query->set_reason(reason);
+  query->set_operation(operation);
+
+  KInstruction *ki = state.prevPC();
+  executor.kmodule->fillInstructionDebugInfo(
+      ki->inst, *query->mutable_debug_info());
+
+  query->set_shadow(shadow);
+
+  data::ExecutionState *es_data = query->mutable_execution_state();
+  recordStateUpdate(state, false, false, es_data);
+}
+
+void StatsTracker::updateStates(ExecutionState *current,
+                                const std::set<ExecutionState*> &addedStates,
+                                const std::set<ExecutionState*> &removedStates) {
+  if (!addedStates.empty()) {
+    for (std::set<ExecutionState*>::iterator it = addedStates.begin(),
+        ie = addedStates.end(); it != ie; ++it) {
+      currentStates.insert(*it);
+    }
+  }
+
+  if (!removedStates.empty()) {
+    for (std::set<ExecutionState*>::iterator it = removedStates.begin(),
+        ie = removedStates.end(); it != ie; ++it) {
+      currentStates.erase(*it);
+      data::ExecutionState *es_data = currentStatesSet.add_execution_state();
+      recordStateUpdate(*(*it), true, true, es_data);
+    }
+  }
+}
+
+void StatsTracker::recordStateUpdate(const ExecutionState &state,
+                                     bool terminated, bool set_stamp,
+                                     data::ExecutionState *es_data) {
+  if (set_stamp)
+    es_data->set_time_stamp(sys::TimeValue::now().toPosixTime());
+
+  es_data->set_id(state.state_id, 20);
+  es_data->set_parent_id(state.parent_id, 20);
+
+  es_data->set_instructions(state.totalInstructions);
+  es_data->set_branches(state.totalBranches);
+  es_data->set_forks(state.totalForks);
+  es_data->set_queries(state.totalQueries);
+  es_data->set_total_time(state.totalTime);
+
+  es_data->set_terminated(terminated);
+}
+
+void StatsTracker::flushAllStates() {
+  for (std::set<ExecutionState*>::iterator it = currentStates.begin(),
+      ie = currentStates.end(); it != ie; ++it) {
+    data::ExecutionState *es_data = currentStatesSet.add_execution_state();
+    recordStateUpdate(*(*it), false, true, es_data);
+  }
+}

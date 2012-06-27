@@ -12,13 +12,12 @@
 #include "klee/Constraints.h"
 #include "klee/Expr.h"
 #include "klee/SolverImpl.h"
+#include "klee/SolverStats.h"
 #include "klee/TimerStatIncrementer.h"
 #include "klee/util/Assignment.h"
 #include "klee/util/ExprUtil.h"
 #include "klee/util/ExprVisitor.h"
 #include "klee/Internal/ADT/MapOfSets.h"
-
-#include "SolverStats.h"
 
 #include "llvm/Support/CommandLine.h"
 

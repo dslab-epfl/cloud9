@@ -40,8 +40,8 @@
 
 namespace klee {
 
-class KFunction;
-class KInstruction;
+struct KFunction;
+struct KInstruction;
 
 class StackTrace {
   friend class ExecutionState;

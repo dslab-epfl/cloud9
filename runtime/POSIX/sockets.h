@@ -114,6 +114,8 @@ typedef struct socket {
   stream_buffer_t *listen;
 } socket_t;
 
+struct stat;
+
 int _close_socket(socket_t *sock);
 ssize_t _read_socket(socket_t *sock, void *buf, size_t count);
 ssize_t _write_socket(socket_t *sock, const void *buf, size_t count);
@@ -123,6 +125,8 @@ int _ioctl_socket(socket_t *sock, unsigned long request, char *argp);
 int _is_blocking_socket(socket_t *sock, int event);
 int _register_events_socket(socket_t *sock, wlist_id_t wlist, int events);
 void _deregister_events_socket(socket_t *sock, wlist_id_t wlist, int events);
+
+void klee_init_network(void);
 
 
 #endif /* SOCKETS_H_ */

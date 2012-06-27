@@ -36,33 +36,8 @@
 #include "config.h"
 
 #include <sys/types.h>
-#include <sys/uio.h>
-#include <unistd.h>
-
-
-#ifdef __USE_MISC
-#undef __USE_MISC
-#define __REDEF_MISC
-#endif
-
-#ifdef __USE_XOPEN2K8
-#undef __USE_XOPEN2K8
-#define __REDEF_XOPEN2K8
-#endif
-
-#include <sys/stat.h>
-
-#ifdef __REDEF_MISC
-#define __USE_MISC 1
-#undef __REDEF_MISC
-#endif
-
-#ifdef __REDEF_XOPEN2K8
-#define __USE_XOPEN2K8 1
-#undef __REDEF_XOPEN2K8
-#endif
-
 #include <string.h>
+#include <stdint.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // IOCtl Codes
@@ -90,6 +65,17 @@
 
 #define __KLEE_FORK_DEFAULT       0
 #define __KLEE_FORK_FAULTINJ      1
+#define __KLEE_FORK_SCHEDULE      2
+#define __KLEE_FORK_INTERNAL      3
+#define __KLEE_FORK_MULTI         4
+#define __KLEE_FORK_TIMEOUT       5
+#define __KLEE_FORK_FUZZ          6
+
+static inline uint64_t get_fuzz_reason(int offset, int entropy) {
+  return ((uint64_t)__KLEE_FORK_FUZZ & 0xFF) |
+      (((uint64_t)entropy & 0xFF) << 8) |
+      (((uint64_t)offset & 0xFFFF) << 16);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,6 +126,7 @@ int klee_get_errno(void);
 
 void *__concretize_ptr(const void *p);
 size_t __concretize_size(size_t s);
+off_t __concretize_offset(off_t o);
 const char *__concretize_string(const char *s);
 
 unsigned __fork_values(unsigned min, unsigned max, int reason);
@@ -219,11 +206,11 @@ struct list_head {
     (l_prev)->next = (struct list_head *)l_next;  \
   } while(0)
 
-#define list_del_init(entry) 			\
-  do { 						\
+#define list_del_init(entry)      \
+  do {            \
     list_del(((struct list_head *)entry)->prev, \
-      ((struct list_head *)entry)->next);	\
-    INIT_LIST_HEAD(entry);			\
+      ((struct list_head *)entry)->next); \
+    INIT_LIST_HEAD(entry);      \
   } while(0)
 
 #define INIT_LIST_HEAD(list) \
@@ -236,12 +223,7 @@ struct list_head {
 // IOvec manipulation
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t __count_iovec(const struct iovec *iov, int iovcnt) {
-  size_t result = 0;
-  int i;
-  for (i = 0; i < iovcnt; i++)
-    result += iov[i].iov_len;
-  return result;
-}
+struct iovec;
+size_t _count_iovec(const struct iovec *iov, int iovcnt);
 
 #endif /* COMMON_H_ */

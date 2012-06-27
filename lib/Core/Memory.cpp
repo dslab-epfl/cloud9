@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
 #include "Memory.h"
 
 #include "klee/Executor.h"
@@ -32,19 +30,6 @@
 
 using namespace llvm;
 using namespace klee;
-
-#if 0
-#define OSTATE_DEBUG(msg)	\
-	do { \
-		std::ostringstream oss(std::ostringstream::out); \
-		oss << msg; \
-		oss.flush(); \
-		std::string message = oss.str(); \
-		fireDebugMessage(message); \
-	} while (0)
-#else
-#define OSTATE_DEBUG(msg)
-#endif
 
 namespace {
   cl::opt<bool>
@@ -77,9 +62,9 @@ ObjectHolder &ObjectHolder::operator=(const ObjectHolder &b) {
 
 /* Commented out because it would not compile, to be solved later
 std::ostream &klee::operator<<(std::ostream &os, const MemoryObject &obj) {
-	obj.getAllocInfo(os);
+  obj.getAllocInfo(os);
 
-	return os;
+  return os;
 }*/
 
 int MemoryObject::counter = 0;
@@ -208,11 +193,6 @@ const UpdateList &ObjectState::getUpdates() const {
     // Start a new update list.
     // FIXME: Leaked.
     static unsigned id = 0;
-
-    std::string c9AllocInfo;
-    object->getAllocInfo(c9AllocInfo);
-
-    //CLOUD9_DEBUG("Creating constant array for memory object " << c9AllocInfo);
     const Array *array = new Array("const_arr" + llvm::utostr(++id), size,
                                    &Contents[0],
                                    &Contents[0] + Contents.size());
@@ -395,14 +375,24 @@ ref<Expr> ObjectState::read8(ref<Expr> offset) const {
   flushRangeForRead(base, size);
 
   if (size>4096) {
+#if 0
     std::string allocInfo;
     object->getAllocInfo(allocInfo);
-    klee_warning_once(0, "flushing %d bytes on read, may be slow and/or crash: %s", 
-                      size,
-                      allocInfo.c_str());
+    LOG(WARNING) << "Flushing " << size
+        << " bytes on read, may be slow and/or crash: " << allocInfo.c_str();
+#else
+    LOG(WARNING) << "Flushing " << size
+            << " bytes on read, may be slow and/or crash";
+#endif
   }
   
   return ReadExpr::create(getUpdates(), ZExtExpr::create(offset, Expr::Int32));
+}
+
+const UpdateList ObjectState::readAll() const {
+  flushRangeForRead(0, size);
+
+  return getUpdates();
 }
 
 void ObjectState::write8(unsigned offset, uint8_t value) {
@@ -413,7 +403,13 @@ void ObjectState::write8(unsigned offset, uint8_t value) {
   markByteConcrete(offset);
   markByteUnflushed(offset);
 
-  OSTATE_DEBUG("Wrote at concrete offset " << offset << " concrete value " << (char)value << " (" << (int)value << ") in slot " << *object);
+  if (VLOG_IS_ON(4)) {
+    std::string allocInfo;
+    object->getAllocInfo(allocInfo);
+    VLOG(4) << "Wr:Con: " << (object->address + offset)
+        << " (+" << offset << " [" << allocInfo << "]) := "
+        << (int) value << " '" << (char) value << "'";
+  }
 }
 
 void ObjectState::write8(unsigned offset, ref<Expr> value) {
@@ -427,7 +423,7 @@ void ObjectState::write8(unsigned offset, ref<Expr> value) {
     markByteUnflushed(offset);
   }
 
-  OSTATE_DEBUG("Wrote at concrete offset " << offset << " symbolic value " << value << " in slot " << *object);
+  VLOG(4) << "Wr:Sym: " << (object->address + offset) << " (+" << offset << ") := " << value;
 }
 
 void ObjectState::write8(ref<Expr> offset, ref<Expr> value) {
@@ -437,16 +433,18 @@ void ObjectState::write8(ref<Expr> offset, ref<Expr> value) {
   flushRangeForWrite(base, size);
 
   if (size>4096) {
+#if 0
     std::string allocInfo;
     object->getAllocInfo(allocInfo);
-    klee_warning_once(0, "flushing %d bytes on read, may be slow and/or crash: %s", 
-                      size,
-                      allocInfo.c_str());
+    LOG(WARNING) << "Flushing " << size << " bytes on read, may be slow and/or crash: " << allocInfo.c_str();
+#endif
+    LOG(WARNING) << "Flushing " << size
+        << " bytes on read, may be slow and/or crash";
   }
   
   updates.extend(ZExtExpr::create(offset, Expr::Int32), value);
 
-  OSTATE_DEBUG("Wrote at symbolic offset " << offset << " symbolic value " << value << " in slot " << *object);
+  VLOG(4) << "Wr:Sym: " << object->address << " + " << offset << " := " << value;
 }
 
 /***/
@@ -485,12 +483,20 @@ ref<Expr> ObjectState::read(unsigned offset, Expr::Width width) const {
 
   // Otherwise, follow the slow general case.
   unsigned NumBytes = width / 8;
-  assert(width == NumBytes * 8 && "Invalid write size!");
+  assert(width == NumBytes * 8 && "Invalid read size!");
   ref<Expr> Res(0);
   for (unsigned i = 0; i != NumBytes; ++i) {
     unsigned idx = Context::get().isLittleEndian() ? i : (NumBytes - i - 1);
     ref<Expr> Byte = read8(offset + idx);
     Res = idx ? ConcatExpr::create(Byte, Res) : Byte;
+  }
+
+  if (VLOG_IS_ON(3)) {
+    std::string allocInfo;
+    object->getAllocInfo(allocInfo);
+    VLOG(3) << "RD:CON: " << (object->address + offset)
+        << " (+" << offset << " [" << allocInfo << "]) := "
+        << Res << ":" << width;
   }
 
   return Res;
@@ -530,12 +536,22 @@ void ObjectState::write(unsigned offset, ref<Expr> value) {
     if (w <= 64) {
       uint64_t val = CE->getZExtValue();
       switch (w) {
-      default: assert(0 && "Invalid write size!");
-      case  Expr::Bool:
-      case  Expr::Int8:  write8(offset, val); return;
-      case Expr::Int16: write16(offset, val); return;
-      case Expr::Int32: write32(offset, val); return;
-      case Expr::Int64: write64(offset, val); return;
+        default:
+          assert((w % 8 == 0) && "Invalid write size!");
+          break;
+        case  Expr::Bool:
+        case  Expr::Int8:
+          write8(offset, val);
+          return;
+        case Expr::Int16:
+          write16(offset, val);
+          return;
+        case Expr::Int32:
+          write32(offset, val);
+          return;
+        case Expr::Int64:
+          write64(offset, val);
+          return;
       }
     }
   }

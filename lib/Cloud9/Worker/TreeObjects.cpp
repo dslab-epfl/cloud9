@@ -37,9 +37,9 @@ namespace cloud9 {
 namespace worker {
 
 std::ostream &operator<< (std::ostream &os, const SymbolicState &state) {
-	os << *(state.getKleeState());
+  os << *(state.getKleeState());
 
-	return os;
+  return os;
 }
 
 }

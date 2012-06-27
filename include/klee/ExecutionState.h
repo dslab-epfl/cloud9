@@ -29,6 +29,11 @@
 #include <set>
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
+using boost::shared_ptr;
+
+#include <glog/logging.h>
+
 using namespace llvm;
 
 namespace cloud9 {
@@ -66,7 +71,7 @@ std::ostream &operator<<(std::ostream &os, const MemoryMap &mm);
 typedef uint64_t wlist_id_t;
 
 class ExecutionState {
-	friend class ObjectState;
+  friend class ObjectState;
 
 public:
   typedef std::vector<StackFrame> stack_ty;
@@ -89,9 +94,6 @@ public:
   /* System-level parameters */
   Executor *executor;
 
-  bool fakeState;
-  // Are we currently underconstrained?  Hack: value is size to make fake
-  // objects.
   unsigned depth;
 
   /// Disables forking, set by user code.
@@ -108,8 +110,8 @@ public:
   sys::TimeValue lastCoveredTime;
 
   void setCoveredNew() {
-	  coveredNew = true;
-	  lastCoveredTime = sys::TimeValue::now();
+    coveredNew = true;
+    lastCoveredTime = sys::TimeValue::now();
   }
 
   std::map<const std::string*, std::set<unsigned> > coveredLines;
@@ -160,7 +162,6 @@ public:
   }
 
   void scheduleNext(threads_ty::iterator it) {
-    //CLOUD9_DEBUG("New thread scheduled: " << it->second.tid << " (pid: " << it->second.pid << ")");
     assert(it != threads.end());
 
     crtThreadIt = it;
@@ -205,6 +206,17 @@ public:
   void addFnAlias(std::string old_fn, std::string new_fn);
   void removeFnAlias(std::string fn);
 
+  /* Logging support */
+  unsigned char state_id[20];
+  unsigned char parent_id[20];
+  unsigned char fork_id[20];
+
+  /* Various counters */
+  uint64_t totalInstructions;
+  uint64_t totalBranches;
+  uint64_t totalForks;
+  mutable uint64_t totalQueries; // TODO(bucur): Fix this atrocity
+  mutable uint64_t totalTime;
 public:
   ExecutionState(Executor *_executor, KFunction *kf);
 
@@ -214,7 +226,7 @@ public:
 
   ~ExecutionState();
   
-  ExecutionState *branch();
+  ExecutionState *branch(bool copy = false);
 
   void pushFrame(Thread &t, KInstIterator caller, KFunction *kf) {
     t.stack.push_back(StackFrame(caller,kf));

@@ -11,7 +11,6 @@
 #define KLEE_STATISTICS_H
 
 #include "Statistic.h"
-#include "cloud9/Logger.h"
 
 #include <vector>
 #include <string>
@@ -53,9 +52,9 @@ namespace klee {
     unsigned index;
 
     inline void recordChange(unsigned id, unsigned index) {
-    	if (changedIdxStats[id].first) {
-    		changedIdxStats[id].second[index] = 1;
-    	}
+      if (changedIdxStats[id].first) {
+        changedIdxStats[id].second[index] = 1;
+      }
     }
 
   public:
@@ -98,7 +97,6 @@ namespace klee {
         recordChange(s.id, index);
 
         if (contextStats) {
-          //CLOUD9_DEBUG("Size: " << theStatisticManager->getNumStatistics() << " offset: " << s.id);
           contextStats->data[s.id] += addend;
         }
       }
@@ -173,26 +171,26 @@ namespace klee {
   }
 
   inline void StatisticManager::trackChanges(const Statistic &s) {
-	  changedIdxStats[s.id].first = true;
+    changedIdxStats[s.id].first = true;
 
-	  resetChanges(s);
+    resetChanges(s);
   }
 
   inline void StatisticManager::resetChanges(const Statistic &s) {
-	  assert(changedIdxStats[s.id].first);
+    assert(changedIdxStats[s.id].first);
 
-	  changedIdxStats[s.id].second.clear();
-	  changedIdxStats[s.id].second.resize(totalIndices, 0);
+    changedIdxStats[s.id].second.clear();
+    changedIdxStats[s.id].second.resize(totalIndices, 0);
   }
 
   inline void StatisticManager::collectChanges(const Statistic &s, std::vector<std::pair<uint32_t, uint64_t> > &changes) {
-	  assert(changedIdxStats[s.id].first);
+    assert(changedIdxStats[s.id].first);
 
-	  for (unsigned int i = 0; i < totalIndices; i++) {
-		  if (changedIdxStats[s.id].second[i]) {
-			  changes.push_back(std::make_pair(i, indexedStats[i*stats.size() + s.id]));
-		  }
-	  }
+    for (unsigned int i = 0; i < totalIndices; i++) {
+      if (changedIdxStats[s.id].second[i]) {
+        changes.push_back(std::make_pair(i, indexedStats[i*stats.size() + s.id]));
+      }
+    }
   }
 }
 

@@ -11,6 +11,7 @@
 #define KLEE_KMODULE_H
 
 #include "klee/Interpreter.h"
+#include "llvm/ADT/StringRef.h"
 
 #include <map>
 #include <set>
@@ -36,20 +37,21 @@ namespace klee {
   class KModule;
   template<class T> class ref;
 
+  namespace data {
+    class DebugInfo;
+  }
+
   struct KFunction {
     llvm::Function *function;
+    int nameID;
 
     unsigned numArgs, numRegisters;
 
     unsigned numInstructions;
     KInstruction **instructions;
+    KInstruction **instrPostOrder;
 
     std::map<llvm::BasicBlock*, unsigned> basicBlockEntry;
-
-    /// Whether instructions in this function should count as
-    /// "coverable" for statistics and search heuristics.
-    bool trackCoverage;
-
   private:
     KFunction(const KFunction&);
     KFunction &operator=(const KFunction&);
@@ -77,6 +79,8 @@ namespace klee {
     KConstant(llvm::Constant*, unsigned, KInstruction*);
   };
 
+  typedef std::map<const llvm::Function*, KFunction*> FunctionMap;
+
 
   class KModule {
   public:
@@ -88,11 +92,14 @@ namespace klee {
 
     // Our shadow versions of LLVM structures.
     std::vector<KFunction*> functions;
-    std::map<llvm::Function*, KFunction*> functionMap;
+    FunctionMap functionMap;
 
     // Functions which escape (may be called indirectly)
     // XXX change to KFunction
     std::set<llvm::Function*> escapingFunctions;
+
+    // A name->id mapping of symbol names
+    std::map<llvm::StringRef, int> nameTable;
 
     InstructionInfoTable *infos;
 
@@ -105,24 +112,11 @@ namespace klee {
   private:
     typedef std::pair<std::string, int> program_point_t;
     typedef std::map<std::string, std::set<program_point_t> > vpoints_t;
-    typedef std::set<program_point_t> cov_points_t;
 
     vpoints_t   vulnerablePoints;
 
     void readVulnerablePoints(std::istream &is);
     bool isVulnerablePoint(KInstruction *kinst);
-
-    typedef std::set<std::string>  cov_list_t;
-
-    cov_list_t  coverableFiles;
-    cov_list_t  exceptedFunctions;
-
-    void readCoverableFiles(std::istream &is);
-    bool isFunctionCoverable(KFunction *kf);
-
-    cov_points_t coveredLines;
-
-    void readInitialCoverage(std::istream &is);
 
   public:
     KModule(llvm::Module *_module);
@@ -136,6 +130,13 @@ namespace klee {
 
     /// Return an id for the given constant, creating a new one if necessary.
     unsigned getConstantID(llvm::Constant *c, KInstruction* ki);
+
+    void fillInstructionDebugInfo(const llvm::Instruction *i,
+                                  data::DebugInfo &debug_info) const;
+    void fillFunctionDebugInfo(const llvm::Function *f,
+                               data::DebugInfo &debug_info) const;
+
+    void writeDebugTable(std::ostream &os) const;
   };
 } // End klee namespace
 

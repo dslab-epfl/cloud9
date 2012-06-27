@@ -1,5 +1,0 @@
-NOTE: This directory used to contain scripts necessary to compile testing targets
-using LLVM. It is no longer necessary to use those scripts; instead, please
-follow the steps described at: 
-
-https://cloud9.epfl.ch/embedded/cloud9/user/CompilingLLVM.html

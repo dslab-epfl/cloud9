@@ -79,11 +79,11 @@ namespace BEEV {
     friend class vector<ASTNode>;
     //Print the arguments in lisp format.
     friend ostream &LispPrintVec(ostream &os, 
-				 const ASTVec &v, int indentation = 0); 
+         const ASTVec &v, int indentation = 0); 
 
   private:
     // FIXME: make this into a reference?
-    ASTInternal * _int_node_ptr;	// The real data.
+    ASTInternal * _int_node_ptr;  // The real data.
 
     // Usual constructor.  
     ASTNode(ASTInternal *in);
@@ -110,18 +110,18 @@ namespace BEEV {
       Kind k2 = n2.GetKind();
       
       if(BVCONST == k1 && BVCONST != k2){
-	return true;
+  return true;
       }
       if(BVCONST != k1 && BVCONST == k2){
-	return false;
+  return false;
       }
       
       if(SYMBOL == k1 && SYMBOL != k2) {
-      	return true;
+        return true;
       }
       
       if(SYMBOL != k1 && SYMBOL == k2) {
-      	return false;
+        return false;
       }
 
       return (n1.GetNodeNum() < n2.GetNodeNum());
@@ -271,8 +271,8 @@ namespace BEEV {
     class ASTNodeHasher {
     public:
       size_t operator() (const ASTNode& n) const{ 
-	return (size_t) n._int_node_ptr; 
-	//return (size_t)n.GetNodeNum();
+  return (size_t) n._int_node_ptr; 
+  //return (size_t)n.GetNodeNum();
       };
     }; //End of ASTNodeHasher
   
@@ -282,7 +282,7 @@ namespace BEEV {
     class ASTNodeEqual {
     public:
       bool operator()(const ASTNode& n1, const ASTNode& n2) const{ 
-	return (n1._int_node_ptr == n2._int_node_ptr); 
+  return (n1._int_node_ptr == n2._int_node_ptr); 
       }
     }; //End of ASTNodeEqual
   }; //End of Class ASTNode
@@ -435,16 +435,16 @@ namespace BEEV {
     class ASTInteriorEqual {
     public:
       bool operator()(const ASTInterior *int_node_ptr1, 
-		      const ASTInterior *int_node_ptr2) const{
-	return (*int_node_ptr1 == *int_node_ptr2);
+          const ASTInterior *int_node_ptr2) const{
+  return (*int_node_ptr1 == *int_node_ptr2);
       }
     };
 
     // Used in Equality class for hash tables
     friend bool operator==(const ASTInterior &int_node1, 
-			   const ASTInterior &int_node2){
+         const ASTInterior &int_node2){
       return (int_node1._kind == int_node2._kind) && 
-	(int_node1._children == int_node2._children);
+  (int_node1._children == int_node2._children);
     }
 
     // Call this when deleting a node that has been stored in the
@@ -497,8 +497,8 @@ namespace BEEV {
     class ASTSymbolHasher{
     public:
       size_t operator() (const ASTSymbol *sym_ptr) const{ 
-	hash<char*> h; 
-	return h(sym_ptr->_name); 
+  hash<char*> h; 
+  return h(sym_ptr->_name); 
       };
     };
 
@@ -506,7 +506,7 @@ namespace BEEV {
     class ASTSymbolEqual{
     public:
       bool operator()(const ASTSymbol *sym_ptr1, const ASTSymbol *sym_ptr2) const{ 
-	return (*sym_ptr1 == *sym_ptr2); 
+  return (*sym_ptr1 == *sym_ptr2); 
       }
     };
 
@@ -530,7 +530,7 @@ namespace BEEV {
 
     // Constructor.  This does NOT copy its argument.
     ASTSymbol(const char * const name, BeevMgr &bm) : ASTInternal(SYMBOL, bm), 
-						      _name(name) { }
+                  _name(name) { }
     
     // Destructor (does nothing, but is declared virtual here.
     virtual ~ASTSymbol();
@@ -571,9 +571,9 @@ namespace BEEV {
     public:
       bool operator()(const ASTBVConst * bvc1, const ASTBVConst  * bvc2) const { 
         if( bvc1->_value_width != bvc2->_value_width){
-	  return false;
-	}  
-	return (0==CONSTANTBV::BitVector_Compare(bvc1->_bvconst,bvc2->_bvconst));
+    return false;
+  }  
+  return (0==CONSTANTBV::BitVector_Compare(bvc1->_bvconst,bvc2->_bvconst));
       }
     };
     
@@ -656,27 +656,27 @@ namespace BEEV {
     class ASTBVConstHasher{
     public:
       size_t operator() (const ASTBVConst * bvc) const{ 
-	//Thomas Wang's 64 bit Mix Function
-	unsigned long long int key(bvc->_bvconst);
-	key += ~(key << 32);
-	key ^= (key  >> 22);
-	key += ~(key << 13);
-	key ^= (key  >> 8);
-	key += (key  << 3);
-	key ^= (key  >> 15);
-	key += ~(key << 27);
-	key ^= (key  >> 31);
-	
-	size_t return_key = key;
-	return return_key;
+  //Thomas Wang's 64 bit Mix Function
+  unsigned long long int key(bvc->_bvconst);
+  key += ~(key << 32);
+  key ^= (key  >> 22);
+  key += ~(key << 13);
+  key ^= (key  >> 8);
+  key += (key  << 3);
+  key ^= (key  >> 15);
+  key += ~(key << 27);
+  key ^= (key  >> 31);
+  
+  size_t return_key = key;
+  return return_key;
       };
     };
 
     class ASTBVConstEqual{
     public:
       bool operator()(const ASTBVConst * bvc1, const ASTBVConst  * bvc2) const { 
-	return ((bvc1->_bvconst == bvc2->_bvconst) 
-		&& (bvc1->_value_width == bvc2->_value_width));
+  return ((bvc1->_bvconst == bvc2->_bvconst) 
+    && (bvc1->_value_width == bvc2->_value_width));
       }
     };
 
@@ -702,7 +702,7 @@ namespace BEEV {
     
     friend bool operator==(const ASTBVConst &sym1, const ASTBVConst &sym2){
       return ((sym1._bvconst == sym2._bvconst) && 
-	      (sym1._value_width == sym2._value_width));
+        (sym1._value_width == sym2._value_width));
     }
 
     // Print function for bvconst -- return _bvconst value in binary format
@@ -712,7 +712,7 @@ namespace BEEV {
       bitmask = bitmask >> (64-_value_width);
 
       for (; bitmask > 0; bitmask >>= 1)
-	s += (_bvconst & bitmask) ? '1' : '0';	
+  s += (_bvconst & bitmask) ? '1' : '0';  
       os << s;
     }
     
@@ -746,17 +746,17 @@ namespace BEEV {
     class ASTBVConstHasher{
     public:
       size_t operator() (const ASTBVConst * bvc) const{ 
-	hash<char*> h;	
-	return h(bvc->_bvconst);
+  hash<char*> h;  
+  return h(bvc->_bvconst);
       };
     };
 
     class ASTBVConstEqual{
     public:
       bool operator()(const ASTBVConst * bvc1, const ASTBVConst  * bvc2) const { 
-	if(bvc1->_value_width != bvc2->_value_width)
-	  return false;
-	return (0 == strncmp(bvc1->_bvconst,bvc2->_bvconst,bvc1->_value_width));
+  if(bvc1->_value_width != bvc2->_value_width)
+    return false;
+  return (0 == strncmp(bvc1->_bvconst,bvc2->_bvconst,bvc1->_value_width));
       }
     };
     
@@ -767,7 +767,7 @@ namespace BEEV {
 
     friend bool operator==(const ASTBVConst &bvc1, const ASTBVConst &bvc2){
       if(bvc1._value_width != bvc2._value_width)
-	return false;
+  return false;
       return (0 == strncmp(bvc1._bvconst,bvc2._bvconst,bvc1._value_width));
     }
 
@@ -778,21 +778,21 @@ namespace BEEV {
     // Print function for bvconst -- return _bvconst value in binary format
     virtual void nodeprint(ostream& os) {
       if(_value_width%4 == 0) {
-	unsigned int *  iii = CONSTANTBV::BitVector_Create(_value_width,true);
-	CONSTANTBV::ErrCode e = CONSTANTBV::BitVector_from_Bin(iii,(unsigned char*)_bvconst);
-	//error printing
-	if(0 != e) {
-	  os << "nodeprint: BVCONST : wrong hex value: " << BitVector_Error(e);
-	  FatalError("");
-	}
-	unsigned char * ccc = CONSTANTBV::BitVector_to_Hex(iii);
-	os << "0hex" << ccc;
-	CONSTANTBV::BitVector_Destroy(iii);
+  unsigned int *  iii = CONSTANTBV::BitVector_Create(_value_width,true);
+  CONSTANTBV::ErrCode e = CONSTANTBV::BitVector_from_Bin(iii,(unsigned char*)_bvconst);
+  //error printing
+  if(0 != e) {
+    os << "nodeprint: BVCONST : wrong hex value: " << BitVector_Error(e);
+    FatalError("");
+  }
+  unsigned char * ccc = CONSTANTBV::BitVector_to_Hex(iii);
+  os << "0hex" << ccc;
+  CONSTANTBV::BitVector_Destroy(iii);
       }
       else {
-	std::string s(_bvconst,_value_width);
-	s = "0bin" + s;
-	os << s;
+  std::string s(_bvconst,_value_width);
+  s = "0bin" + s;
+  os << s;
       }
     }
 
@@ -800,10 +800,10 @@ namespace BEEV {
     ASTBVConst(const ASTBVConst &sym) : ASTInternal(sym._kind, sym._children, sym._bm),_bvconst(sym._bvconst) { 
       //checking if the input is in the correct format
       for(unsigned int jj=0;jj<sym._value_width;jj++)
-	if(!(sym._bvconst[jj] == '0' || sym._bvconst[jj] == '1')) {
-	  cerr << "Fatal Error: wrong input to ASTBVConst copy constructor:" << sym._bvconst << endl;
-	  FatalError("");
-	}
+  if(!(sym._bvconst[jj] == '0' || sym._bvconst[jj] == '1')) {
+    cerr << "Fatal Error: wrong input to ASTBVConst copy constructor:" << sym._bvconst << endl;
+    FatalError("");
+  }
       _value_width = sym._value_width;
     } 
   public:
@@ -832,8 +832,8 @@ namespace BEEV {
   // These are generally useful for storing ASTNodes or attributes thereof
   // Hash table from ASTNodes to ASTNodes
   typedef hash_map<ASTNode, ASTNode, 
-		   ASTNode::ASTNodeHasher, 
-		   ASTNode::ASTNodeEqual> ASTNodeMap;
+       ASTNode::ASTNodeHasher, 
+       ASTNode::ASTNodeEqual> ASTNodeMap;
 
   // Function to dump contents of ASTNodeMap
   ostream &operator<<(ostream &os, const ASTNodeMap &nmap);
@@ -843,12 +843,12 @@ namespace BEEV {
    for representing things like "visited nodes"
   ***************************************************************************/
   typedef hash_set<ASTNode, 
-		   ASTNode::ASTNodeHasher, 
-		   ASTNode::ASTNodeEqual> ASTNodeSet;
+       ASTNode::ASTNodeHasher, 
+       ASTNode::ASTNodeEqual> ASTNodeSet;
 
   typedef hash_multiset<ASTNode, 
-			ASTNode::ASTNodeHasher, 
-			ASTNode::ASTNodeEqual> ASTNodeMultiSet;
+      ASTNode::ASTNodeHasher, 
+      ASTNode::ASTNodeEqual> ASTNodeMultiSet;
 
   //external parser table for declared symbols.
   //FIXME: move to a more appropriate place
@@ -1031,8 +1031,8 @@ namespace BEEV {
    * unique tables for the various kinds of nodes.
    ***************************************************************************/
   class BeevMgr {
-    friend class ASTNode;	// ASTNode modifies AlreadyPrintedSet
-				// in BeevMgr
+    friend class ASTNode; // ASTNode modifies AlreadyPrintedSet
+        // in BeevMgr
     friend class ASTInterior;
     friend class ASTBVConst;
     friend class ASTSymbol;
@@ -1067,13 +1067,13 @@ namespace BEEV {
   private:
     // Typedef for unique Interior node table. 
     typedef hash_set<ASTInterior *, 
-		     ASTInterior::ASTInteriorHasher, 
-		     ASTInterior::ASTInteriorEqual> ASTInteriorSet;
+         ASTInterior::ASTInteriorHasher, 
+         ASTInterior::ASTInteriorEqual> ASTInteriorSet;
 
     // Typedef for unique Symbol node (leaf) table.
     typedef hash_set<ASTSymbol *, 
-		     ASTSymbol::ASTSymbolHasher, 
-		     ASTSymbol::ASTSymbolEqual> ASTSymbolSet;
+         ASTSymbol::ASTSymbolHasher, 
+         ASTSymbol::ASTSymbolEqual> ASTSymbolSet;
 
     // Unique tables to share nodes whenever possible.
     ASTInteriorSet _interior_unique_table;
@@ -1083,20 +1083,20 @@ namespace BEEV {
     
     //Typedef for unique BVConst node (leaf) table.
     typedef hash_set<ASTBVConst *, 
-		     ASTBVConst::ASTBVConstHasher,
-		     ASTBVConst::ASTBVConstEqual> ASTBVConstSet;
+         ASTBVConst::ASTBVConstHasher,
+         ASTBVConst::ASTBVConstEqual> ASTBVConstSet;
 
     //table to uniquefy bvconst
     ASTBVConstSet _bvconst_unique_table;
 
     // type of memo table.
     typedef hash_map<ASTNode, ASTVec,
-		     ASTNode::ASTNodeHasher, 
-		     ASTNode::ASTNodeEqual> ASTNodeToVecMap;
+         ASTNode::ASTNodeHasher, 
+         ASTNode::ASTNodeEqual> ASTNodeToVecMap;
 
     typedef hash_map<ASTNode,ASTNodeSet,
-		     ASTNode::ASTNodeHasher,
-		     ASTNode::ASTNodeEqual> ASTNodeToSetMap;
+         ASTNode::ASTNodeHasher,
+         ASTNode::ASTNodeEqual> ASTNodeToSetMap;
     
     // Memo table for bit blasted terms.  If a node has already been
     // bitblasted, it is mapped to a vector of Boolean formulas for
@@ -1131,7 +1131,7 @@ namespace BEEV {
     void BBSub(ASTVec& result, const ASTVec& y);
     // build ITE's (ITE cond then[i] else[i]) for each i.
     ASTVec BBITE(const ASTNode& cond, 
-		 const ASTVec& thn, const ASTVec& els);
+     const ASTVec& thn, const ASTVec& els);
     // Build a vector of zeros.
     ASTVec BBfill(unsigned int width, ASTNode fillval);
     // build an EQ formula
@@ -1141,10 +1141,10 @@ namespace BEEV {
     // q and r are "out" parameters.  rwidth puts a bound on the
     // recursion depth.   Unsigned only, for now.
     void BBDivMod(const ASTVec &y,
-		  const ASTVec &x,
-		  ASTVec &q,
-		  ASTVec &r,
-		  unsigned int rwidth);
+      const ASTVec &x,
+      ASTVec &q,
+      ASTVec &r,
+      unsigned int rwidth);
     
     // Return formula for majority function of three formulas.
     ASTNode Majority(const ASTNode& a, const ASTNode& b, const ASTNode& c);
@@ -1164,12 +1164,12 @@ namespace BEEV {
     ASTNode CreateSimpForm(Kind kind, ASTVec &children);
     ASTNode CreateSimpForm(Kind kind, const ASTNode& child0);
     ASTNode CreateSimpForm(Kind kind,
-				    const ASTNode& child0,
-				    const ASTNode& child1);
+            const ASTNode& child0,
+            const ASTNode& child1);
     ASTNode CreateSimpForm(Kind kind,
-				    const ASTNode& child0,
-				    const ASTNode& child1,
-				    const ASTNode& child2);
+            const ASTNode& child0,
+            const ASTNode& child1,
+            const ASTNode& child2);
 
     ASTNode CreateSimpNot(const ASTNode& form);
 
@@ -1177,15 +1177,15 @@ namespace BEEV {
     // FIXME: Find a way to make this local to SimpBool, so they're
     // not in AST.h
     ASTNode CreateSimpXor(const ASTNode& form1,
-			  const ASTNode& form2);
+        const ASTNode& form2);
     ASTNode CreateSimpXor(ASTVec &children);
     ASTNode CreateSimpAndOr(bool isAnd,
-				     const ASTNode& form1,
-				     const ASTNode& form2);
+             const ASTNode& form1,
+             const ASTNode& form2);
     ASTNode CreateSimpAndOr(bool IsAnd, ASTVec &children);
     ASTNode CreateSimpFormITE(const ASTNode& child0,
-				       const ASTNode& child1,
-				       const ASTNode& child2);
+               const ASTNode& child1,
+               const ASTNode& child2);
     
 
     // Declarations of BitBlaster functions (BitBlast.cpp)
@@ -1203,11 +1203,11 @@ namespace BEEV {
     // Declarations of CNF conversion (ToCNF.cpp)
   public:
     // ToCNF converts a bit-blasted Boolean formula to Conjunctive
-    // 	Normal Form, suitable for many SAT solvers.  Our CNF representation
-    // 	is an STL vector of STL vectors, for independence from any particular
-    // 	SAT solver's representation.  There needs to be a separate driver to
-    // 	convert our clauselist to the representation used by the SAT solver.    
-    // 	Currently, there is only one such solver and its driver is "ToSAT"
+    //  Normal Form, suitable for many SAT solvers.  Our CNF representation
+    //  is an STL vector of STL vectors, for independence from any particular
+    //  SAT solver's representation.  There needs to be a separate driver to
+    //  convert our clauselist to the representation used by the SAT solver.    
+    //  Currently, there is only one such solver and its driver is "ToSAT"
     
     // Datatype for clauses
     typedef ASTVec * ClausePtr;
@@ -1269,9 +1269,9 @@ namespace BEEV {
     //nodes are not modified.  Then it returns the hashed copy of the
     //node, which is created if necessary.
     ASTInterior *CreateInteriorNode(Kind kind,
-				    ASTInterior *new_node,
-				    // this is destructively modified.
-				    const ASTVec & back_children = _empty_ASTVec);
+            ASTInterior *new_node,
+            // this is destructively modified.
+            const ASTVec & back_children = _empty_ASTVec);
 
     // Create unique ASTInterior node.
     ASTInterior *LookupOrCreateInterior(ASTInterior *n);
@@ -1311,26 +1311,26 @@ namespace BEEV {
     ASTNode CreateNode(Kind kind, const ASTVec &children = _empty_ASTVec);
 
     ASTNode CreateNode(Kind kind,
-		       const ASTNode& child0,
-		       const ASTVec &children = _empty_ASTVec);
+           const ASTNode& child0,
+           const ASTVec &children = _empty_ASTVec);
 
     ASTNode CreateNode(Kind kind,
-		       const ASTNode& child0,
-		       const ASTNode& child1,
-		       const ASTVec &children = _empty_ASTVec);    
+           const ASTNode& child0,
+           const ASTNode& child1,
+           const ASTVec &children = _empty_ASTVec);    
 
     ASTNode CreateNode(Kind kind,
-		       const ASTNode& child0,
-		       const ASTNode& child1,
-		       const ASTNode& child2,
-		       const ASTVec &children = _empty_ASTVec);
+           const ASTNode& child0,
+           const ASTNode& child1,
+           const ASTNode& child2,
+           const ASTVec &children = _empty_ASTVec);
 
     // Create and return an ASTNode for a term
     inline ASTNode CreateTerm(Kind kind, 
-		       unsigned int width, 
-		       const ASTVec &children = _empty_ASTVec) {
+           unsigned int width, 
+           const ASTVec &children = _empty_ASTVec) {
       if(!is_Term_kind(kind))
-	FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
+  FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
       ASTNode n = CreateNode(kind, children);
       n.SetValueWidth(width);
 
@@ -1341,36 +1341,36 @@ namespace BEEV {
     }
 
     inline ASTNode CreateTerm(Kind kind,
-		       unsigned int width,
-		       const ASTNode& child0,
-		       const ASTVec &children = _empty_ASTVec) {
+           unsigned int width,
+           const ASTNode& child0,
+           const ASTVec &children = _empty_ASTVec) {
       if(!is_Term_kind(kind))
-	FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
+  FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
       ASTNode n = CreateNode(kind, child0, children);
       n.SetValueWidth(width);
       return n;
     }
      
     inline ASTNode CreateTerm(Kind kind,
-		       unsigned int width,
-		       const ASTNode& child0,
-		       const ASTNode& child1,
-		       const ASTVec &children = _empty_ASTVec) {
+           unsigned int width,
+           const ASTNode& child0,
+           const ASTNode& child1,
+           const ASTVec &children = _empty_ASTVec) {
       if(!is_Term_kind(kind))
-	FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
+  FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
       ASTNode n = CreateNode(kind, child0, child1, children);
       n.SetValueWidth(width);
       return n;
     }
 
     inline ASTNode CreateTerm(Kind kind,
-		       unsigned int width,
-		       const ASTNode& child0,
-		       const ASTNode& child1,
-		       const ASTNode& child2,
-		       const ASTVec &children = _empty_ASTVec) {
+           unsigned int width,
+           const ASTNode& child0,
+           const ASTNode& child1,
+           const ASTNode& child2,
+           const ASTVec &children = _empty_ASTVec) {
       if(!is_Term_kind(kind))
-	FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
+  FatalError("CreateTerm:  Illegal kind to CreateTerm:",ASTUndefined, kind);
       ASTNode n = CreateNode(kind, child0, child1, child2, children);
       n.SetValueWidth(width);
       return n;
@@ -1409,7 +1409,7 @@ namespace BEEV {
     ASTNode CombineLikeTerms(const ASTNode& a);
     ASTNode LhsMinusRhs(const ASTNode& eq);
     ASTNode DistributeMultOverPlus(const ASTNode& a, 
-				   bool startdistribution=false);
+           bool startdistribution=false);
     ASTNode ConvertBVSXToITE(const ASTNode& a);
     //checks if the input constant is odd or not
     bool BVConstIsOdd(const ASTNode& c);
@@ -1420,9 +1420,9 @@ namespace BEEV {
     void ClearAllCaches(void);
     int  BeforeSAT_ResultCheck(const ASTNode& q);
     int  CallSAT_ResultCheck(MINISAT::Solver& newS, 
-			     const ASTNode& q, const ASTNode& orig_input);   
+           const ASTNode& q, const ASTNode& orig_input);   
     int  SATBased_ArrayReadRefinement(MINISAT::Solver& newS, 
-				      const ASTNode& q, const ASTNode& orig_input);
+              const ASTNode& q, const ASTNode& orig_input);
     int SATBased_ArrayWriteRefinement(MINISAT::Solver& newS, const ASTNode& orig_input);
     //creates array write axiom only for the input term or formula, if
     //necessary. If there are no axioms to produce then it simply
@@ -1450,8 +1450,8 @@ namespace BEEV {
      * typedefs for ints)
      */
     typedef hash_map<ASTNode, MINISAT::Var, 
-		     ASTNode::ASTNodeHasher, 
-		     ASTNode::ASTNodeEqual> ASTtoSATMap;        
+         ASTNode::ASTNodeHasher, 
+         ASTNode::ASTNodeEqual> ASTtoSATMap;        
     ASTtoSATMap _ASTNode_to_SATVar;
 
   public:  
@@ -1580,8 +1580,8 @@ namespace BEEV {
      * into bitvectors.
      */    
     typedef hash_map<ASTNode, hash_map<unsigned int, bool> *, 
-		     ASTNode::ASTNodeHasher, 
-		     ASTNode::ASTNodeEqual> ASTtoBitvectorMap;        
+         ASTNode::ASTNodeHasher, 
+         ASTNode::ASTNodeEqual> ASTtoBitvectorMap;        
     ASTtoBitvectorMap _ASTNode_to_Bitvector;
 
     //Data structure that holds the counter-model
@@ -1747,20 +1747,20 @@ namespace BEEV {
 
     // Constructor
     BeevMgr() : _interior_unique_table(INITIAL_INTERIOR_UNIQUE_TABLE_SIZE),
-		_symbol_unique_table(INITIAL_SYMBOL_UNIQUE_TABLE_SIZE),
-		_bvconst_unique_table(INITIAL_BVCONST_UNIQUE_TABLE_SIZE),
-		BBTermMemo(INITIAL_BBTERM_MEMO_TABLE_SIZE),
-		BBFormMemo(INITIAL_BBFORM_MEMO_TABLE_SIZE),
-		_max_node_num(0),
-		ASTFalse(CreateNode(FALSE)),
-		ASTTrue(CreateNode(TRUE)),
-		ASTUndefined(CreateNode(UNDEFINED)),
-		SimplifyMap(INITIAL_SIMPLIFY_MAP_SIZE),
-		SimplifyNegMap(INITIAL_SIMPLIFY_MAP_SIZE),
-		SolverMap(INITIAL_SOLVER_MAP_SIZE),
-		_arrayread_symbol(INITIAL_ARRAYREAD_SYMBOL_SIZE),
-		_introduced_symbols(INITIAL_INTRODUCED_SYMBOLS_SIZE),
-		_symbol_count(0) { 
+    _symbol_unique_table(INITIAL_SYMBOL_UNIQUE_TABLE_SIZE),
+    _bvconst_unique_table(INITIAL_BVCONST_UNIQUE_TABLE_SIZE),
+    BBTermMemo(INITIAL_BBTERM_MEMO_TABLE_SIZE),
+    BBFormMemo(INITIAL_BBFORM_MEMO_TABLE_SIZE),
+    _max_node_num(0),
+    ASTFalse(CreateNode(FALSE)),
+    ASTTrue(CreateNode(TRUE)),
+    ASTUndefined(CreateNode(UNDEFINED)),
+    SimplifyMap(INITIAL_SIMPLIFY_MAP_SIZE),
+    SimplifyNegMap(INITIAL_SIMPLIFY_MAP_SIZE),
+    SolverMap(INITIAL_SOLVER_MAP_SIZE),
+    _arrayread_symbol(INITIAL_ARRAYREAD_SYMBOL_SIZE),
+    _introduced_symbols(INITIAL_INTRODUCED_SYMBOLS_SIZE),
+    _symbol_count(0) { 
       _current_query = ASTUndefined;
       ValidFlag = false;
       bvdiv_exception_occured = false;
@@ -1782,22 +1782,22 @@ namespace BEEV {
     CompleteCounterExample(ASTNodeMap a, BeevMgr* beev) : counterexample(a), bv(beev){} 
     ASTNode GetCounterExample(ASTNode e) {
       if(BOOLEAN_TYPE == e.GetType() && SYMBOL != e.GetKind()) {
-	FatalError("You must input a term or propositional variables\n",e);
+  FatalError("You must input a term or propositional variables\n",e);
       }
       if(counterexample.find(e) != counterexample.end()) {
-	return counterexample[e];
+  return counterexample[e];
       }
       else {
-	if(SYMBOL == e.GetKind() && BOOLEAN_TYPE == e.GetType()) {
-	  return bv->CreateNode(BEEV::FALSE);
-	}
+  if(SYMBOL == e.GetKind() && BOOLEAN_TYPE == e.GetType()) {
+    return bv->CreateNode(BEEV::FALSE);
+  }
 
-	if(SYMBOL == e.GetKind()) {
-	  ASTNode z = bv->CreateZeroConst(e.GetValueWidth());
-	  return z;
-	}
+  if(SYMBOL == e.GetKind()) {
+    ASTNode z = bv->CreateZeroConst(e.GetValueWidth());
+    return z;
+  }
 
-	return e;	  
+  return e;   
       }
     }
   };

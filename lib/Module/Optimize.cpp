@@ -86,8 +86,6 @@ namespace llvm {
 static void AddStandardCompilePasses(PassManager &PM) {
   PM.add(createVerifierPass());                  // Verify that input is correct
 
-  addPass(PM, createLowerSetJmpPass());          // Lower llvm.setjmp/.longjmp
-
   // If the -strip-debug command line option was specified, do it.
   if (StripDebug)
     addPass(PM, createStripSymbolsPass(true));
@@ -141,7 +139,6 @@ static void AddStandardCompilePasses(PassManager &PM) {
   addPass(PM, createAggressiveDCEPass());        // Delete dead instructions
   addPass(PM, createCFGSimplificationPass());    // Merge & remove BBs
   addPass(PM, createStripDeadPrototypesPass());  // Get rid of dead prototypes
-  addPass(PM, createDeadTypeEliminationPass());  // Eliminate dead types
   addPass(PM, createConstantMergePass());        // Merge dup global constants
 }
 

@@ -52,8 +52,6 @@ private:
   int m_argc;
   char **m_argv;
 
-  void initCloud9Instrumentation();
-
 public:
   KleeHandler(int argc, char **argv);
   ~KleeHandler();
@@ -87,7 +85,7 @@ public:
                            std::vector<bool> &buffer);
 
   static void getOutFiles(std::string path,
-			  std::vector<std::string> &results);
+        std::vector<std::string> &results);
 };
 
 }

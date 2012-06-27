@@ -17,32 +17,70 @@
 namespace klee {
 
   namespace util {
-    struct ExprHash  {
+    struct ExprStructureHash  {
       unsigned operator()(const ref<Expr> e) const {
         return e->hash();
       }
     };
     
-    struct ExprCmp {
+    struct ExprStructureCmp {
       bool operator()(const ref<Expr> &a, const ref<Expr> &b) const {
         return a==b;
+      }
+    };
+
+    struct UpdateListStructureHash {
+      unsigned operator()(const UpdateList &ul) const {
+        return ul.hash();
+      }
+    };
+
+    struct UpdateListStructureCmp {
+      bool operator()(const UpdateList &a, const UpdateList &b) const {
+        return a.compare(b);
+      }
+    };
+
+    // For update list identity, we assume that update nodes are not shared
+    // among arrays.
+
+    struct UpdateListIdentityHash: public std::tr1::hash<uintptr_t> {
+      unsigned operator()(const UpdateList &ul) const {
+        return std::tr1::hash<uintptr_t>::operator ()((uintptr_t)ul.head);
+      }
+    };
+
+    struct UpdateListIdentityCmp {
+      bool operator()(const UpdateList &a, const UpdateList &b) const {
+        return a.head == b.head;
       }
     };
   }
   
   template<class T> 
   class ExprHashMap : 
-
     public std::tr1::unordered_map<ref<Expr>,
-				   T,
-				   klee::util::ExprHash,
-				   klee::util::ExprCmp> {
+           T,
+           klee::util::ExprStructureHash,
+           klee::util::ExprStructureCmp> {
   };
   
   typedef std::tr1::unordered_set<ref<Expr>,
-				  klee::util::ExprHash,
-				  klee::util::ExprCmp> ExprHashSet;
+          klee::util::ExprStructureHash,
+          klee::util::ExprStructureCmp> ExprHashSet;
 
+  template<class T>
+  class UpdateListHashMap :
+    public std::tr1::unordered_map<UpdateList,
+           T,
+           klee::util::UpdateListStructureHash,
+           klee::util::UpdateListStructureCmp> {
+
+    };
+
+   typedef std::tr1::unordered_set<UpdateList,
+           klee::util::UpdateListStructureHash,
+           klee::util::UpdateListStructureCmp> UpdateListHashSet;
 }
 
 #endif

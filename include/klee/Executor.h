@@ -25,7 +25,6 @@
 #include "klee/Internal/Module/KModule.h"
 #include "llvm/Support/CallSite.h"
 #include "cloud9/worker/SymbolicEngine.h"
-#include "cloud9/Logger.h"
 #include <vector>
 #include <string>
 #include <map>
@@ -53,6 +52,7 @@ namespace klee {
   class ExecutionState;
   class ExternalDispatcher;
   class Expr;
+  class ExprSerializer;
   class InstructionInfoTable;
   struct KFunction;
   struct KInstruction;
@@ -108,6 +108,7 @@ private:
   MemoryManager *memory;
   std::set<ExecutionState*> states;
   StatsTracker *statsTracker;
+  ExprSerializer *exprRecorder;
   TreeStreamWriter *pathWriter, *symPathWriter;
   SpecialFunctionHandler *specialFunctionHandler;
   std::vector<TimerInfo*> timers;
@@ -123,15 +124,6 @@ private:
   /// \invariant \ref removedStates is a subset of \ref states. 
   /// \invariant \ref addedStates and \ref removedStates are disjoint.
   std::set<ExecutionState*> removedStates;
-
-  /// When non-empty the Executor is running in "seed" mode. The
-  /// states in this map will be executed in an arbitrary order
-  /// (outside the normal search interface) until they terminate. When
-  /// the states reach a symbolic branch then either direction that
-  /// satisfies one or more seeds will be added to this map. What
-  /// happens with other states (that don't satisfy the seeds) depends
-  /// on as-yet-to-be-determined flags.
-  std::map<ExecutionState*, std::vector<SeedInfo> > seedMap;
   
   /// Map of globals to their representative memory object.
   std::map<const llvm::GlobalValue*, MemoryObject*> globalObjects;
@@ -143,19 +135,6 @@ private:
   /// The set of legal function addresses, used to validate function
   /// pointers. We use the actual Function* address as the function address.
   std::set<uint64_t> legalFunctions;
-
-  /// When non-null the bindings that will be used for calls to
-  /// klee_make_symbolic in order replay.
-  const struct KTest *replayOut;
-  /// When non-null a list of branch decisions to be used for replay.
-  const std::vector<bool> *replayPath;
-  /// The index into the current \ref replayOut or \ref replayPath
-  /// object.
-  unsigned replayPosition;
-
-  /// When non-null a list of "seed" inputs which will be used to
-  /// drive execution.
-  const std::vector<struct KTest *> *usingSeeds;  
 
   /// Disables forking, instead a random path is chosen. Enabled as
   /// needed to control memory usage. \see fork()
@@ -173,7 +152,8 @@ private:
   bool ivcEnabled;
 
   /// The maximum time to allow for a single stp query.
-  double stpTimeout; 
+  double stpTimeout;
+  double instrTime;
 
   llvm::Function* getCalledFunction(llvm::CallSite &cs, ExecutionState &state);
   
@@ -189,15 +169,17 @@ private:
                                   unsigned size, bool isReadOnly);
 
   void initializeGlobalObject(ExecutionState &state, ObjectState *os, 
-			      llvm::Constant *c,
-			      unsigned offset);
+            const llvm::Constant *c,
+            unsigned offset);
   void initializeGlobals(ExecutionState &state);
 
   void stepInstruction(ExecutionState &state);
   void updateStates(ExecutionState *current);
+  void finalizeRemovedStates();
+
   void transferToBasicBlock(llvm::BasicBlock *dst, 
-			    llvm::BasicBlock *src,
-			    ExecutionState &state);
+          llvm::BasicBlock *src,
+          ExecutionState &state);
 
   void callExternalFunction(ExecutionState &state,
                             KInstruction *target,
@@ -282,9 +264,10 @@ private:
   /// a constraint and return the results. The input state is included
   /// as one of the results. Note that the output vector may included
   /// NULL pointers for states which were unable to be created.
-  void branch(ExecutionState &state, 
-              const std::vector< ref<Expr> > &conditions,
-              std::vector<ExecutionState*> &result, int reason);
+  void branch(ExecutionState &state,
+              ref<Expr> condition,
+              const std::vector< std::pair< BasicBlock*, ref<Expr> > > &options,
+              std::vector< std::pair<BasicBlock*, ExecutionState*> > &branches, int reason);
 
   // Fork current and return states in which condition holds / does
   // not hold, respectively. One of the states is necessarily the
@@ -313,8 +296,8 @@ private:
   }
 
   Cell& getArgumentCell(StackFrame &sf, 
-			KFunction *kf, 
-			unsigned index) {
+      KFunction *kf, 
+      unsigned index) {
     return sf.locals[kf->getArgRegister(index)];
   }
 
@@ -331,7 +314,7 @@ private:
                     ExecutionState &state,
                     ref<Expr> value);
 
-  ref<klee::ConstantExpr> evalConstantExpr(llvm::ConstantExpr *ce);
+  ref<klee::ConstantExpr> evalConstantExpr(const llvm::ConstantExpr *ce);
 
   /// Return a unique constant value for the given expression in the
   /// given state, if it has one (i.e. it provably only has a single
@@ -400,13 +383,12 @@ private:
   void addTimer(Timer *timer, double rate);
 
   void initTimers();
-  void processTimers(ExecutionState *current,
-                     double maxInstTime);
+  void processTimers(ExecutionState *current);
   void resetTimers();
 
   /// Pthread create needs a specific StackFrame instead of the one of the current state
   void bindArgumentToPthreadCreate(KFunction *kf, unsigned index, 
-				   StackFrame &sf, ref<Expr> value);
+           StackFrame &sf, ref<Expr> value);
 
   /// Finds the functions coresponding to an address.
   /// For now, it only support concrete values for the thread and function pointer argument.
@@ -430,7 +412,7 @@ private:
   
   void executeThreadNotifyOne(ExecutionState &state, wlist_id_t wlist);
 
-  void executeFork(ExecutionState &state, KInstruction *ki, int reason);
+  void executeFork(ExecutionState &state, KInstruction *ki, uint64_t reason);
 
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);
@@ -441,7 +423,7 @@ public:
   }
 
   // XXX should just be moved out to utility module
-  ref<ConstantExpr> evalConstant(llvm::Constant *c);
+  ref<ConstantExpr> evalConstant(const llvm::Constant *c);
 
   virtual void setPathWriter(TreeStreamWriter *tsw) {
     pathWriter = tsw;
@@ -450,26 +432,10 @@ public:
     symPathWriter = tsw;
   }      
 
-  virtual void setReplayOut(const struct KTest *out) {
-    assert(!replayPath && "cannot replay both buffer and path");
-    replayOut = out;
-    replayPosition = 0;
-  }
-
-  virtual void setReplayPath(const std::vector<bool> *path) {
-    assert(!replayOut && "cannot replay both buffer and path");
-    replayPath = path;
-    replayPosition = 0;
-  }
-
   virtual const llvm::Module *
   setModule(llvm::Module *module, const ModuleOptions &opts);
   
   const KModule* getKModule() const {return kmodule;} 
-
-  virtual void useSeeds(const std::vector<struct KTest *> *seeds) { 
-    usingSeeds = seeds;
-  }
 
   virtual void runFunctionAsMain(llvm::Function *f,
                                  int argc,
@@ -502,10 +468,7 @@ public:
                                    std::vector<unsigned char> > >
                                    &res);
 
-  virtual void getCoveredLines(const ExecutionState &state,
-                               std::map<const std::string*, std::set<unsigned> > &res);
-
-  Expr::Width getWidthForLLVMType(const llvm::Type *type) const;
+  Expr::Width getWidthForLLVMType(llvm::Type *type) const;
 
   /*** Cloud9 symbolic execution engine methods ***/
 
@@ -521,7 +484,7 @@ public:
   virtual klee::Searcher *initSearcher(klee::Searcher *base);
 
   virtual klee::KModule *getModule() {
-	  return kmodule;
+    return kmodule;
   }
 
   //Hack for dynamic cast in CoreStrategies, TODO Solve it as soon as possible

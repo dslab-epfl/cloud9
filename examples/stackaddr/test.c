@@ -2,11 +2,11 @@
 
 
 void myfunc(int *addr) {
-	*addr = 0;
+  *addr = 0;
 }
 
 int main(int argc, char **argv) {
-	int myvar;
-	myfunc(&myvar);
-	return myvar;
+  int myvar;
+  myfunc(&myvar);
+  return myvar;
 }

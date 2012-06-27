@@ -155,43 +155,43 @@ public:
 
 
 static bool parseDeclarations(const string& filename, vector<Decl*>& declarations) {
-	string error;
-	OwningPtr<MemoryBuffer> memoryBuffer;
-	error_code ec = MemoryBuffer::getFileOrSTDIN(filename.c_str(), memoryBuffer);
-	if(memoryBuffer.get() == NULL)
-		return false;
+  string error;
+  OwningPtr<MemoryBuffer> memoryBuffer;
+  error_code ec = MemoryBuffer::getFileOrSTDIN(filename.c_str(), memoryBuffer);
+  if(memoryBuffer.get() == NULL)
+    return false;
 
-	scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
-	scoped_ptr<Parser> parser(Parser::Create(filename.c_str(), memoryBuffer.get(), exprBuilder.get()));
-	parser->SetMaxErrors(20);
+  scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
+  scoped_ptr<Parser> parser(Parser::Create(filename.c_str(), memoryBuffer.get(), exprBuilder.get()));
+  parser->SetMaxErrors(20);
 
-	while (Decl *d = parser->ParseTopLevelDecl())
-		declarations.push_back(d);
+  while (Decl *d = parser->ParseTopLevelDecl())
+    declarations.push_back(d);
 
-	return parser->GetNumErrors() == 0;
+  return parser->GetNumErrors() == 0;
 }
 
 static ref<Expr>andConstraints(const std::vector<ref<Expr> >& constraints) {
-	boost::scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
+  boost::scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
 
-	ref<Expr> result = exprBuilder->True();
+  ref<Expr> result = exprBuilder->True();
 
-	BOOST_FOREACH(const ref<Expr>& expr, constraints) {
-		result = exprBuilder->And(result, expr);
-	}
+  BOOST_FOREACH(const ref<Expr>& expr, constraints) {
+    result = exprBuilder->And(result, expr);
+  }
 
-	return result;
+  return result;
 }
 
 static ref<Expr> andConstraintsNotQuery(const std::vector<ref<Expr> >& constraints, const ref<Expr>& query) {
-	boost::scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
+  boost::scoped_ptr<ExprBuilder> exprBuilder(createDefaultExprBuilder());
 
-	return exprBuilder->And(andConstraints(constraints), exprBuilder->Not(query));
+  return exprBuilder->And(andConstraints(constraints), exprBuilder->Not(query));
 }
 
 static bool convertDeclarations(const vector<Decl*>& kleeQueries,
-		vector<string>& smtQueries,
-		bool optimizeDivides) {
+    vector<string>& smtQueries,
+    bool optimizeDivides) {
 
   VC vc = vc_createValidityChecker();
   scoped_ptr<STPBuilder> stpBuilder(new STPBuilder(vc, optimizeDivides));
@@ -214,30 +214,30 @@ static bool convertDeclarations(const vector<Decl*>& kleeQueries,
 
 
 static bool writeTo(const OutStreamFactoryBase& outStreamCreator, const vector<string>& content) {
-	int i = 0;
-	BOOST_FOREACH(const string& s, content) {
-		scoped_ptr<ostream> out(outStreamCreator.Create(i++));
-		if(out.get() == NULL)
-			return false;
+  int i = 0;
+  BOOST_FOREACH(const string& s, content) {
+    scoped_ptr<ostream> out(outStreamCreator.Create(i++));
+    if(out.get() == NULL)
+      return false;
 
-		*out << s;
-	}
+    *out << s;
+  }
 
-	return true;
+  return true;
 }
 
 static void writeToStdOut(const vector<string>& content) {
-	BOOST_FOREACH(const string& s, content) {
-		std::cout << s;
-	}
+  BOOST_FOREACH(const string& s, content) {
+    std::cout << s;
+  }
 }
 
 
 static int runAllTests() {
-	cout << "running tests.." << endl;
-	TmpFile tmpFile;
-	stringstream ss;
-	ss << "# Query 5 -- Type: InitialValues, StateID: 0x0, Instructions: 50368\n\
+  cout << "running tests.." << endl;
+  TmpFile tmpFile;
+  stringstream ss;
+  ss << "# Query 5 -- Type: InitialValues, StateID: 0x0, Instructions: 50368\n\
 array arr4_input2[4] : w32 -> w8 = symbolic\n\
 array arr3_input1[4] : w32 -> w8 = symbolic\n\
 (query [(Slt 0\n\
@@ -251,58 +251,58 @@ array arr3_input1[4] : w32 -> w8 = symbolic\n\
 #   Solvable: true\n\
 #     arr4_input2 = [0,0,0,1]\n\
 #     arr3_input1 = [0,0,0,66]";
-	tmpFile.write(ss.str());
-	ifstream in(tmpFile.getTmpFileName().c_str());
+  tmpFile.write(ss.str());
+  ifstream in(tmpFile.getTmpFileName().c_str());
 
-	vector<Decl*> declarations;
-	assert(
-			parseDeclarations(tmpFile.getTmpFileName(), declarations));
+  vector<Decl*> declarations;
+  assert(
+      parseDeclarations(tmpFile.getTmpFileName(), declarations));
 
-	assert(
-			declarations.size() == 3); //2 arrays, 1 query
+  assert(
+      declarations.size() == 3); //2 arrays, 1 query
 
-	vector<string> smtQueries;
-	assert(
-			convertDeclarations(declarations, smtQueries, true) && "conversion error");
+  vector<string> smtQueries;
+  assert(
+      convertDeclarations(declarations, smtQueries, true) && "conversion error");
 
-	assert(
-			smtQueries.size() == 1);
+  assert(
+      smtQueries.size() == 1);
 
-	cout << "OK" << endl;
-	return 0;
+  cout << "OK" << endl;
+  return 0;
 }
 
 
 int main(int argc, char** argv) {
-	cl::ParseCommandLineOptions(argc, argv, "Kleaver (stp-queries.qlog) -> smt converter. Don't use with pc query files.");
+  cl::ParseCommandLineOptions(argc, argv, "Kleaver (stp-queries.qlog) -> smt converter. Don't use with pc query files.");
 
-	if (runTests)
-		return runAllTests();
+  if (runTests)
+    return runAllTests();
 
-	vector<Decl*> kleeQueries;
-	assert(
-			parseDeclarations(inputFileName, kleeQueries) && "parsing error");
+  vector<Decl*> kleeQueries;
+  assert(
+      parseDeclarations(inputFileName, kleeQueries) && "parsing error");
 
-	vector<string> smtQueries;
-	assert(
-			convertDeclarations(kleeQueries, smtQueries, optimizeDivides.getValue()) && "conversion error");
+  vector<string> smtQueries;
+  assert(
+      convertDeclarations(kleeQueries, smtQueries, optimizeDivides.getValue()) && "conversion error");
 
-	BOOST_FOREACH(Decl* d, kleeQueries) {
-		delete d;
-	}
+  BOOST_FOREACH(Decl* d, kleeQueries) {
+    delete d;
+  }
 
-	if (printToStdout.getValue()) {
-		writeToStdOut(smtQueries);
-		return 0;
-	}
+  if (printToStdout.getValue()) {
+    writeToStdOut(smtQueries);
+    return 0;
+  }
 
-	OutStreamFactory outStreamFactory(outputDir);
-	assert(
-			outStreamFactory.Init() && "Init output failed");
-	assert(
-			writeTo(outStreamFactory, smtQueries) && "problems while writing");
+  OutStreamFactory outStreamFactory(outputDir);
+  assert(
+      outStreamFactory.Init() && "Init output failed");
+  assert(
+      writeTo(outStreamFactory, smtQueries) && "problems while writing");
 
-	return 0;
+  return 0;
 }
 #else
 int main(int argc, char** argv) {

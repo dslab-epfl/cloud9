@@ -41,7 +41,7 @@
 
 namespace klee {
 class ExecutionState;
-class KInstruction;
+struct KInstruction;
 }
 
 namespace cloud9 {
@@ -51,9 +51,9 @@ namespace worker {
 class ExecutionTraceEntry {
 public:
   enum Kind{ Exec, Instr, Break, Control, Debug, Constraint, Event };
-	ExecutionTraceEntry() : kind(Exec) {}
+  ExecutionTraceEntry() : kind(Exec) {}
   Kind getKind() const{ return kind; }
-	virtual ~ExecutionTraceEntry() {}
+  virtual ~ExecutionTraceEntry() {}
 protected:
   Kind kind;
   ExecutionTraceEntry(Kind k) : kind(k) {}
@@ -61,15 +61,15 @@ protected:
 
 class InstructionTraceEntry: public ExecutionTraceEntry {
 private:
-	klee::KInstruction *ki;
+  klee::KInstruction *ki;
 public:
-	InstructionTraceEntry(klee::KInstruction *_ki) : ExecutionTraceEntry(Instr), ki(_ki) {
+  InstructionTraceEntry(klee::KInstruction *_ki) : ExecutionTraceEntry(Instr), ki(_ki) {
 
 }
 
-	virtual ~InstructionTraceEntry() {}
+  virtual ~InstructionTraceEntry() {}
 
-	klee::KInstruction *getInstruction() const { return ki; }
+  klee::KInstruction *getInstruction() const { return ki; }
 
   static bool classof(const ExecutionTraceEntry* entry){ return entry->getKind()==Instr; }
 };
@@ -91,47 +91,47 @@ public:
 
 class ControlFlowEntry: public ExecutionTraceEntry {
 private:
-	bool branch;
-	bool call;
-	bool fnReturn;
+  bool branch;
+  bool call;
+  bool fnReturn;
 public:
-	ControlFlowEntry(bool _branch, bool _call, bool _return) : ExecutionTraceEntry(Control),
-		branch(_branch), call(_call), fnReturn(_return) {
+  ControlFlowEntry(bool _branch, bool _call, bool _return) : ExecutionTraceEntry(Control),
+    branch(_branch), call(_call), fnReturn(_return) {
 
-	}
+  }
 
-	virtual ~ControlFlowEntry() { }
+  virtual ~ControlFlowEntry() { }
 
-	bool isBranch() const { return branch; }
-	bool isCall() const { return call; }
-	bool isReturn() const { return fnReturn; }
+  bool isBranch() const { return branch; }
+  bool isCall() const { return call; }
+  bool isReturn() const { return fnReturn; }
 
   static bool classof(const ExecutionTraceEntry* entry){  return entry->getKind()==Control;  }
 };
 
 class DebugLogEntry: public ExecutionTraceEntry {
 protected:
-	std::string message;
+  std::string message;
 
-	DebugLogEntry() { }
+  DebugLogEntry() { }
   DebugLogEntry(Kind k) : ExecutionTraceEntry(k) {}
 public:
-	DebugLogEntry(const std::string &msg) : ExecutionTraceEntry(Debug), message(msg) {
+  DebugLogEntry(const std::string &msg) : ExecutionTraceEntry(Debug), message(msg) {
 
-	}
+  }
 
-	virtual ~DebugLogEntry() { }
+  virtual ~DebugLogEntry() { }
 
-	const std::string &getMessage() const { return message; }
+  const std::string &getMessage() const { return message; }
 
   static bool classof(const ExecutionTraceEntry* entry){  return entry->getKind()==Debug;  }
 };
 
 class ConstraintLogEntry: public DebugLogEntry {
 public:
-	ConstraintLogEntry(klee::ExecutionState *state);
+  ConstraintLogEntry(klee::ExecutionState *state);
 
-	virtual ~ConstraintLogEntry() { }
+  virtual ~ConstraintLogEntry() { }
 
   static bool classof(const ExecutionTraceEntry* entry){  return entry->getKind()==Constraint;  }
 };
@@ -156,20 +156,20 @@ public:
 
 class ExecutionTrace {
 public:
-	typedef std::vector<ExecutionTraceEntry*>::iterator iterator;
-	typedef std::vector<ExecutionTraceEntry*>::const_iterator const_iterator;
+  typedef std::vector<ExecutionTraceEntry*>::iterator iterator;
+  typedef std::vector<ExecutionTraceEntry*>::const_iterator const_iterator;
 
 private:
-	std::vector<ExecutionTraceEntry*> entries;
+  std::vector<ExecutionTraceEntry*> entries;
 public:
-	ExecutionTrace();
-	virtual ~ExecutionTrace();
+  ExecutionTrace();
+  virtual ~ExecutionTrace();
 
-	const std::vector<ExecutionTraceEntry*> &getEntries() const { return entries; }
+  const std::vector<ExecutionTraceEntry*> &getEntries() const { return entries; }
 
-	void appendEntry(ExecutionTraceEntry *entry) {
-		entries.push_back(entry);
-	}
+  void appendEntry(ExecutionTraceEntry *entry) {
+    entries.push_back(entry);
+  }
 };
 
 }

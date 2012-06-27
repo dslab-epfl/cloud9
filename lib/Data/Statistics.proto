@@ -1,0 +1,24 @@
+/*
+ * Copyright notice here
+ */
+
+package klee.data;
+
+message Statistic {
+  required uint64 time_stamp = 1;
+
+  optional int64 instructions = 2;
+  optional int64 full_branches = 3;
+  optional int64 partial_branches = 4;
+  optional double user_time = 5;
+  optional int32 num_states = 6;
+  optional int64 num_queries = 7;
+  optional int64 num_query_constructs = 8;
+  optional double wall_time = 9;
+  optional int64 covered_instructions = 10;
+  optional int64 uncovered_instructions = 11;
+}
+
+message StatisticSet {
+  repeated Statistic statistic = 1;
+}

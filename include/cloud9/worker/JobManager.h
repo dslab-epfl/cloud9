@@ -33,12 +33,15 @@
 #ifndef JOBMANAGER_H_
 #define JOBMANAGER_H_
 
-#include "cloud9/Logger.h"
 #include "cloud9/worker/TreeNodeInfo.h"
 #include "cloud9/worker/SymbolicEngine.h"
 #include "cloud9/worker/CoreStrategies.h"
 
 #include "klee/KleeHandler.h"
+
+#include "klee/KleeHandler.h"
+
+#include <glog/logging.h>
 
 #include <boost/thread.hpp>
 #include <list>
@@ -55,7 +58,6 @@ class Interpreter;
 class ExecutionState;
 class Searcher;
 class KModule;
-class KleeHandler;
 }
 
 namespace cloud9 {
@@ -78,7 +80,6 @@ private:
   void initBreakpoints();
   void initStatistics();
   void initStrategy();
-
 
   StateSelectionStrategy *createCoverageOptimizedStrat(StateSelectionStrategy *base);
   OracleStrategy *createOracleStrategy();
@@ -113,6 +114,7 @@ private:
    * Job execution state
    */
   ExecutionJob *currentJob;
+  SymbolicState *currentState;
   bool replaying;
   bool batching;
 
@@ -138,9 +140,6 @@ private:
 
   bool collectTraces;
 
-  void dumpStateTrace(WorkerTree::Node *node);
-  void dumpInstructionTrace(WorkerTree::Node *node);
-
   void serializeInstructionTrace(std::ostream &s, WorkerTree::Node *node);
   void parseInstructionTrace(std::istream &s, std::vector<unsigned int> &dest);
 
@@ -152,6 +151,7 @@ private:
   void fireActivateState(SymbolicState *state);
   void fireDeactivateState(SymbolicState *state);
   void fireUpdateState(SymbolicState *state, WorkerTree::Node *oldNode);
+  void fireStepState(SymbolicState *state);
   void fireAddJob(ExecutionJob *job);
   void fireRemovingJob(ExecutionJob *job);
 
@@ -187,7 +187,8 @@ private:
   long stepInNode(boost::unique_lock<boost::mutex> &lock,
       WorkerTree::Node *node, long count);
   void replayPath(boost::unique_lock<boost::mutex> &lock,
-      WorkerTree::Node *pathEnd, WorkerTree::Node *&brokenEnd);
+      WorkerTree::Node *pathEnd,
+      WorkerTree::Node *&brokenEnd);
   void cleanInvalidJobs(WorkerTree::Node *rootNode);
 
   void processLoop(bool allowGrowth, bool blocking, unsigned int timeOut);
@@ -224,7 +225,13 @@ public:
     return tree;
   }
 
-  WorkerTree::Node *getCurrentNode();
+  ExecutionJob* getCurrentJob() {
+    return currentJob;
+  }
+
+  SymbolicState* getCurrentState() {
+    return currentState;
+  }
 
   JobSelectionStrategy *getStrategy() {
     return selStrategy;
@@ -292,13 +299,16 @@ public:
   ExecutionPathSetPin exportJobs(ExecutionPathSetPin seeds,
       std::vector<int> &counts, std::vector<long> &replayInstrs);
 
+  void dumpStateTrace(WorkerTree::Node *node);
+  void dumpInstructionTrace(WorkerTree::Node *node);
+
   template<class Decorator>
   void dumpSymbolicTree(WorkerTree::Node *node, Decorator decorator) {
     char fileName[256];
     snprintf(fileName, 256, "treeDump%05d.txt", traceCounter);
     traceCounter++;
 
-    CLOUD9_INFO("Dumping symbolic tree in file " << fileName);
+    LOG(INFO) << "Dumping symbolic tree in file " << fileName;
 
     std::ostream *os = kleeHandler->openOutputFile(fileName);
     assert(os != NULL);

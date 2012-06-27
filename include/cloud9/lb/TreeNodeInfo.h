@@ -66,9 +66,9 @@ public:
 
 };
 
-#define LB_LAYER_COUNT		1
+#define LB_LAYER_COUNT    1
 
-#define LB_LAYER_DEFAULT	0
+#define LB_LAYER_DEFAULT  0
 
 typedef ExecutionTree<TreeNodeInfo, LB_LAYER_COUNT, 2> LBTree;
 

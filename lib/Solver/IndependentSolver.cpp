@@ -20,6 +20,8 @@
 #include <ostream>
 #include <iostream>
 
+#include <glog/logging.h>
+
 using namespace klee;
 using namespace llvm;
 
@@ -285,6 +287,8 @@ public:
                                               hasSolution);
   }
 };
+
+// #define DEBUG_INDEP_SOLVER 1
   
 bool IndependentSolver::computeValidity(const Query& query,
                                         Solver::Validity &result) {
@@ -292,6 +296,10 @@ bool IndependentSolver::computeValidity(const Query& query,
   IndependentElementSet eltsClosure =
     getIndependentConstraints(query, required);
   ConstraintManager tmp(required);
+#ifdef DEBUG_INDEP_SOLVER
+  LOG(INFO) << "Independent solver reduced from "
+      << query.constraints.size() << " to " << tmp.size();
+#endif
   return solver->impl->computeValidity(Query(tmp, query.expr), 
                                        result);
 }
@@ -301,6 +309,10 @@ bool IndependentSolver::computeTruth(const Query& query, bool &isValid) {
   IndependentElementSet eltsClosure = 
     getIndependentConstraints(query, required);
   ConstraintManager tmp(required);
+#ifdef DEBUG_INDEP_SOLVER
+  LOG(INFO) << "Independent solver reduced from "
+      << query.constraints.size() << " to " << tmp.size();
+#endif
   return solver->impl->computeTruth(Query(tmp, query.expr), 
                                     isValid);
 }
@@ -310,6 +322,10 @@ bool IndependentSolver::computeValue(const Query& query, ref<Expr> &result) {
   IndependentElementSet eltsClosure = 
     getIndependentConstraints(query, required);
   ConstraintManager tmp(required);
+#ifdef DEBUG_INDEP_SOLVER
+  LOG(INFO) << "Independent solver reduced from "
+      << query.constraints.size() << " to " << tmp.size();
+#endif
   return solver->impl->computeValue(Query(tmp, query.expr), result);
 }
 

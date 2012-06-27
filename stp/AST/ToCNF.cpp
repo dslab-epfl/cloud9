@@ -76,9 +76,9 @@ public:
     if(stats) {
       cout << "ToCNF statistics:" << endl;
       cout << "Number of new representative variables: "
-	   << _num_new_rep_vars << endl;
+     << _num_new_rep_vars << endl;
       cout << "Number of new clauses: "
-	   << _num_clauses << endl;
+     << _num_clauses << endl;
     }
   }
 
@@ -113,7 +113,7 @@ private:
   // "True".  It is added as a unit clause, so that it will be assigned
   // to true and propagated immediately by any CNF solver.
 
-  ASTNode dummy_false_var;	// not of dummy_true_var
+  ASTNode dummy_false_var;  // not of dummy_true_var
 
   CNFstats stats;
 
@@ -215,9 +215,9 @@ private:
     }
 
 //     cout << "================" << endl
-// 	 << "ToCNFPrePass:" << form << endl
-// 	 << "----------------" << endl
-// 	 << "ToCNFPrePass Result:" << result << endl;
+//   << "ToCNFPrePass:" << form << endl
+//   << "----------------" << endl
+//   << "ToCNFPrePass Result:" << result << endl;
     
     return (ToCNFPrePassMemo[form] = result);
     
@@ -293,8 +293,8 @@ private:
 
     if (CNF_trace) {
       cout << "Translating AND" << endl << "-----------------------" << endl
-	   << "Rep lit =" <<  replit << endl
-	   << "-----------------------";
+     << "Rep lit =" <<  replit << endl
+     << "-----------------------";
     }
 
     // (a AND b AND c -> replit) ==   (~a OR ~b OR ~c OR replit)
@@ -317,8 +317,8 @@ private:
       clp->push_back(*it);
 
       if (CNF_trace) {
-	LispPrintVec(cout, *clp, 0);
-	cout << endl << "-----------------------" << endl;
+  LispPrintVec(cout, *clp, 0);
+  cout << endl << "-----------------------" << endl;
       }
 
       cll.push_back(clp);
@@ -368,8 +368,8 @@ public:
     }
       
     case NOT: {
-	ASTNode replit = ToCNF_int(cll, form[0]);
-	result = bm->CreateSimpNot(replit);
+  ASTNode replit = ToCNF_int(cll, form[0]);
+  result = bm->CreateSimpNot(replit);
       break;
     }
       
@@ -380,9 +380,9 @@ public:
       ASTNode r = bm->CreateNode(OR, form[0], form[2]);
       ASTNode andor = bm->CreateNode(AND, l, r);
       if (CNF_trace) {
-	cout << "Rewriting " << form << endl
-	     << "to" << andor << endl
-	     << "-------------------" << endl;
+  cout << "Rewriting " << form << endl
+       << "to" << andor << endl
+       << "-------------------" << endl;
       }
       result = ToCNF_int(cll, andor);
       break;
@@ -392,9 +392,9 @@ public:
       ASTNode l = bm->CreateSimpNot(form[0]);
       ASTNode andor = bm->CreateNode(OR, l, form[1]);
       if (CNF_trace) {
-	cout << "Rewriting " << form << endl
-	     << "to" << andor << endl
-	     << "-------------------" << endl;
+  cout << "Rewriting " << form << endl
+       << "to" << andor << endl
+       << "-------------------" << endl;
       }
       result = ToCNF_int(cll, andor);
       break;
@@ -423,7 +423,7 @@ public:
 
     if (CNF_trace) {
       cout << "ToCNF_int: Literal " << result << " represents formula " <<
-	form << endl << "---------------" << endl;
+  form << endl << "---------------" << endl;
     }
 
     return CNFMemoize(form, result);
@@ -442,10 +442,10 @@ public:
     os << "Clauses: " << endl << "=========================================" << endl;
     for(int i=0; i < num_clauses; i++) {
       os << "Clause " << i << endl
-	 << "-------------------------------------------" << endl;
+   << "-------------------------------------------" << endl;
       LispPrintVec(os, *cll[i], 0);
       os << endl
-	 << "-------------------------------------------" << endl;
+   << "-------------------------------------------" << endl;
     }
   }
 
@@ -494,7 +494,7 @@ public:
     cm->stats._num_clauses = cllp->size();
     cm->stats.printStats();
 
-    RepLitMap = cm->CNFMemo;	// Save memo table for debugging (DD 1/13/07).
+    RepLitMap = cm->CNFMemo;  // Save memo table for debugging (DD 1/13/07).
 
     cm->CNFMemo.clear();   // Important to do this so nodes get freed.
 

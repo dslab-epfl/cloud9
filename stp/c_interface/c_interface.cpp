@@ -445,7 +445,7 @@ int vc_getBVLength(VC vc, Expr ex) {
 //! Create a variable with a given name and type 
 /*! The type cannot be a function type. */
 Expr vc_varExpr1(VC vc, char* name, 
-		int indexwidth, int valuewidth) {
+    int indexwidth, int valuewidth) {
   bmstar b = (bmstar)vc;
 
   node o = b->CreateSymbol(name);
@@ -693,7 +693,7 @@ Type vc_bvType(VC vc, int num_bits) {
   
   if(!(0 < num_bits))
     BEEV::FatalError("CInterface: number of bits in a bvtype must be a positive integer:", 
-		     b->CreateNode(BEEV::UNDEFINED));
+         b->CreateNode(BEEV::UNDEFINED));
 
   node e = b->CreateBVConst(32, num_bits);
   nodestar output = new node(b->CreateNode(BEEV::BITVECTOR,e));
@@ -717,8 +717,8 @@ Expr vc_bvConstExprFromStr(VC vc, char* binary_repr) {
 }
 
 Expr vc_bvConstExprFromInt(VC vc,
-			   int n_bits, 
-			   unsigned int value) {
+         int n_bits, 
+         unsigned int value) {
   bmstar b = (bmstar)vc;
 
   unsigned long long int v = (unsigned long long int)value;
@@ -730,8 +730,8 @@ Expr vc_bvConstExprFromInt(VC vc,
 }
 
 Expr vc_bvConstExprFromLL(VC vc,
-			  int n_bits, 
-			  unsigned long long value) {
+        int n_bits, 
+        unsigned long long value) {
   bmstar b = (bmstar)vc;
   
   node n = b->CreateBVConst(n_bits, value);
@@ -750,7 +750,7 @@ Expr vc_bvConcatExpr(VC vc, Expr left, Expr right) {
   b->BVTypeCheck(*r);
   node o =
     b->CreateTerm(BEEV::BVCONCAT,
-		  l->GetValueWidth()+ r->GetValueWidth(),*l,*r);
+      l->GetValueWidth()+ r->GetValueWidth(),*l,*r);
   b->BVTypeCheck(o);
   nodestar output = new node(o);
   //if(cinterface_exprdelete_on) created_exprs.push_back(output);
@@ -1123,10 +1123,10 @@ Expr vc_bvVar32LeftShiftExpr(VC vc, Expr sh_amt, Expr child) {
   for(int count=32; count >= 0; count--){
     if(count != 32) {
       ifpart = vc_eqExpr(vc, sh_amt, 
-			 vc_bvConstExprFromInt(vc, 32, count));
+       vc_bvConstExprFromInt(vc, 32, count));
       thenpart = vc_bvExtract(vc,
-			      vc_bvLeftShiftExpr(vc, count, child),
-			      31, 0);
+            vc_bvLeftShiftExpr(vc, count, child),
+            31, 0);
 
       ite = vc_iteExpr(vc,ifpart,thenpart,elsepart);
       elsepart = ite;
@@ -1146,7 +1146,7 @@ Expr vc_bvVar32DivByPowOfTwoExpr(VC vc, Expr child, Expr rhs) {
   for(int count=32; count >= 0; count--){
     if(count != 32) {
       ifpart = vc_eqExpr(vc, rhs, 
-			 vc_bvConstExprFromInt(vc, 32, 1 << count));      
+       vc_bvConstExprFromInt(vc, 32, 1 << count));      
       thenpart = vc_bvRightShiftExpr(vc, count, child);      
       ite = vc_iteExpr(vc,ifpart,thenpart,elsepart);
       elsepart = ite;
@@ -1166,7 +1166,7 @@ Expr vc_bvVar32RightShiftExpr(VC vc, Expr sh_amt, Expr child) {
   for(int count=32; count >= 0; count--){
     if(count != 32) {
       ifpart = vc_eqExpr(vc, sh_amt, 
-			 vc_bvConstExprFromInt(vc, 32, count));      
+       vc_bvConstExprFromInt(vc, 32, count));      
       thenpart = vc_bvRightShiftExpr(vc, count, child);      
       ite = vc_iteExpr(vc,ifpart,thenpart,elsepart);
       elsepart = ite;
@@ -1309,8 +1309,8 @@ Expr vc_bvCreateMemoryArray(VC vc, char * arrayName) {
 }
 
 Expr vc_bvReadMemoryArray(VC vc, 
-			  Expr array, 
-			  Expr byteIndex, int numOfBytes) {
+        Expr array, 
+        Expr byteIndex, int numOfBytes) {
   if(!(numOfBytes > 0))
     BEEV::FatalError("numOfBytes must be greater than 0");
 
@@ -1321,10 +1321,10 @@ Expr vc_bvReadMemoryArray(VC vc,
     Expr a = vc_readExpr(vc,array,byteIndex);
     while(--numOfBytes > 0) {
       Expr b = vc_readExpr(vc,array,
-			   /*vc_simplify(vc, */
-				       vc_bvPlusExpr(vc, 32, 
-						     byteIndex,
-						     vc_bvConstExprFromInt(vc,32,count)))/*)*/;
+         /*vc_simplify(vc, */
+               vc_bvPlusExpr(vc, 32, 
+                 byteIndex,
+                 vc_bvConstExprFromInt(vc,32,count)))/*)*/;
       a = vc_bvConcatExpr(vc,b,a);
       count++;
     }
@@ -1333,11 +1333,11 @@ Expr vc_bvReadMemoryArray(VC vc,
 }
 
 Expr vc_bvWriteToMemoryArray(VC vc, 
-			     Expr array, Expr byteIndex, 
-			     Expr element, int numOfBytes) {
+           Expr array, Expr byteIndex, 
+           Expr element, int numOfBytes) {
   if(!(numOfBytes > 0))
     BEEV::FatalError("numOfBytes must be greater than 0");
-	    
+      
   int newBitsPerElem = numOfBytes*8;
   if(numOfBytes == 1)
     return vc_writeExpr(vc, array, byteIndex, element);
@@ -1358,9 +1358,9 @@ Expr vc_bvWriteToMemoryArray(VC vc,
 
       c = vc_bvExtract(vc, element, hi_elem, low_elem);
       newarray = 
-	vc_writeExpr(vc, newarray,
-		     vc_bvPlusExpr(vc, 32, byteIndex, vc_bvConstExprFromInt(vc,32,count)),
-		     c);
+  vc_writeExpr(vc, newarray,
+         vc_bvPlusExpr(vc, 32, byteIndex, vc_bvConstExprFromInt(vc,32,count)),
+         c);
       count++;
     }
     return newarray;
@@ -1376,7 +1376,7 @@ Expr vc_bv32ConstExprFromInt(VC vc, unsigned int value){
 static char *val_to_binary_str(unsigned nbits, unsigned long long val) {
         char s[65];
 
-	assert(nbits < sizeof s);
+  assert(nbits < sizeof s);
         strcpy(s, "");
         while(nbits-- > 0) {
                 if((val >> nbits) & 1)
@@ -1476,7 +1476,7 @@ int vc_isBool(Expr e) {
 void vc_Destroy(VC vc) {
   bmstar b = (bmstar)vc;
   // for(std::vector<BEEV::ASTNode *>::iterator it=created_exprs.begin(),
-  // 	itend=created_exprs.end();it!=itend;it++) {
+  //  itend=created_exprs.end();it!=itend;it++) {
   //     BEEV::ASTNode * aaa = *it;
   //     delete aaa;
   //   }

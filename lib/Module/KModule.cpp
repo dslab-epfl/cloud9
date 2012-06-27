@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// FIXME: This does not belong here.
-#include "../Core/Common.h"
-
 #include "klee/Internal/Module/KModule.h"
 
 #include "Passes.h"
@@ -21,6 +18,10 @@
 #include "klee/Internal/Module/InstructionInfoTable.h"
 #include "klee/Internal/Support/ModuleUtil.h"
 
+#include "klee/data/DebugInfo.pb.h"
+#include "klee/data/Support.h"
+
+#include "llvm/BasicBlock.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Instructions.h"
 #include "llvm/LLVMContext.h"
@@ -32,8 +33,14 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/CFG.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/PostOrderIterator.h"
+
+#include <glog/logging.h>
 
 #include <sstream>
 #include <fstream>
@@ -69,6 +76,12 @@ namespace {
                cl::desc("Write the bitcode for the final transformed module"),
                cl::init(false));
 
+  cl::opt<bool>
+  OutputDebugTable("output-debug-table",
+                   cl::desc("Write the table that allows the recovery of "
+                            "function and file names in protobuf logs"),
+                   cl::init(true));
+
   cl::opt<SwitchImplType>
   SwitchType("switch-type", cl::desc("Select the implementation of switch"),
              cl::values(clEnumValN(eSwitchTypeSimple, "simple", 
@@ -84,17 +97,13 @@ namespace {
   DebugPrintEscapingFunctions("debug-print-escaping-functions",
                               cl::desc("Print functions whose address is taken."));
 
+  cl::opt<bool>
+  DebugPrintInstructionCount("debug-print-instruction-count",
+                             cl::desc("Print per-function instruction count."));
+
   cl::opt<std::string>
   VulnerableSites("vulnerable-sites",
       cl::desc("A file describing vulnerable sites in the tested program"));
-
-  cl::opt<std::string>
-  CoverableModules("coverable-modules",
-      cl::desc("A file containing the list of source files to check for coverage"));
-
-  cl::opt<std::string>
-  InitialCoverage("initial-coverage",
-      cl::desc("A file containing initial coverage values"));
 }
 
 void KModule::readVulnerablePoints(std::istream &is) {
@@ -138,91 +147,21 @@ bool KModule::isVulnerablePoint(KInstruction *kinst) {
   if (!target)
     return false;
 
-  std::string targetName = target->getNameStr();
+  std::string targetName = target->getName();
 
   if (targetName.find("__klee_model_") == 0)
     targetName = targetName.substr(strlen("__klee_model_"));
 
-  if (vulnerablePoints.count(target->getNameStr()) == 0)
+  if (vulnerablePoints.count(target->getName()) == 0)
     return false;
 
   Path sourceFile(kinst->info->file);
   program_point_t cpoint = std::make_pair(llvm::sys::path::filename(StringRef(sourceFile.str())), kinst->info->line);
 
-  if (vulnerablePoints[target->getNameStr()].count(cpoint) == 0)
+  if (vulnerablePoints[target->getName()].count(cpoint) == 0)
     return false;
 
   return true;
-}
-
-void KModule::readCoverableFiles(std::istream &is) {
-  std::string name;
-
-  while (!is.eof()) {
-    is >> name;
-
-    if (is.eof() && name.length() == 0)
-      break;
-
-    if (name.length() == 1) {
-      if (name == "S") {
-        is >> name;
-        coverableFiles.insert(name);
-      } else if (name == "F") {
-        is >> name;
-        exceptedFunctions.insert(name);
-      } else {
-        coverableFiles.insert(name);
-      }
-    } else {
-      coverableFiles.insert(name);
-    }
-  }
-}
-
-bool KModule::isFunctionCoverable(KFunction *kf) {
-  Path fileName;
-  std::string fileNameStr;
-
-  for (unsigned int i = 0; i < kf->numInstructions; i++) {
-    if (kf->instructions[i]->info->file.empty())
-      continue;
-
-    fileName = Path(kf->instructions[i]->info->file);
-  }
-
-  if (fileName.isEmpty())
-    return false;
-
-  if (exceptedFunctions.count(kf->function->getNameStr()) > 0)
-    return false;
-
-  fileNameStr = std::string(fileName.c_str());
-
-  for (cov_list_t::iterator it = coverableFiles.begin(); it != coverableFiles.end();
-      it++) {
-    if (fileNameStr.rfind(*it) != std::string::npos) {
-      // Found it!
-      return true;
-    }
-  }
-
-  return false;
-}
-
-void KModule::readInitialCoverage(std::istream &is) {
-  std::string sourceFile;
-  int lineNo;
-  int execCount;
-
-  while (!is.eof()) {
-    is >> sourceFile >> lineNo >> execCount;
-
-    if (is.eof() && sourceFile.length() == 0)
-      break;
-
-    coveredLines.insert(std::make_pair(sourceFile, lineNo));
-  }
 }
 
 KModule::KModule(Module *_module) 
@@ -247,6 +186,54 @@ KModule::~KModule() {
   delete module;
 }
 
+void KModule::fillInstructionDebugInfo(const llvm::Instruction *i,
+                                       data::DebugInfo &debug_info) const {
+  const InstructionInfo &info = infos->getInfo(i);
+
+  debug_info.set_file_id(info.file_id);
+  debug_info.set_line_number(info.line);
+  debug_info.set_assembly_number(info.assemblyLine);
+
+}
+
+void KModule::fillFunctionDebugInfo(const llvm::Function *f,
+                                    data::DebugInfo &debug_info) const {
+  const InstructionInfo &info = infos->getFunctionInfo(f);
+
+  FunctionMap::const_iterator it = functionMap.find(f);
+  if (it != functionMap.end()) {
+    debug_info.set_function_id(it->second->nameID);
+  }
+
+  debug_info.set_file_id(info.file_id);
+  debug_info.set_line_number(info.line);
+  debug_info.set_assembly_number(info.assemblyLine);
+}
+
+void KModule::writeDebugTable(std::ostream &os) const {
+  data::DebugTable debug_table;
+
+  data::StringTable *file_table = debug_table.mutable_file_table();
+
+  for (StringTable::iterator it = infos->stringTable.begin(),
+      ie = infos->stringTable.end(); it != ie; ++it) {
+    data::StringTable_StringTableEntry *entry = file_table->add_entry();
+    entry->set_value(*(it->first));
+    entry->set_id(it->second);
+  }
+
+  data::StringTable *function_table = debug_table.mutable_function_table();
+
+  for (std::map<llvm::StringRef, int>::const_iterator it = nameTable.begin(),
+      ie = nameTable.end(); it != ie; ++it) {
+    data::StringTable_StringTableEntry *entry = function_table->add_entry();
+    entry->set_value(it->first.str());
+    entry->set_id(it->second);
+  }
+
+  WriteProtoMessage(debug_table, os, false);
+}
+
 /***/
 
 namespace llvm {
@@ -260,13 +247,13 @@ static Function *getStubFunctionForCtorList(Module *m,
   assert(!gv->isDeclaration() && !gv->hasInternalLinkage() &&
          "do not support old LLVM style constructor/destructor lists");
   
-  std::vector<const Type*> nullary;
+  std::vector<Type*> nullary;
 
-  Function *fn = Function::Create(FunctionType::get(Type::getVoidTy(getGlobalContext()), 
-						    nullary, false),
-				  GlobalVariable::InternalLinkage, 
-				  name,
-                              m);
+  Function *fn = Function::Create(
+      FunctionType::get(Type::getVoidTy(getGlobalContext()),
+      ArrayRef<Type*>(nullary), false),
+      GlobalVariable::InternalLinkage,
+      name, m);
   BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", fn);
   
   // From lli:
@@ -284,7 +271,7 @@ static Function *getStubFunctionForCtorList(Module *m,
           fp = ce->getOperand(0);
 
         if (Function *f = dyn_cast<Function>(fp)) {
-	  CallInst::Create(f, "", bb);
+    CallInst::Create(f, "", bb);
         } else {
           assert(0 && "unable to get function pointer from ctor initializer list");
         }
@@ -307,19 +294,19 @@ static void injectStaticConstructorsAndDestructors(Module *m) {
 
     if (ctors)
     CallInst::Create(getStubFunctionForCtorList(m, ctors, "klee.ctor_stub"),
-		     "", mainFn->begin()->begin());
+         "", mainFn->begin()->begin());
     if (dtors) {
       Function *dtorStub = getStubFunctionForCtorList(m, dtors, "klee.dtor_stub");
       for (Function::iterator it = mainFn->begin(), ie = mainFn->end();
            it != ie; ++it) {
         if (isa<ReturnInst>(it->getTerminator()))
-	  CallInst::Create(dtorStub, "", it->getTerminator());
+    CallInst::Create(dtorStub, "", it->getTerminator());
       }
     }
   }
 }
 
-static void forceImport(Module *m, const char *name, const Type *retType, ...) {
+static void forceImport(Module *m, const char *name, Type *retType, ...) {
   // If module lacks an externally visible symbol for the name then we
   // need to create one. We have to look in the symbol table because
   // we want to check everything (global variables, functions, and
@@ -332,12 +319,12 @@ static void forceImport(Module *m, const char *name, const Type *retType, ...) {
     va_list ap;
 
     va_start(ap, retType);
-    std::vector<const Type *> argTypes;
-    while (const Type *t = va_arg(ap, const Type*))
+    std::vector<Type *> argTypes;
+    while (Type *t = va_arg(ap, Type*))
       argTypes.push_back(t);
     va_end(ap);
 
-    m->getOrInsertFunction(name, FunctionType::get(retType, argTypes, false));
+    m->getOrInsertFunction(name, FunctionType::get(retType, ArrayRef<Type*>(argTypes), false));
   }
 }
 
@@ -346,12 +333,12 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   if (!MergeAtExit.empty()) {
     Function *mergeFn = module->getFunction("klee_merge");
     if (!mergeFn) {
-      const llvm::FunctionType *Ty = 
+      llvm::FunctionType *Ty =
         FunctionType::get(Type::getVoidTy(getGlobalContext()), 
-                          std::vector<const Type*>(), false);
+                          ArrayRef<Type*>(), false);
       mergeFn = Function::Create(Ty, GlobalVariable::ExternalLinkage,
-				 "klee_merge",
-				 module);
+         "klee_merge",
+         module);
     }
 
     for (cl::list<std::string>::iterator it = MergeAtExit.begin(), 
@@ -359,21 +346,21 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
       std::string &name = *it;
       Function *f = module->getFunction(name);
       if (!f) {
-        klee_error("cannot insert merge-at-exit for: %s (cannot find)",
-                   name.c_str());
+        LOG(FATAL) << "cannot insert merge-at-exit for: "
+            << name.c_str() << " (cannot find)";
       } else if (f->isDeclaration()) {
-        klee_error("cannot insert merge-at-exit for: %s (external)",
-                   name.c_str());
+        LOG(FATAL) << "cannot insert merge-at-exit for: "
+            << name.c_str() << " (external)";
       }
 
       BasicBlock *exit = BasicBlock::Create(getGlobalContext(), "exit", f);
       PHINode *result = 0;
       if (f->getReturnType() != Type::getVoidTy(getGlobalContext()))
-        result = PHINode::Create(f->getReturnType(), "retval", exit);
+        result = PHINode::Create(f->getReturnType(), 0, "retval", exit);
       CallInst::Create(mergeFn, "", exit);
       ReturnInst::Create(getGlobalContext(), result, exit);
 
-      llvm::errs() << "KLEE: adding klee_merge at exit of: " << name << "\n";
+      LOG(INFO) << "Adding klee_merge at exit of: " << name;
       for (llvm::Function::iterator bbit = f->begin(), bbie = f->end(); 
            bbit != bbie; ++bbit) {
         if (&*bbit != exit) {
@@ -383,7 +370,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
               result->addIncoming(i->getOperand(0), bbit);
             }
             i->eraseFromParent();
-	    BranchInst::Create(exit, bbit);
+      BranchInst::Create(exit, bbit);
           }
         }
       }
@@ -397,20 +384,6 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
     readVulnerablePoints(fs);
   }
 
-  if (CoverableModules != "") {
-    std::ifstream fs(CoverableModules.c_str());
-    assert(!fs.fail());
-
-    readCoverableFiles(fs);
-  }
-
-  if (InitialCoverage != "") {
-    std::ifstream fs(InitialCoverage.c_str());
-    assert(!fs.fail());
-
-    readInitialCoverage(fs);
-  }
-
   // Inject checks prior to optimization... we also perform the
   // invariant transformations that we will end up doing later so that
   // optimize is seeing what is as close as possible to the final
@@ -419,12 +392,18 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   pm.add(createLowerAtomicPass());
   pm.add(new RaiseAsmPass());
   if (opts.CheckDivZero) pm.add(new DivCheckPass());
-	pm.add(new LowerSSEPass());
+  pm.add(new LowerSSEPass());
   // FIXME: This false here is to work around a bug in
   // IntrinsicLowering which caches values which may eventually be
   // deleted (via RAUW). This can be removed once LLVM fixes this
   // issue.
   pm.add(new IntrinsicCleanerPass(*targetData, false));
+  pm.add(new ThrowCleanerPass());
+  pm.add(createPruneEHPass());
+  pm.add(createInstructionCombiningPass());
+  pm.add(createCFGSimplificationPass());
+  pm.add(createAggressiveDCEPass());
+  pm.add(createGlobalDCEPass());
   pm.run(*module);
 
   if (opts.Optimize)
@@ -437,7 +416,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   // by name. We only add them if such a function doesn't exist to
   // avoid creating stale uses.
 
-  const llvm::Type *i8Ty = Type::getInt8Ty(getGlobalContext());
+  llvm::Type *i8Ty = Type::getInt8Ty(getGlobalContext());
   forceImport(module, "memcpy", PointerType::getUnqual(i8Ty),
               PointerType::getUnqual(i8Ty),
               PointerType::getUnqual(i8Ty),
@@ -450,6 +429,12 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
               PointerType::getUnqual(i8Ty),
               Type::getInt32Ty(getGlobalContext()),
               targetData->getIntPtrType(getGlobalContext()), (Type*) 0);
+  forceImport(module, "uadd", StructType::get(Type::getInt32Ty(getGlobalContext()),
+                                              Type::getInt1Ty(getGlobalContext()),
+                                              NULL),
+                              Type::getInt32Ty(getGlobalContext()),
+                              Type::getInt32Ty(getGlobalContext()),
+                              (Type*)0);
 
   // FIXME: Missing force import for various math functions.
 
@@ -457,7 +442,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   // this to be linked in, it makes low level debugging much more
   // annoying.
   llvm::sys::Path path(opts.LibraryDir);
-  path.appendComponent("libkleeRuntimeIntrinsic.bca");
+  path.appendComponent("libkleeRuntimeIntrinsic.a");
   module = linkWithLibrary(module, path.c_str());
 
   // Needs to happen after linking (since ctors/dtors can be modified)
@@ -475,7 +460,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
   case eSwitchTypeInternal: break;
   case eSwitchTypeSimple: pm3.add(new LowerSwitchPass()); break;
   case eSwitchTypeLLVM:  pm3.add(createLowerSwitchPass()); break;
-  default: klee_error("invalid --switch-type");
+  default: LOG(FATAL) << "Invalid --switch-type";
   }
   pm3.add(new IntrinsicCleanerPass(*targetData));
   pm3.add(new PhiCleanerPass());
@@ -557,14 +542,23 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
     if (it->isDeclaration())
       continue;
 
-    fnList[it->getNameStr()] = it;
+    fnList[it->getName()] = it;
   }
+
+  int nameCounter = 0;
 
   for (std::map<std::string, Function*>::iterator it = fnList.begin();
       it != fnList.end(); it++) {
     Function *fn = it->second;
     
     KFunction *kf = new KFunction(fn, this);
+    kf->nameID = nameCounter;
+    nameTable.insert(std::make_pair(fn->getName(), nameCounter++));
+
+    if (DebugPrintInstructionCount) {
+      LOG(INFO) << "Function '" << fn->getName().str() << "': "
+                << kf->numInstructions << " instructions";
+    }
 
     for (unsigned i=0; i<kf->numInstructions; ++i) {
       KInstruction *ki = kf->instructions[i];
@@ -578,11 +572,7 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
       Path sourceFile(ki->info->file);
       program_point_t pPoint = std::make_pair(llvm::sys::path::filename(StringRef(sourceFile.str())),
           ki->info->line);
-
-      ki->originallyCovered = coveredLines.count(pPoint) > 0;
     }
-
-    kf->trackCoverage = isFunctionCoverable(kf);
 
     functions.push_back(kf);
     functionMap.insert(std::make_pair(fn, kf));
@@ -604,6 +594,13 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
       llvm::errs() << (*it)->getName() << ", ";
     }
     llvm::errs() << "]\n";
+  }
+
+  if (OutputDebugTable) {
+    std::ostream *f = ih->openOutputFile("strings.bin");
+    writeDebugTable(*f);
+    f->flush();
+    delete f;
   }
 }
 
@@ -658,8 +655,7 @@ KFunction::KFunction(llvm::Function *_function,
                      KModule *km) 
   : function(_function),
     numArgs(function->arg_size()),
-    numInstructions(0),
-    trackCoverage(true) {
+    numInstructions(0) {
   for (llvm::Function::iterator bbit = function->begin(), 
          bbie = function->end(); bbit != bbie; ++bbit) {
     BasicBlock *bb = bbit;
@@ -668,6 +664,7 @@ KFunction::KFunction(llvm::Function *_function,
   }
 
   instructions = new KInstruction*[numInstructions];
+  instrPostOrder = new KInstruction*[numInstructions];
 
   std::map<Instruction*, unsigned> registerMap;
 
@@ -682,13 +679,14 @@ KFunction::KFunction(llvm::Function *_function,
   numRegisters = rnum;
   
   unsigned i = 0;
-  for (llvm::Function::iterator bbit = function->begin(), 
-         bbie = function->end(); bbit != bbie; ++bbit) {
-    for (llvm::BasicBlock::iterator it = bbit->begin(), ie = bbit->end();
-         it != ie; ++it) {
-      KInstruction *ki;
 
-      switch(it->getOpcode()) {
+  for (llvm::Function::iterator bbit = function->begin(),
+      bbie = function->end(); bbit != bbie; ++bbit) {
+    for (BasicBlock::iterator it = bbit->begin(), ie = bbit->end(); it != ie;++it) {
+      KInstruction *ki;
+      Instruction *inst = it;
+
+      switch(inst->getOpcode()) {
       case Instruction::GetElementPtr:
       case Instruction::InsertValue:
       case Instruction::ExtractValue:
@@ -701,11 +699,11 @@ KFunction::KFunction(llvm::Function *_function,
         ki = new KInstruction(); break;
       }
 
-      ki->inst = it;      
-      ki->dest = registerMap[it];
+      ki->inst = inst;
+      ki->dest = registerMap[inst];
 
-      if (isa<CallInst>(it) || isa<InvokeInst>(it)) {
-        CallSite cs(it);
+      if (isa<CallInst>(inst) || isa<InvokeInst>(inst)) {
+        CallSite cs(inst);
         unsigned numArgs = cs.arg_size();
         ki->operands = new int[numArgs+1];
         ki->operands[0] = getOperandNum(cs.getCalledValue(), registerMap, km,
@@ -716,10 +714,10 @@ KFunction::KFunction(llvm::Function *_function,
         }
       }
       else {
-        unsigned numOperands = it->getNumOperands(); 
+        unsigned numOperands = inst->getNumOperands();
         ki->operands = new int[numOperands];
         for (unsigned j=0; j<numOperands; j++) {
-          Value *v = it->getOperand(j);
+          Value *v = inst->getOperand(j);
         
           if (Instruction *inst = dyn_cast<Instruction>(v)) {
             ki->operands[j] = registerMap[inst];
@@ -739,10 +737,24 @@ KFunction::KFunction(llvm::Function *_function,
       instructions[i++] = ki;
     }
   }
+
+  // Compute the post-order traversal
+  unsigned poIndex = 0;
+  BasicBlock *entryBB = &function->getEntryBlock();
+  for (po_iterator<BasicBlock*> poIt = po_begin(entryBB),
+      poIe = po_end(entryBB); poIt != poIe; ++poIt) {
+    BasicBlock *bb = *poIt;
+    unsigned bbEntry = basicBlockEntry[bb];
+    for (unsigned i = 0; i < bb->size(); ++i) {
+      instrPostOrder[poIndex + i] = instructions[bbEntry + bb->size() - i - 1];
+    }
+    poIndex += bb->size();
+  }
 }
 
 KFunction::~KFunction() {
   for (unsigned i=0; i<numInstructions; ++i)
     delete instructions[i];
   delete[] instructions;
+  delete[] instrPostOrder;
 }

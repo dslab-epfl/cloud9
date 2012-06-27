@@ -43,10 +43,10 @@
 
 #include "cloud9/Common.h"
 
-//#define KLEE_LIBRARY_PATH 	KLEE_DIR "/" RUNTIME_CONFIGURATION "/lib"
+//#define KLEE_LIBRARY_PATH   KLEE_DIR "/" RUNTIME_CONFIGURATION "/lib"
 
 enum LibcType {
-	NoLibc, UcLibc
+  NoLibc, UcLibc
 };
 
 extern std::string InputFile;
@@ -65,8 +65,8 @@ extern int RetryConnectTime;
 extern int UpdateTime;
 
 namespace klee {
-	class RNG;
-	extern RNG theRNG;
+  class RNG;
+  extern RNG theRNG;
 }
 
 

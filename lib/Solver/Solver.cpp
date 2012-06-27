@@ -9,8 +9,8 @@
 
 #include "klee/Solver.h"
 #include "klee/SolverImpl.h"
+#include "klee/SolverStats.h"
 
-#include "SolverStats.h"
 #include "STPBuilder.h"
 
 #include "klee/Constraints.h"
@@ -23,10 +23,7 @@
 
 #include "llvm/Support/Process.h"
 
-#include "cloud9/instrum/Timing.h"
-#include "cloud9/instrum/InstrumentationManager.h"
-#include "cloud9/Logger.h"
-
+#include "smt_service.pb.h"
 
 #define vc_bvBoolExtract IAMTHESPAWNOFSATAN
 
@@ -41,13 +38,16 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <glog/logging.h>
+
 #include <iostream>
 #include <fstream>
 
 using namespace klee;
 using namespace llvm;
 
-using cloud9::instrum::Timer;
+using cloud9::smt_server::SmtRequest;
+using cloud9::smt_server::SmtResponse;
 
 /***/
 
@@ -615,11 +615,11 @@ static bool runAndGetCexForked(::VC vc,
       fprintf(stderr, "error: fork failed (for STP) - reached system limit (EAGAIN)\n");
     else
       if(errno == ENOMEM) {
-    	  unsigned mbs = sys::Process::GetTotalMemoryUsage() >> 20;
-    	  fprintf(stderr, "error: fork failed (for STP) - cannot allocate kernel structures (ENOMEM) - Klee mem = %u\n", mbs);
+        unsigned mbs = sys::Process::GetTotalMemoryUsage() >> 20;
+        fprintf(stderr, "error: fork failed (for STP) - cannot allocate kernel structures (ENOMEM) - Klee mem = %u\n", mbs);
       }
       else
-    	  fprintf(stderr, "error: fork failed (for STP) - unknown errno = %d\n", errno);
+        fprintf(stderr, "error: fork failed (for STP) - unknown errno = %d\n", errno);
 
     std::string line;
     std::ifstream *f;
@@ -723,8 +723,9 @@ STPSolverImpl::computeInitialValues(const Query &query,
   vc_push(vc);
 
   for (ConstraintManager::const_iterator it = query.constraints.begin(), 
-         ie = query.constraints.end(); it != ie; ++it)
+                                         ie = query.constraints.end(); it != ie; ++it) {
     vc_assertFormula(vc, builder->construct(*it));
+  }
   
   ++stats::queries;
   ++stats::queryCounterexamples;
@@ -743,13 +744,7 @@ STPSolverImpl::computeInitialValues(const Query &query,
     success = runAndGetCexForked(vc, builder, stp_e, objects, values, 
                                  hasSolution, timeout);
   } else {
-    Timer t;
-    t.start();
     runAndGetCex(vc, builder, stp_e, objects, values, hasSolution);
-    t.stop();
-    cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::SMTSolve, t);
-
-    //CLOUD9_DEBUG("SMT solving complete: " << t);
     success = true;
   }
   
@@ -759,7 +754,7 @@ STPSolverImpl::computeInitialValues(const Query &query,
     else
       ++stats::queriesValid;
   }
-  
+
   vc_pop(vc);
   
   return success;

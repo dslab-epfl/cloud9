@@ -129,6 +129,8 @@ namespace {
     /// SquareLevel - The current depth of matched '[' tokens.
     unsigned SquareLevel;
 
+    bool incremental;
+
     /* Core parsing functionality */
     
     const Identifier *GetOrCreateIdentifier(const Token &Tok);
@@ -322,12 +324,13 @@ namespace {
   public:
     ParserImpl(const std::string _Filename,
                const MemoryBuffer *MB,
-               ExprBuilder *_Builder) : Filename(_Filename),
-                                        TheMemoryBuffer(MB),
-                                        Builder(_Builder),
-                                        TheLexer(MB),
-                                        MaxErrors(~0u),
-                                        NumErrors(0) {}
+               ExprBuilder *_Builder, bool _incremental) : Filename(_Filename),
+                                                          TheMemoryBuffer(MB),
+                                                          Builder(_Builder),
+                                                          TheLexer(MB),
+                                                          MaxErrors(~0u),
+                                                          NumErrors(0),
+                                                          incremental(_incremental) {}
 
     /// Initialize - Initialize the parsing state. This must be called
     /// prior to the start of parsing.
@@ -570,6 +573,8 @@ DeclResult ParserImpl::ParseQueryCommand() {
   std::vector<ExprHandle> Values;
   std::vector<const Array*> Objects;
   ExprResult Res;
+  std::string query_id;
+  std::string parent_id;
 
   // FIXME: We need a command for this. Or something.
   ExprSymTab.clear();
@@ -583,8 +588,30 @@ DeclResult ParserImpl::ParseQueryCommand() {
                                         UpdateList(it->second->Root, NULL)));
   }
 
-
   ConsumeExpectedToken(Token::KWQuery);
+
+  if (incremental) {
+    // Parse query-id & parent-id
+
+    if (Tok.kind != Token::Identifier && Tok.kind != Token::Number) {
+      Error("expected query id.");
+      return DeclResult();
+    }
+
+    query_id = std::string(Tok.start, Tok.length);
+
+    ConsumeToken();
+
+    if (Tok.kind != Token::Identifier && Tok.kind != Token::Number) {
+      Error("expected parent id.");
+      return DeclResult();
+    }
+
+    parent_id = std::string(Tok.start, Tok.length);
+
+    ConsumeToken();
+  }
+
   if (Tok.kind != Token::LSquare) {
     Error("malformed query, expected constraint list.");
     SkipUntilRParen();
@@ -678,7 +705,12 @@ DeclResult ParserImpl::ParseQueryCommand() {
  exit:
   if (Tok.kind != Token::EndOfFile)
     ExpectRParen("unexpected argument to 'query'.");  
-  return new QueryCommand(Constraints, Res.get(), Values, Objects);
+
+  if (incremental) { 
+    return new QueryCommand(Constraints, Res.get(), Values, Objects, query_id, parent_id);
+ } else {
+    return new QueryCommand(Constraints, Res.get(), Values, Objects);
+  }
 }
 
 /// ParseNumberOrExpr - Parse an expression whose type cannot be
@@ -1593,8 +1625,10 @@ void QueryCommand::dump() {
     ObjectsBegin = &Objects[0];
     ObjectsEnd = ObjectsBegin + Objects.size();
   }
+
   ExprPPrinter::printQuery(std::cout, ConstraintManager(Constraints), 
-                           Query, ValuesBegin, ValuesEnd,
+                           Query, std::string(), std::string(),
+                           ValuesBegin, ValuesEnd,
                            ObjectsBegin, ObjectsEnd,
                            false);
 }
@@ -1609,8 +1643,8 @@ Parser::~Parser() {
 
 Parser *Parser::Create(const std::string Filename,
                        const MemoryBuffer *MB,
-                       ExprBuilder *Builder) {
-  ParserImpl *P = new ParserImpl(Filename, MB, Builder);
+                       ExprBuilder *Builder, bool incremental) {
+  ParserImpl *P = new ParserImpl(Filename, MB, Builder, incremental);
   P->Initialize();
   return P;
 }

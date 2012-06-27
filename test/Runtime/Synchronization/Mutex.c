@@ -10,38 +10,38 @@ int sharedData=0;
  
 void *threadCode(void *p)
 {
-	int i;
-	int err;
-	for(i=0; i<ITERATIONS; ++i) {
-		err = pthread_mutex_lock(&mutex);
-		assert(err == 0 && "Mutex lock");
-		++sharedData;
-		err = pthread_mutex_unlock(&mutex);
-		assert(err == 0 && "Mutex unlock");
-	}
-	return NULL;
+  int i;
+  int err;
+  for(i=0; i<ITERATIONS; ++i) {
+    err = pthread_mutex_lock(&mutex);
+    assert(err == 0 && "Mutex lock");
+    ++sharedData;
+    err = pthread_mutex_unlock(&mutex);
+    assert(err == 0 && "Mutex unlock");
+  }
+  return NULL;
 }
  
 int main(int argc, char **argv) {
-	int i;
-	int err;
-	int num_threads = argc;
+  int i;
+  int err;
+  int num_threads = argc;
   pthread_t thread[num_threads];
 
   for (i=0; i<num_threads; ++i) {
- 		err = pthread_create(&thread[i], NULL, threadCode, NULL);
-		assert(err == 0 && "Thread create");
+    err = pthread_create(&thread[i], NULL, threadCode, NULL);
+    assert(err == 0 && "Thread create");
   }
  
   for (i=0; i <num_threads; ++i) {
    pthread_join(thread[i], NULL);
-	assert(err == 0 && "Thread join");
+  assert(err == 0 && "Thread join");
   }
  
-	assert(sharedData == num_threads*ITERATIONS);
+  assert(sharedData == num_threads*ITERATIONS);
 
   err = pthread_mutex_destroy(&mutex);
-	assert(err == 0 && "Mutex destroy");
+  assert(err == 0 && "Mutex destroy");
   return 0;
 }
 

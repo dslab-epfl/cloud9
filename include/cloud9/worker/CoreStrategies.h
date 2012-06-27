@@ -156,6 +156,22 @@ public:
 // State Search Strategies
 ////////////////////////////////////////////////////////////////////////////////
 
+class ClusteredRandomPathStrategy: public StateSelectionStrategy {
+private:
+  typedef std::set<SymbolicState*> state_set_t;
+  WorkerTree *tree;
+  state_set_t states;
+public:
+  ClusteredRandomPathStrategy(WorkerTree *t) :
+    tree(t) { };
+
+  virtual ~ClusteredRandomPathStrategy() { };
+
+  virtual SymbolicState* onNextStateSelection();
+  virtual void onStateActivated(SymbolicState *state);
+  virtual void onStateDeactivated(SymbolicState *state);
+};
+
 class RandomStrategy: public StateSelectionStrategy {
 private:
     std::vector<SymbolicState*> states;
@@ -196,10 +212,27 @@ public:
         MinDistToUncovered,
         CoveringNew
       };
+
 public:
     WeightedRandomStrategy(WeightType _type, WorkerTree *_tree, SymbolicEngine *_engine);
     virtual ~WeightedRandomStrategy();
+};
 
+class LimitedFlowStrategy: public StateSelectionStrategy {
+private:
+  StateSelectionStrategy *underStrat;
+  StateSelectionStrategy *workingStrat;
+
+  unsigned maxCount;
+  std::set<SymbolicState*> activeStates;
+public:
+  LimitedFlowStrategy(StateSelectionStrategy *_underStrat,
+      StateSelectionStrategy *_workingStrat, unsigned _maxCount) :
+    underStrat(_underStrat), workingStrat(_workingStrat), maxCount(_maxCount) { }
+
+  virtual SymbolicState* onNextStateSelection();
+  virtual void onStateActivated(SymbolicState *state);
+  virtual void onStateDeactivated(SymbolicState *state);
 };
 
 }

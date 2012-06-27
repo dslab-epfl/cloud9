@@ -43,7 +43,6 @@
 #include <string>
 
 #include "cloud9/Protocols.h"
-#include "cloud9/Logger.h"
 #include "cloud9/ExecutionPath.h"
 
 namespace cloud9 {

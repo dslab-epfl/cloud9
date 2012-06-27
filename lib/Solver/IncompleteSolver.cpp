@@ -16,41 +16,41 @@ using namespace llvm;
 
 /***/
 
-IncompleteSolver::PartialValidity 
-IncompleteSolver::negatePartialValidity(PartialValidity pv) {
+Solver::PartialValidity
+IncompleteSolver::negatePartialValidity(Solver::PartialValidity pv) {
   switch(pv) {
   default: assert(0 && "invalid partial validity");  
-  case MustBeTrue:  return MustBeFalse;
-  case MustBeFalse: return MustBeTrue;
-  case MayBeTrue:   return MayBeFalse;
-  case MayBeFalse:  return MayBeTrue;
-  case TrueOrFalse: return TrueOrFalse;
+  case Solver::MustBeTrue:  return Solver::MustBeFalse;
+  case Solver::MustBeFalse: return Solver::MustBeTrue;
+  case Solver::MayBeTrue:   return Solver::MayBeFalse;
+  case Solver::MayBeFalse:  return Solver::MayBeTrue;
+  case Solver::TrueOrFalse: return Solver::TrueOrFalse;
   }
 }
 
-IncompleteSolver::PartialValidity 
+Solver::PartialValidity
 IncompleteSolver::computeValidity(const Query& query) {
-  PartialValidity trueResult = computeTruth(query);
+  Solver::PartialValidity trueResult = computeTruth(query);
 
-  if (trueResult == MustBeTrue) {
-    return MustBeTrue;
+  if (trueResult == Solver::MustBeTrue) {
+    return Solver::MustBeTrue;
   } else {
-    PartialValidity falseResult = computeTruth(query.negateExpr());
+    Solver::PartialValidity falseResult = computeTruth(query.negateExpr());
 
-    if (falseResult == MustBeTrue) {
-      return MustBeFalse;
+    if (falseResult == Solver::MustBeTrue) {
+      return Solver::MustBeFalse;
     } else {
-      bool trueCorrect = trueResult != None,
-        falseCorrect = falseResult != None;
+      bool trueCorrect = trueResult != Solver::None,
+        falseCorrect = falseResult != Solver::None;
       
       if (trueCorrect && falseCorrect) {
-        return TrueOrFalse;
+        return Solver::TrueOrFalse;
       } else if (trueCorrect) { // ==> trueResult == MayBeFalse
-        return MayBeFalse;
+        return Solver::MayBeFalse;
       } else if (falseCorrect) { // ==> falseResult == MayBeFalse
-        return MayBeTrue;
+        return Solver::MayBeTrue;
       } else {
-        return None;
+        return Solver::None;
       }
     }
   }
@@ -70,10 +70,10 @@ StagedSolverImpl::~StagedSolverImpl() {
 }
 
 bool StagedSolverImpl::computeTruth(const Query& query, bool &isValid) {
-  IncompleteSolver::PartialValidity trueResult = primary->computeTruth(query); 
+  Solver::PartialValidity trueResult = primary->computeTruth(query);
   
-  if (trueResult != IncompleteSolver::None) {
-    isValid = (trueResult == IncompleteSolver::MustBeTrue);
+  if (trueResult != Solver::None) {
+    isValid = (trueResult == Solver::MustBeTrue);
     return true;
   } 
 
@@ -85,21 +85,21 @@ bool StagedSolverImpl::computeValidity(const Query& query,
   bool tmp;
 
   switch(primary->computeValidity(query)) {
-  case IncompleteSolver::MustBeTrue: 
+  case Solver::MustBeTrue:
     result = Solver::True;
     break;
-  case IncompleteSolver::MustBeFalse: 
+  case Solver::MustBeFalse:
     result = Solver::False;
     break;
-  case IncompleteSolver::TrueOrFalse: 
+  case Solver::TrueOrFalse:
     result = Solver::Unknown;
     break;
-  case IncompleteSolver::MayBeTrue:
+  case Solver::MayBeTrue:
     if (!secondary->impl->computeTruth(query, tmp))
       return false;
     result = tmp ? Solver::True : Solver::Unknown;
     break;
-  case IncompleteSolver::MayBeFalse:
+  case Solver::MayBeFalse:
     if (!secondary->impl->computeTruth(query.negateExpr(), tmp))
       return false;
     result = tmp ? Solver::False : Solver::Unknown;

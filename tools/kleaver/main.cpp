@@ -7,9 +7,12 @@
 #include "klee/Expr.h"
 #include "klee/ExprBuilder.h"
 #include "klee/Solver.h"
+#include "klee/SolverImpl.h"
 #include "klee/Statistics.h"
 #include "klee/util/ExprPPrinter.h"
 #include "klee/util/ExprVisitor.h"
+#include "klee/util/Assignment.h"
+#include "klee/Internal/System/Time.h"
 
 // FIXME: Ugh, this is gross. But otherwise our config.h conflicts with LLVMs.
 #undef PACKAGE_BUGREPORT
@@ -78,15 +81,20 @@ namespace {
 
   cl::opt<bool>
   UseDummySolver("use-dummy-solver",
-		   cl::init(false));
+       cl::init(false));
 
   cl::opt<bool>
   UseFastCexSolver("use-fast-cex-solver",
-		   cl::init(false));
-  
+       cl::init(false));
+
+  cl::opt<std::string>
+  LogQueryPC("log-query-pc");
+
+  cl::opt<std::string>
+  LogOutput("log-output");
+
   cl::opt<bool>
-  UseSTPQueryPCLog("use-stp-query-pc-log",
-                   cl::init(false));
+  ValidateAssignments("validate-assignments", cl::init(false));
 }
 
 static std::string escapedString(const char *start, unsigned length) {
@@ -123,7 +131,7 @@ static bool PrintInputAST(const char *Filename,
                           const MemoryBuffer *MB,
                           ExprBuilder *Builder) {
   std::vector<Decl*> Decls;
-  Parser *P = Parser::Create(Filename, MB, Builder);
+  Parser *P = Parser::Create(Filename, MB, Builder, false);
   P->SetMaxErrors(20);
 
   unsigned NumQueries = 0;
@@ -153,11 +161,116 @@ static bool PrintInputAST(const char *Filename,
   return success;
 }
 
+// Logging solver producing JSON output
+class JSONLoggingSolver : public SolverImpl {
+  Solver *solver;
+  double startTime;
+  std::ofstream os;
+  int queryCount;
+
+public:
+  JSONLoggingSolver(Solver *_solver, std::string path) : 
+      solver(_solver),
+      os(path.c_str(), std::ios::trunc),
+      queryCount(0) {
+    os << "[\n";
+  }
+
+  ~JSONLoggingSolver() {
+    delete solver;
+  }
+
+
+  void startQuery(const Query& query,
+                  const char *typeName) {
+
+    os << "\t[" << queryCount++ << ",\"" << typeName << "\",";
+    os.flush();
+    startTime = klee::util::getWallTime();
+  }
+
+  void finishQuery(const Query& query, bool success) {
+    double delta = klee::util::getWallTime() - startTime;
+    os << "\"" << (success ? "OK" : "FAIL") << "\"," << delta << ",";
+		os << "[]";
+    os << "],\n";
+    os.flush();
+  }
+
+  bool computeTruth(const Query& query, bool &isValid) {
+    startQuery(query, "Truth");
+    bool success = solver->impl->computeTruth(query, isValid);
+    if (success)
+      os << "\"" << (isValid ? "true" : "false") << "\",";
+    else
+      os << "None,";
+    finishQuery(query, success);
+    return success;
+  }
+
+  bool computeValidity(const Query& query, Solver::Validity &result) {
+    startQuery(query, "Validity");
+    bool success = solver->impl->computeValidity(query, result);
+    if (success)
+      os << result << ",";
+    else
+      os << "None,";
+    finishQuery(query, success);
+    return success;
+  }
+
+  bool computeValue(const Query& query, ref<Expr> &result) {
+    startQuery(query.withFalse(), "Value");
+    bool success = solver->impl->computeValue(query, result);
+    if (success)
+      os << result << ",";
+    else
+      os << "None,";
+    finishQuery(query, success);
+    return success;
+  }
+
+  bool computeInitialValues(const Query& query,
+                            const std::vector<const Array*> &objects,
+                            std::vector< std::vector<unsigned char> > &values,
+                            bool &hasSolution) {
+    startQuery(query, "InitialValues");
+    bool success = solver->impl->computeInitialValues(query, objects,
+                                                      values, hasSolution);
+    if (success) {
+      if (hasSolution) {
+        std::vector< std::vector<unsigned char> >::iterator
+          values_it = values.begin();
+        os << "{";
+        for (std::vector<const Array*>::const_iterator i = objects.begin(),
+               e = objects.end(); i != e; ++i, ++values_it) {
+          const Array *array = *i;
+          std::vector<unsigned char> &data = *values_it;
+          os << "\"" << array->name << "\": [";
+          for (unsigned j = 0; j < array->size; j++) {
+            os << (int) data[j];
+            if (j+1 < array->size)
+              os << ",";
+          }
+          os << "],";
+        }
+        os << "},";
+      } else {
+        os << "{},";
+      }
+    } else {
+      os << "None,";
+    }
+    finishQuery(query, success);
+    return success;
+  }
+};
+
 static bool EvaluateInputAST(const char *Filename,
                              const MemoryBuffer *MB,
                              ExprBuilder *Builder) {
   std::vector<Decl*> Decls;
-  Parser *P = Parser::Create(Filename, MB, Builder);
+  Parser *P = Parser::Create(Filename, MB, Builder, false);
   P->SetMaxErrors(20);
   while (Decl *D = P->ParseTopLevelDecl()) {
     Decls.push_back(D);
@@ -173,19 +286,35 @@ static bool EvaluateInputAST(const char *Filename,
   if (!success)
     return false;
 
+#if 0
   // FIXME: Support choice of solver.
   Solver *S, *STP = S = 
     UseDummySolver ? createDummySolver() : new STPSolver(false);
+#endif
+  
+  Solver *S;
+  Solver *O = NULL;
+  if (UseDummySolver) {
+    S = createDummySolver();
+  } else {
+    S = new STPSolver(false);
+  }
 
-  if (UseSTPQueryPCLog)
-    S = createPCLoggingSolver(S, "stp-queries.pc");
+  if (LogQueryPC != "" && !UseDummySolver) {
+    S = createPCLoggingSolver(S, LogQueryPC);
+  }
+
+  if (LogOutput != "" && !UseDummySolver) {
+    S = new Solver(new JSONLoggingSolver(S, LogOutput));
+  }
+
+#if 0
   if (UseFastCexSolver)
     S = createFastCexSolver(S);
   S = createCexCachingSolver(S);
   S = createCachingSolver(S);
   S = createIndependentSolver(S);
-  if (0)
-    S = createValidatingSolver(S, STP);
+#endif
 
   unsigned Index = 0;
   for (std::vector<Decl*>::iterator it = Decls.begin(),
@@ -197,7 +326,8 @@ static bool EvaluateInputAST(const char *Filename,
       assert("FIXME: Support counterexample query commands!");
       if (QC->Values.empty() && QC->Objects.empty()) {
         bool result;
-        if (S->mustBeTrue(Query(ConstraintManager(QC->Constraints), QC->Query),
+        if (S->mustBeTrue(Query(ConstraintManager(QC->Constraints), 
+                                QC->Query),
                           result)) {
           std::cout << (result ? "VALID" : "INVALID");
         } else {
@@ -224,7 +354,7 @@ static bool EvaluateInputAST(const char *Filename,
         
         ConstraintManager originalCM = ConstraintManager(QC->Constraints);
         Query origQuery = Query(originalCM,
-            QC->Query);
+                                QC->Query);
 
         if (S->getInitialValues(origQuery,
                                 QC->Objects, result)) {
@@ -243,6 +373,15 @@ static bool EvaluateInputAST(const char *Filename,
             if (i + 1 != e)
               std::cout << "\n";
           }
+
+          if (ValidateAssignments) {
+            Assignment assign((std::vector<const Array*> &) QC->Objects, result);
+            bool sat1 = assign.satisfies(QC->Constraints.begin(), 
+                                         QC->Constraints.end());
+            bool sat2 = assign.evaluate(NotExpr::create(QC->Query))->isTrue();
+            assert(sat1 && "Assignment does not satisfy constraints");
+            assert(sat2 && "Query is not true");
+          }
         } else {
           std::cout << "FAIL";
         }
@@ -259,6 +398,9 @@ static bool EvaluateInputAST(const char *Filename,
   delete P;
 
   delete S;
+  if (O) {
+    delete O;
+  }
 
   if (uint64_t queries = *theStatisticManager->getStatisticByName("Queries")) {
     std::cout 

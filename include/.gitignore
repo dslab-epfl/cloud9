@@ -1,0 +1,2 @@
+# Include back Protobuf symlinks
+!*.pb.h

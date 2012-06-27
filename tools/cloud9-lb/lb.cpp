@@ -32,7 +32,6 @@
 
 #include "cloud9/lb/LBServer.h"
 #include "cloud9/lb/LoadBalancer.h"
-#include "cloud9/Logger.h"
 #include "cloud9/Protocols.h"
 
 #include "llvm/Support/CommandLine.h"
@@ -40,6 +39,8 @@
 #include <cstdio>
 #include <boost/asio.hpp>
 #include <string>
+
+#include <glog/logging.h>
 
 using namespace llvm;
 using namespace cloud9::lb;
@@ -58,7 +59,7 @@ int main(int argc, char **argv, char **envp) {
 
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  cloud9::Logger::getLogger().setLogPrefix("LBalancer  : ");
+  google::InitGoogleLogging(argv[0]);
 
   cl::ParseCommandLineOptions(argc, argv, "Cloud9 load balancer");
 
@@ -66,7 +67,7 @@ int main(int argc, char **argv, char **envp) {
 
   LBServer server(&lb, io_service, ServerPort);
 
-  CLOUD9_INFO("Running message handling loop...");
+  LOG(INFO) << "Running message handling loop...";
   io_service.run();
   return 0;
 }

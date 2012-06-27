@@ -33,6 +33,12 @@ message StatisticUpdate {
 	repeated StatisticData data = 2;
 }
 
+message PartitionData {
+	required uint32 partition = 1;
+	required uint32 total = 2;
+	required uint32 active = 3;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // The structure of a worker update
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,12 +49,11 @@ message WorkerReportMessage {
 		required uint32 port = 2;
 		
 		required bool wants_updates = 5;
+		required bool has_partitions = 7;
 		
 		required string prog_name = 3;
 		required uint32 prog_crc = 6;
 		required uint32 stat_id_count = 4;
-		
-		repeated string targets = 7;
 	}
 	
 	message NodeSetUpdate {
@@ -72,6 +77,7 @@ message WorkerReportMessage {
 		
 	repeated StatisticUpdate localUpdates = 5;
 	repeated TargetUpdate targetUpdates = 6;
+	repeated PartitionData partitionUpdates = 7;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,10 +89,9 @@ message LBResponseMessage {
 		required string dest_address = 2;
 		required uint32 dest_port = 3;
 		
-		required ExecutionPathSet path_set = 4;
-		repeated uint32 count = 5;
+		required uint32 count = 5;
 		
-		repeated string targets = 6;
+		repeated PartitionData partitions = 6;
 	}
 	
 	message JobSeed {
@@ -95,7 +100,8 @@ message LBResponseMessage {
 	
 	required uint32 id = 1;
 
-	optional JobTransfer jobTransfer = 2;
+	repeated JobTransfer jobTransfer = 2;
+	
 	optional JobSeed jobSeed = 3;
 	required bool more_details = 4;
 	required bool terminate = 7;

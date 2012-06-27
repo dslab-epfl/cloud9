@@ -21,6 +21,7 @@
 #include "llvm/User.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Instructions.h"
+#include "llvm/Constants.h"
 
 namespace klee {
   template<typename ItTy = llvm::User::const_op_iterator>
@@ -30,7 +31,7 @@ namespace klee {
                           const llvm::Type *, ptrdiff_t> super;
 
     ItTy OpIt;
-    const llvm::Type *CurTy;
+    llvm::Type *CurTy;
     generic_gep_type_iterator() {}
 
     llvm::Value *asValue(llvm::Value *V) const { return V; }
@@ -40,7 +41,7 @@ namespace klee {
 
   public:
 
-    static generic_gep_type_iterator begin(const llvm::Type *Ty, ItTy It) {
+    static generic_gep_type_iterator begin(llvm::Type *Ty, ItTy It) {
       generic_gep_type_iterator I;
       I.CurTy = Ty;
       I.OpIt = It;
@@ -60,12 +61,12 @@ namespace klee {
       return !operator==(x);
     }
 
-    const llvm::Type *operator*() const {
+    llvm::Type *operator*() const {
       return CurTy;
     }
 
-    const llvm::Type *getIndexedType() const {
-      const llvm::CompositeType *CT = cast<llvm::CompositeType>(CurTy);
+    llvm::Type *getIndexedType() const {
+      llvm::CompositeType *CT = cast<llvm::CompositeType>(CurTy);
       return CT->getTypeAtIndex(getOperand());
     }
 
@@ -76,7 +77,7 @@ namespace klee {
     llvm::Value *getOperand() const { return asValue(*OpIt); }
 
     generic_gep_type_iterator& operator++() {   // Preincrement
-      if (const llvm::CompositeType *CT = dyn_cast<llvm::CompositeType>(CurTy)) {
+      if (llvm::CompositeType *CT = dyn_cast<llvm::CompositeType>(CurTy)) {
         CurTy = CT->getTypeAtIndex(getOperand());
       } else {
         CurTy = 0;

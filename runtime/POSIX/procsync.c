@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -218,10 +219,10 @@ static void _sem_init(sem_posix_t *sem, int pshared, unsigned int value) {
 
   sdata->wlist = klee_get_wlist();
   sdata->count = value;
-	if(!pshared) {
-		sdata->thread_level = 1;
-		sdata->owner = getpid();
-	}
+  if(!pshared) {
+    sdata->thread_level = 1;
+    sdata->owner = getpid();
+  }
 }
 
 static sem_data_t *_get_sem_data(sem_posix_t *sem) {
@@ -231,14 +232,14 @@ static sem_data_t *_get_sem_data(sem_posix_t *sem) {
 }
 
 int sem_init(sem_posix_t *sem, int pshared, unsigned int value) {
-	if(value > SEM_VALUE_MAX) {
-		errno = EINVAL;
-		return -1;
-	}
-	
-	_sem_init(sem, pshared, value);
+  if(value > SEM_VALUE_MAX) {
+    errno = EINVAL;
+    return -1;
+  }
+  
+  _sem_init(sem, pshared, value);
 
-	return 0;
+  return 0;
 }
 
 int sem_destroy(sem_posix_t *sem) {
@@ -250,15 +251,15 @@ int sem_destroy(sem_posix_t *sem) {
 }
 
 static int _atomic_sem_lock(sem_data_t *sdata, char try) {
-	if(sdata->thread_level  &&  sdata->owner != getpid()) {
-		errno = EINVAL;
-		return -1;
-	}
+  if(sdata->thread_level  &&  sdata->owner != getpid()) {
+    errno = EINVAL;
+    return -1;
+  }
 
-	sdata->count--;
+  sdata->count--;
   if (sdata->count < 0) {
     if (try) {
-			sdata->count++;
+      sdata->count++;
       errno = EBUSY;
       return -1;
     } else {
@@ -292,10 +293,10 @@ int sem_trywait(sem_posix_t *sem) {
 }
 
 static int _atomic_sem_unlock(sem_data_t *sdata) {
-	if(sdata->thread_level  &&  sdata->owner != getpid()) {
-		errno = EINVAL;
-		return -1;
-	}
+  if(sdata->thread_level  &&  sdata->owner != getpid()) {
+    errno = EINVAL;
+    return -1;
+  }
 
   sdata->count++;
 

@@ -7,18 +7,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
 #include "AddressSpace.h"
-#include "CoreStats.h"
 #include "Memory.h"
 #include "TimingSolver.h"
 
 #include "klee/Expr.h"
 #include "klee/TimerStatIncrementer.h"
 #include "klee/AddressPool.h"
+#include "klee/CoreStats.h"
 
 #include <sys/mman.h>
+
+#include <glog/logging.h>
 
 using namespace klee;
 
@@ -94,6 +94,18 @@ bool AddressSpace::resolveOne(const ref<ConstantExpr> &addr,
     }
   }
 
+  if (VLOG_IS_ON(1)) {
+    VLOG(1) << "Cannot locate address: " << address;
+    VLOG(1) << "MEMORY MAP  " << std::string(50, '=');
+    for (MemoryMap::iterator it = objects.begin(), ie = objects.end();
+        it != ie; ++it) {
+      std::string allocInfo;
+      it->first->getAllocInfo(allocInfo);
+      VLOG(1) << it->first->address << ": " << allocInfo;
+    }
+    VLOG(1) << std::string(60, '=');
+  }
+
   return false;
 }
 
@@ -111,7 +123,7 @@ bool AddressSpace::resolveOne(ExecutionState &state,
     // try cheap search, will succeed for any inbounds pointer
 
     ref<ConstantExpr> cex;
-    if (!solver->getValue(state, address, cex))
+    if (!solver->getValue(data::SINGLE_ADDRESS_RESOLUTION, state, address, cex))
       return false;
     uint64_t example = cex->getZExtValue();
     MemoryObject hack(example);
@@ -138,7 +150,7 @@ bool AddressSpace::resolveOne(ExecutionState &state,
       const MemoryObject *mo = oi->first;
         
       bool mayBeTrue;
-      if (!solver->mayBeTrue(state, 
+      if (!solver->mayBeTrue(data::SINGLE_ADDRESS_RESOLUTION, state,
                              mo->getBoundsCheckPointer(address), mayBeTrue))
         return false;
       if (mayBeTrue) {
@@ -147,7 +159,7 @@ bool AddressSpace::resolveOne(ExecutionState &state,
         return true;
       } else {
         bool mustBeTrue;
-        if (!solver->mustBeTrue(state, 
+        if (!solver->mustBeTrue(data::SINGLE_ADDRESS_RESOLUTION, state,
                                 UgeExpr::create(address, mo->getBaseExpr()),
                                 mustBeTrue))
           return false;
@@ -161,7 +173,7 @@ bool AddressSpace::resolveOne(ExecutionState &state,
       const MemoryObject *mo = oi->first;
 
       bool mustBeTrue;
-      if (!solver->mustBeTrue(state, 
+      if (!solver->mustBeTrue(data::SINGLE_ADDRESS_RESOLUTION, state,
                               UltExpr::create(address, mo->getBaseExpr()),
                               mustBeTrue))
         return false;
@@ -170,7 +182,7 @@ bool AddressSpace::resolveOne(ExecutionState &state,
       } else {
         bool mayBeTrue;
 
-        if (!solver->mayBeTrue(state, 
+        if (!solver->mayBeTrue(data::SINGLE_ADDRESS_RESOLUTION, state,
                                mo->getBoundsCheckPointer(address),
                                mayBeTrue))
           return false;
@@ -218,7 +230,7 @@ bool AddressSpace::resolve(ExecutionState &state,
     // just get this by inspection of the expr.
     
     ref<ConstantExpr> cex;
-    if (!solver->getValue(state, p, cex))
+    if (!solver->getValue(data::MULTI_ADDRESS_RESOLUTION, state, p, cex))
       return true;
     uint64_t example = cex->getZExtValue();
     MemoryObject hack(example);
@@ -246,7 +258,7 @@ bool AddressSpace::resolve(ExecutionState &state,
       // XXX I think there is some query wasteage here?
       ref<Expr> inBounds = mo->getBoundsCheckPointer(p);
       bool mayBeTrue;
-      if (!solver->mayBeTrue(state, inBounds, mayBeTrue))
+      if (!solver->mayBeTrue(data::MULTI_ADDRESS_RESOLUTION, state, inBounds, mayBeTrue))
         return true;
       if (mayBeTrue) {
         rl.push_back(*oi);
@@ -255,7 +267,7 @@ bool AddressSpace::resolve(ExecutionState &state,
         unsigned size = rl.size();
         if (size==1) {
           bool mustBeTrue;
-          if (!solver->mustBeTrue(state, inBounds, mustBeTrue))
+          if (!solver->mustBeTrue(data::MULTI_ADDRESS_RESOLUTION, state, inBounds, mustBeTrue))
             return true;
           if (mustBeTrue)
             return false;
@@ -265,7 +277,7 @@ bool AddressSpace::resolve(ExecutionState &state,
       }
         
       bool mustBeTrue;
-      if (!solver->mustBeTrue(state, 
+      if (!solver->mustBeTrue(data::MULTI_ADDRESS_RESOLUTION, state,
                               UgeExpr::create(p, mo->getBaseExpr()),
                               mustBeTrue))
         return true;
@@ -279,7 +291,7 @@ bool AddressSpace::resolve(ExecutionState &state,
         return true;
 
       bool mustBeTrue;
-      if (!solver->mustBeTrue(state, 
+      if (!solver->mustBeTrue(data::MULTI_ADDRESS_RESOLUTION, state,
                               UltExpr::create(p, mo->getBaseExpr()),
                               mustBeTrue))
         return true;
@@ -289,7 +301,7 @@ bool AddressSpace::resolve(ExecutionState &state,
       // XXX I think there is some query wasteage here?
       ref<Expr> inBounds = mo->getBoundsCheckPointer(p);
       bool mayBeTrue;
-      if (!solver->mayBeTrue(state, inBounds, mayBeTrue))
+      if (!solver->mayBeTrue(data::MULTI_ADDRESS_RESOLUTION, state, inBounds, mayBeTrue))
         return true;
       if (mayBeTrue) {
         rl.push_back(*oi);
@@ -298,7 +310,7 @@ bool AddressSpace::resolve(ExecutionState &state,
         unsigned size = rl.size();
         if (size==1) {
           bool mustBeTrue;
-          if (!solver->mustBeTrue(state, inBounds, mustBeTrue))
+          if (!solver->mustBeTrue(data::MULTI_ADDRESS_RESOLUTION, state, inBounds, mustBeTrue))
             return true;
           if (mustBeTrue)
             return false;
@@ -344,9 +356,9 @@ bool AddressSpace::copyInConcretes(AddressPool *pool) {
 
       if (memcmp(address, os->concreteStore, mo->size)!=0) {
         if (os->readOnly) {
-					//Only cout structures are declared constant at the moment, they may be modified by system, try to continue
-					klee_warning("Read only object %s written to by external. Leaving old state",mo->name.c_str());
-					continue;
+          //Only cout structures are declared constant at the moment, they may be modified by system, try to continue
+          LOG(WARNING) << "Read only object " << mo->name.c_str() << " written to by external. Leaving old state.";
+          continue;
           //return false;
         } else {
           ObjectState *wos = getWriteable(mo, os);
@@ -360,15 +372,15 @@ bool AddressSpace::copyInConcretes(AddressPool *pool) {
 }
 
 void AddressSpace::_testAddressSpace() {
-	uint64_t prevAddr = 0;
+  uint64_t prevAddr = 0;
 
-	for (MemoryMap::iterator it = objects.begin(); it != objects.end(); ++it) {
-		uint64_t crtAddr = it->first->address;
+  for (MemoryMap::iterator it = objects.begin(); it != objects.end(); ++it) {
+    uint64_t crtAddr = it->first->address;
 
-		assert(crtAddr >= prevAddr);
+    assert(crtAddr >= prevAddr);
 
-		prevAddr = crtAddr;
-	}
+    prevAddr = crtAddr;
+  }
 }
 
 /***/

@@ -69,9 +69,10 @@
 // Enabled Components
 ////////////////////////////////////////////////////////////////////////////////
 
-#define HAVE_FAULT_INJECTION    1
+//#define HAVE_FAULT_INJECTION    1
+//#define HAVE_STUBBED_STDIO      1
 //#define HAVE_SYMBOLIC_CTYPE     1
-//#define HAVE_POSIX_SIGNALS	1
+//#define HAVE_POSIX_SIGNALS  1
 
 
 #endif /* POSIX_CONFIG_H_ */

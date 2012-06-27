@@ -21,17 +21,25 @@ namespace {
 
 using namespace klee;
 
+ExprVisitor::ExprVisitor(bool _recursive, visited_ty *visited_cache)
+  : recursive(_recursive), visited(visited_cache), delete_visited(false) {
+  if (!visited && UseVisitorHash) {
+    visited = new visited_ty();
+    delete_visited = true;
+  }
+}
+
 ref<Expr> ExprVisitor::visit(const ref<Expr> &e) {
-  if (!UseVisitorHash || isa<ConstantExpr>(e)) {
+  if (!visited || isa<ConstantExpr>(e)) {
     return visitActual(e);
   } else {
-    visited_ty::iterator it = visited.find(e);
+    visited_ty::iterator it = visited->find(e);
 
-    if (it!=visited.end()) {
+    if (it!=visited->end()) {
       return it->second;
     } else {
       ref<Expr> res = visitActual(e);
-      visited.insert(std::make_pair(e, res));
+      visited->insert(std::make_pair(e, res));
       return res;
     }
   }

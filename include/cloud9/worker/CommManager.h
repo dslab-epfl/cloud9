@@ -44,26 +44,26 @@ class JobManager;
 
 class CommManager {
 private:
-	JobManager *jobManager;
+  JobManager *jobManager;
 
-	boost::thread peerCommThread;
-	boost::thread lbCommThread;
+  boost::thread peerCommThread;
+  boost::thread lbCommThread;
 
-	boost::asio::io_service peerCommService;
-	boost::asio::io_service lbCommService;
+  boost::asio::io_service peerCommService;
+  boost::asio::io_service lbCommService;
 
-	bool terminated;
+  bool terminated;
 
-	void peerCommunicationControl();
-	void lbCommunicationControl();
+  void peerCommunicationControl();
+  void lbCommunicationControl();
 
 public:
-	CommManager(JobManager *jobManager);
-	virtual ~CommManager();
+  CommManager(JobManager *jobManager);
+  virtual ~CommManager();
 
-	void setup();
+  void setup();
 
-	void finalize();
+  void finalize();
 };
 
 }

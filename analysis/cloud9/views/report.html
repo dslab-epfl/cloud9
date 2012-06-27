@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+
+    <link rel="stylesheet" type="text/css" href="report.css"/>
+    <title>Report</title>
+  </head>
+
+  <body>
+    <h1>Report</h1>
+
+    <h2>Source Files</h2>
+{% for annotated_file in annotation_data %}
+{% set stats = annotated_file.source_stats %}
+    <div class="source_entry">
+      <div class="source_header">
+        <a href="src/{{ stats.file_name|replace('/','_') }}.html">{{stats.file_name}}</a>
+      </div>
+      <div class="source_contents">
+{% if stats.coverable_line_count %}
+        <span class="bull_covered">{{ '&bull; ' * stats.covered_line_count }}</span>
+        <span class="bull_uncovered">{{ '&bull; ' * (stats.coverable_line_count - stats.covered_line_count) }}</span>
+        <br/>
+{% else %}
+        <span class="bull_empty">&bull;</span> </br>
+{% endif %}
+        <span class="summary">
+          <span class="total_cov">
+            Total Coverage: {{ "%.2f"|format(stats.coverage) }}%
+          </span>
+          [ {{ stats.covered_line_count }}/{{ stats.coverable_line_count }} covered LOC ]
+        </span>
+      </div>
+    </div>
+{%- endfor %}
+  </body>
+</html>

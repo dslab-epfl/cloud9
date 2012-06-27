@@ -10,7 +10,11 @@
 #ifndef KLEE_CONSTRAINTS_H
 #define KLEE_CONSTRAINTS_H
 
+#include "klee/util/Ref.h"
 #include "klee/Expr.h"
+
+#include <vector>
+#include <queue>
 
 // FIXME: Currently we use ConstraintManager for two things: to pass
 // sets of constraints around, and to optimize constraints. We should
@@ -33,7 +37,8 @@ public:
   ConstraintManager(const std::vector< ref<Expr> > &_constraints) :
     constraints(_constraints) {}
 
-  ConstraintManager(const ConstraintManager &cs) : constraints(cs.constraints) {}
+  ConstraintManager(const ConstraintManager &cs)
+    : constraints(cs.constraints) {}
 
   typedef std::vector< ref<Expr> >::const_iterator constraint_iterator;
 
@@ -44,7 +49,7 @@ public:
   ref<Expr> simplifyExpr(ref<Expr> e) const;
 
   void addConstraint(ref<Expr> e);
-  
+
   bool empty() const {
     return constraints.empty();
   }
@@ -64,7 +69,7 @@ public:
   bool operator==(const ConstraintManager &other) const {
     return constraints == other.constraints;
   }
-  
+
 private:
   std::vector< ref<Expr> > constraints;
 

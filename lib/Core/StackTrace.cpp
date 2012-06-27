@@ -53,14 +53,14 @@ void StackTrace::dump(std::ostream &out) const {
 
     out << "\t#" << idx++
         << " " << std::setw(8) << std::setfill('0') << ii.assemblyLine
-        << " in " << f->getNameStr() << " (";
+        << " in " << f->getName().str() << " (";
 
     unsigned index = 0;
     for (Function::arg_iterator ai = f->arg_begin(), ae = f->arg_end();
          ai != ae; ++ai) {
       if (ai!=f->arg_begin()) out << ", ";
 
-      out << ai->getNameStr();
+      out << ai->getName().str();
       // XXX should go through function
       ref<Expr> value = it->second[index++];
       if (isa<ConstantExpr>(value))

@@ -63,7 +63,7 @@ extern "C" {
   //The var name can contain only variables, numerals and
   //underscore. If you use any other symbol, you will get a segfault.
   Expr vc_varExpr1(VC vc, char* name, 
-		  int indexwidth, int valuewidth);
+      int indexwidth, int valuewidth);
 
   //! Get the expression and type associated with a name.
   /*!  If there is no such Expr, a NULL Expr is returned. */
@@ -144,7 +144,7 @@ extern "C" {
   //simplify_print must be set to "1" if you wish simplification to
   //occur dring printing. It must be set to "0" otherwise
   void vc_printQueryStateToBuffer(VC vc, Expr e, 
-				  char **buf, unsigned long *len, int simplify_print);
+          char **buf, unsigned long *len, int simplify_print);
 
   //! Similar to vc_printQueryStateToBuffer()
   void vc_printCounterExampleToBuffer(VC vc, char **buf,unsigned long *len);
@@ -259,10 +259,10 @@ extern "C" {
   /*C pointer support:  C interface to support C memory arrays in CVCL */
   Expr vc_bvCreateMemoryArray(VC vc, char * arrayName);
   Expr vc_bvReadMemoryArray(VC vc, 
-			  Expr array, Expr byteIndex, int numOfBytes);
+        Expr array, Expr byteIndex, int numOfBytes);
   Expr vc_bvWriteToMemoryArray(VC vc, 
-			       Expr array, Expr  byteIndex, 
-			       Expr element, int numOfBytes);
+             Expr array, Expr  byteIndex, 
+             Expr element, int numOfBytes);
   Expr vc_bv32ConstExprFromInt(VC vc, unsigned int value);
   
   // return a string representation of the Expr e. The caller is responsible

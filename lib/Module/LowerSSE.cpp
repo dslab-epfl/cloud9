@@ -42,9 +42,9 @@ bool LowerSSEPass::runOnModule(Module &M) {
   return dirty;
 }
 
-static Value *CreateSaturatedValue(IRBuilder<> &builder, bool isSigned, const IntegerType *tt, Value *val) {
+static Value *CreateSaturatedValue(IRBuilder<> &builder, bool isSigned, IntegerType *tt, Value *val) {
   assert(isa<IntegerType>(val->getType()));
-  const IntegerType *ft = cast<IntegerType>(val->getType());
+  IntegerType *ft = cast<IntegerType>(val->getType());
   APInt maxVal = (isSigned ? APInt::getSignedMaxValue : APInt::getMaxValue)(tt->getBitWidth()).zext(ft->getBitWidth());
   Constant *maxValConst = ConstantInt::get(ft, maxVal);
   Value *cmp = isSigned ? builder.CreateICmpSGT(val, maxValConst) : builder.CreateICmpUGT(val, maxValConst);
@@ -79,12 +79,12 @@ static Value *CreateSaturatedUnsignedAdd(IRBuilder<> &builder, Value *l, Value *
 }
 
 static Value *CreateIsNegative(IRBuilder<> &builder, Value *v) {
-  const IntegerType *t = cast<IntegerType>(v->getType());
+  IntegerType *t = cast<IntegerType>(v->getType());
   return builder.CreateICmpNE(builder.CreateAShr(v, t->getBitWidth()-1), ConstantInt::get(t, 0));
 }
 
 static Value *CreateSaturatedSignedAdd(IRBuilder<> &builder, Value *l, Value *r) {
-  const IntegerType *t = cast<IntegerType>(l->getType());
+  IntegerType *t = cast<IntegerType>(l->getType());
   assert(l->getType() == r->getType());
   Value *lNeg = CreateIsNegative(builder, l);
   Value *rNeg = CreateIsNegative(builder, r);
@@ -100,12 +100,6 @@ static Value *CreateSaturatedSignedAdd(IRBuilder<> &builder, Value *l, Value *r)
   return res;
 }
 
-static Value *CreateSignExtendedICmp(IRBuilder<> &builder, CmpInst::Predicate p, Value *l, Value *r) {
-  assert(l->getType() == r->getType());
-  Value *cmp = builder.CreateICmp(p, l, r);
-  Value *res = builder.CreateSExt(cmp, l->getType());
-  return res;
-}
 
 static Value *CreateMinMax(IRBuilder<> &builder, bool isMax, bool isFloat, bool isSigned, Value *l, Value *r) {
   Value *cmp = isFloat ? builder.CreateFCmpOLT(l, r) :
@@ -113,7 +107,7 @@ static Value *CreateMinMax(IRBuilder<> &builder, bool isMax, bool isFloat, bool 
   return builder.CreateSelect(cmp, isMax ? r : l, isMax ? l : r);
 }
 
-static Value *CreateAbsDiff(IRBuilder<> &builder, bool isSigned, const IntegerType *tt, Value *l, Value *r) {
+static Value *CreateAbsDiff(IRBuilder<> &builder, bool isSigned, IntegerType *tt, Value *l, Value *r) {
   Value *lmr = builder.CreateSub(builder.CreateIntCast(l, tt, isSigned),
                                  builder.CreateIntCast(r, tt, isSigned));
   Value *lmrIsNeg = CreateIsNegative(builder, lmr);
@@ -133,29 +127,12 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
       IRBuilder<> builder(ii->getParent(), ii);
 
       switch (ii->getIntrinsicID()) {
-      case Intrinsic::x86_sse_loadu_ps:
-      case Intrinsic::x86_sse2_loadu_dq: {
-        Value *src = GET_ARG_OPERAND(ii, 0);
-
-        const VectorType* vecTy = cast<VectorType>(ii->getType());
-        PointerType *vecPtrTy = PointerType::get(vecTy, 0);
-
-        CastInst* pv = new BitCastInst(src, vecPtrTy, "", ii);
-        LoadInst* v = new LoadInst(pv, "", false, ii);
-
-        ii->replaceAllUsesWith(v);
-
-        ii->removeFromParent();
-        delete ii;
-        break;
-      }
-
       case Intrinsic::x86_sse_storeu_ps:
       case Intrinsic::x86_sse2_storeu_dq: {
         Value *dst = GET_ARG_OPERAND(ii, 0);
         Value *src = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType* vecTy = cast<VectorType>(src->getType());
+        VectorType* vecTy = cast<VectorType>(src->getType());
         PointerType *vecPtrTy = PointerType::get(vecTy, 0);
 
         CastInst* pv = new BitCastInst(dst, vecPtrTy, "", ii);
@@ -170,9 +147,9 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *dst = GET_ARG_OPERAND(ii, 0);
         Value *src = GET_ARG_OPERAND(ii, 1);
 
-        const Type *i128 = IntegerType::get(getGlobalContext(), 128);
-        const Type *i64 = IntegerType::get(getGlobalContext(), 64);
-        const Type *p0i64 = PointerType::get(i64, 0);
+        Type *i128 = IntegerType::get(getGlobalContext(), 128);
+        Type *i64 = IntegerType::get(getGlobalContext(), 64);
+        Type *p0i64 = PointerType::get(i64, 0);
 
         Value *srci = builder.CreateBitCast(src, i128);
         Value *src64 = builder.CreateTrunc(srci, i64);
@@ -190,7 +167,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src = GET_ARG_OPERAND(ii, 0);
         Value *count = GET_ARG_OPERAND(ii, 1);
 
-        const Type *i128 = IntegerType::get(getGlobalContext(), 128);
+        Type *i128 = IntegerType::get(getGlobalContext(), 128);
 
         Value *srci = builder.CreateBitCast(src, i128);
         Value *count128 = builder.CreateZExt(count, i128);
@@ -229,9 +206,9 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         break;
       }
 
-			case Intrinsic::x86_sse_cvtss2si:
+      case Intrinsic::x86_sse_cvtss2si:
       case Intrinsic::x86_sse2_cvtsd2si: {
-        const Type *i32 = Type::getInt32Ty(getGlobalContext());
+        Type *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *zero32 = ConstantInt::get(i32, 0);
 
@@ -261,8 +238,8 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
 
         assert(src2->getType() == srcTy);
 
-        const VectorType *dstTy = cast<VectorType>(ii->getType());
-        const IntegerType *dstElTy = cast<IntegerType>(dstTy->getElementType());
+        VectorType *dstTy = cast<VectorType>(ii->getType());
+        IntegerType *dstElTy = cast<IntegerType>(dstTy->getElementType());
         unsigned dstElCount = dstTy->getNumElements();
 
         assert(srcElCount*2 == dstElCount);
@@ -272,7 +249,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
                       || ii->getIntrinsicID() == Intrinsic::x86_mmx_packsswb
                       || ii->getIntrinsicID() == Intrinsic::x86_sse2_packsswb_128);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(dstTy);
 
@@ -309,7 +286,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
         assert(src2->getType() == vt);
@@ -323,7 +300,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         bool isSigned = (ii->getIntrinsicID() == Intrinsic::x86_sse2_pmins_w
                       || ii->getIntrinsicID() == Intrinsic::x86_sse2_pmaxs_w);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(vt);
 
@@ -348,13 +325,13 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(vt);
 
@@ -379,13 +356,13 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(vt);
 
@@ -409,13 +386,13 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(vt);
 
@@ -423,37 +400,6 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
           Constant *ic = ConstantInt::get(i32, i);
           res = builder.CreateInsertElement(res,
                                             CreateSaturatedSignedAdd(builder,
-                                                         builder.CreateExtractElement(src1, ic),
-                                                         builder.CreateExtractElement(src2, ic)),
-                                            ic);
-        }
-
-        ii->replaceAllUsesWith(res);
-
-        ii->removeFromParent();
-        delete ii;
-        break;
-      }
-
-      case Intrinsic::x86_sse2_pcmpgt_b:
-      case Intrinsic::x86_sse2_pcmpgt_w: {
-        Value *src1 = GET_ARG_OPERAND(ii, 0);
-        Value *src2 = GET_ARG_OPERAND(ii, 1);
-
-        const VectorType *vt = cast<VectorType>(src1->getType());
-        unsigned elCount = vt->getNumElements();
-
-        assert(src2->getType() == vt);
-        assert(ii->getType() == vt);
-
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
-
-        Value *res = UndefValue::get(vt);
-
-        for (unsigned i = 0; i < elCount; i++) {
-          Constant *ic = ConstantInt::get(i32, i);
-          res = builder.CreateInsertElement(res,
-                                            CreateSignExtendedICmp(builder, ICmpInst::ICMP_SGT,
                                                          builder.CreateExtractElement(src1, ic),
                                                          builder.CreateExtractElement(src2, ic)),
                                             ic);
@@ -475,7 +421,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src = GET_ARG_OPERAND(ii, 0);
         Value *count = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src->getType());
+        VectorType *vt = cast<VectorType>(src->getType());
         unsigned elCount = vt->getNumElements();
 
         assert(ii->getType() == vt);
@@ -485,7 +431,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
           case Intrinsic::x86_sse2_psrai_d:
           case Intrinsic::x86_sse2_psrai_w:
             opc = Instruction::AShr; break;
-					case Intrinsic::x86_sse2_psrli_d:
+          case Intrinsic::x86_sse2_psrli_d:
           case Intrinsic::x86_sse2_psrli_w:
             opc = Instruction::LShr; break;
           case Intrinsic::x86_sse2_pslli_d:
@@ -497,7 +443,7 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
 
         count = builder.CreateIntCast(count, vt->getElementType(), false);
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         Value *res = UndefValue::get(vt);
 
@@ -519,11 +465,11 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
-        const IntegerType *i16 = Type::getInt16Ty(getGlobalContext());
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i16 = Type::getInt16Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
@@ -554,13 +500,13 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
-        const VectorType *rt = cast<VectorType>(ii->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *rt = cast<VectorType>(ii->getType());
 
-        const IntegerType *i8 = Type::getInt8Ty(getGlobalContext());
-        const IntegerType *i16 = Type::getInt16Ty(getGlobalContext());
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
-        const IntegerType *i64 = Type::getInt64Ty(getGlobalContext());
+        IntegerType *i8 = Type::getInt8Ty(getGlobalContext());
+        IntegerType *i16 = Type::getInt16Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i64 = Type::getInt64Ty(getGlobalContext());
 
         assert(src2->getType() == vt);
 
@@ -603,10 +549,10 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
-        const VectorType *rt = cast<VectorType>(ii->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *rt = cast<VectorType>(ii->getType());
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         assert(src2->getType() == vt);
         assert(vt->getNumElements() == rt->getNumElements()*2);
@@ -655,10 +601,10 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
 
         CmpInst::Predicate fcmpPred = pred2fcmp[pred->getZExtValue()];
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
-        const Type *f32 = Type::getFloatTy(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        Type *f32 = Type::getFloatTy(getGlobalContext());
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
@@ -683,15 +629,15 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
         break;
       }
 
-			case Intrinsic::x86_sse2_pavg_b:
+      case Intrinsic::x86_sse2_pavg_b:
       case Intrinsic::x86_sse2_pavg_w: {
         Value *src1 = GET_ARG_OPERAND(ii, 0);
         Value *src2 = GET_ARG_OPERAND(ii, 1);
 
-        const VectorType *vt = cast<VectorType>(src1->getType());
+        VectorType *vt = cast<VectorType>(src1->getType());
         unsigned elCount = vt->getNumElements();
 
-        const IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
+        IntegerType *i32 = Type::getInt32Ty(getGlobalContext());
 
         assert(src2->getType() == vt);
         assert(ii->getType() == vt);
@@ -702,8 +648,8 @@ bool LowerSSEPass::runOnBasicBlock(BasicBlock &b) {
           Constant *ic = ConstantInt::get(i32, i);
           Value *v1 = builder.CreateExtractElement(src1, ic);
           Value *v2 = builder.CreateExtractElement(src2, ic);
-					Value *s = builder.CreateAdd(v1, v2);
-					Value *avg = builder.CreateAShr(s, 1);
+          Value *s = builder.CreateAdd(v1, v2);
+          Value *avg = builder.CreateAShr(s, 1);
           res = builder.CreateInsertElement(res, avg, ic);
         }
 

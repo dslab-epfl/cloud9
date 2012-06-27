@@ -31,9 +31,10 @@
 */
 
 #include "cloud9/worker/SymbolicEngine.h"
-#include "cloud9/instrum/InstrumentationManager.h"
+#include "klee/ExecutionState.h"
 
 #include <boost/bind.hpp>
+#include <glog/logging.h>
 
 namespace cloud9 {
 
@@ -42,11 +43,11 @@ namespace worker {
 // TODO: Use boost functions to remove redundancy in the code
 
 void SymbolicEngine::registerStateEventHandler(StateEventHandler *handler) {
-	seHandlers.insert(handler);
+  seHandlers.insert(handler);
 }
 
 void SymbolicEngine::deregisterStateEventHandler(StateEventHandler *handler) {
-	seHandlers.erase(handler);
+  seHandlers.erase(handler);
 }
 
 bool SymbolicEngine::fireStateBranching(klee::ExecutionState *state, klee::ForkTag forkTag) {
@@ -69,11 +70,6 @@ void SymbolicEngine::fireStateBranched(klee::ExecutionState *state,
     klee::ExecutionState *parent, int index, klee::ForkTag forkTag) {
 
   fireHandler(boost::bind(&StateEventHandler::onStateBranched, _1, state, parent, index, forkTag));
-
-  if (state) {
-    cloud9::instrum::theInstrManager.incStatistic(cloud9::instrum::TotalForkedStates);
-    cloud9::instrum::theInstrManager.incStatistic(cloud9::instrum::CurrentStateCount);
-  }
 }
 
 void SymbolicEngine::fireStateDestroy(klee::ExecutionState *state, bool silenced) {
@@ -83,39 +79,40 @@ void SymbolicEngine::fireStateDestroy(klee::ExecutionState *state, bool silenced
 
     h->onStateDestroy(state, silenced);
   }
-
-  cloud9::instrum::theInstrManager.incStatistic(cloud9::instrum::TotalFinishedStates);
-  cloud9::instrum::theInstrManager.decStatistic(cloud9::instrum::CurrentStateCount);
 }
 
 void SymbolicEngine::fireControlFlowEvent(klee::ExecutionState *state,
-			ControlFlowEvent event) {
-	for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
-		StateEventHandler *h = *it;
+      ControlFlowEvent event) {
 
-		h->onControlFlowEvent(state, event);
-	}
+  for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
+    StateEventHandler *h = *it;
+
+    h->onControlFlowEvent(state, event);
+  }
 }
 
 void SymbolicEngine::fireDebugInfo(klee::ExecutionState *state,
-		const std::string &message) {
-	for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
-		StateEventHandler *h = *it;
+    const std::string &message) {
 
-		h->onDebugInfo(state, message);
-	}
+  for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
+    StateEventHandler *h = *it;
+
+    h->onDebugInfo(state, message);
+  }
 }
 
 void SymbolicEngine::fireOutOfResources(klee::ExecutionState *destroyedState) {
-	for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
-		StateEventHandler *h = *it;
 
-		h->onOutOfResources(destroyedState);
-	}
+  for (handlers_t::iterator it = seHandlers.begin(); it != seHandlers.end(); it++) {
+    StateEventHandler *h = *it;
+
+    h->onOutOfResources(destroyedState);
+  }
 }
 
 void SymbolicEngine::fireEvent(klee::ExecutionState *state, unsigned int type,
     long int value) {
+
   fireHandler(boost::bind(&StateEventHandler::onEvent, _1, state, type, value));
 }
 

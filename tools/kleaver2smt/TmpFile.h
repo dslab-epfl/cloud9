@@ -38,17 +38,17 @@
 
 class TmpFile {
 public:
-	std::string FileName;
+  std::string FileName;
 
-	TmpFile();
-	const std::string& getTmpFileName() const;
-	void write(const std::string&);
+  TmpFile();
+  const std::string& getTmpFileName() const;
+  void write(const std::string&);
 
-	~TmpFile();
+  ~TmpFile();
 
 
 private:
-	int _fd;
+  int _fd;
 };
 
 #endif /* TMPFILE_H_ */

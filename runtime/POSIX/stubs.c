@@ -26,7 +26,6 @@
 #include "klee/Config/config.h"
 #include "common.h"
 
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -286,8 +285,8 @@ unsigned int gnu_dev_minor(unsigned long long int __dev) {
 unsigned long long int gnu_dev_makedev(unsigned int __major, unsigned int __minor) __attribute__((weak));
 unsigned long long int gnu_dev_makedev(unsigned int __major, unsigned int __minor) {
   return ((__minor & 0xff) | ((__major & 0xfff) << 8)
-	  | (((unsigned long long int) (__minor & ~0xff)) << 12)
-	  | (((unsigned long long int) (__major & ~0xfff)) << 32));
+    | (((unsigned long long int) (__minor & ~0xff)) << 12)
+    | (((unsigned long long int) (__major & ~0xfff)) << 32));
 }
 
 char *canonicalize_file_name (const char *name) __attribute__((weak));

@@ -11,6 +11,11 @@
 #define KLEE_STATSTRACKER_H
 
 #include "CallPathManager.h"
+#include "klee/data/ConstraintSolving.pb.h"
+#include "klee/data/CoverageLogs.pb.h"
+#include "klee/data/Profiling.pb.h"
+#include "klee/data/Statistics.pb.h"
+#include "klee/data/States.pb.h"
 
 #include <iostream>
 #include <set>
@@ -30,6 +35,21 @@ namespace klee {
   struct KFunction;
   struct StackFrame;
 
+  struct CoverageStats {
+    unsigned total_source_lines;
+    unsigned total_asm_lines;
+    unsigned covered_source_lines;
+    unsigned covered_asm_lines;
+
+    CoverageStats()
+      : total_source_lines(0),
+        total_asm_lines(0),
+        covered_source_lines(0),
+        covered_asm_lines(0) { }
+  };
+
+  typedef std::set<unsigned> CoverageFocusSet;
+
   class StatsTracker {
     friend class WriteStatsTimer;
     friend class WriteIStatsTimer;
@@ -37,15 +57,30 @@ namespace klee {
     Executor &executor;
     std::string objectFilename;
 
-    std::ostream *statsFile, *istatsFile;
+    std::ostream *statsFile;
+    std::ostream *istatsFile;
+    std::ostream *pstatsFile;
+    std::ostream *detailedCoverageFile;
+    std::ostream *profileFile;
+    std::ostream *queriesFile;
+    std::ostream *statesFile;
+
     double startWallTime;
     
     unsigned numBranches;
     unsigned fullBranches, partialBranches;
 
-    CallPathManager callPathManager;    
+    CoverageStats lastGlobalCoverage;
+    CoverageStats lastFocusedCoverage;
+    CoverageFocusSet coverageFocus;
 
-    bool updateMinDistToUncovered;
+    CallPathManager callPathManager;
+
+    data::SolverQuerySet currentQuerySet;
+    data::StatisticSet currentStatisticsSet;
+
+    std::set<ExecutionState*> currentStates;
+    data::ExecutionStateSet currentStatesSet;
 
   public:
     static bool useStatistics();
@@ -56,7 +91,20 @@ namespace klee {
     void writeStatsLine();
     void writeIStats();
 
-    std::pair<std::pair<unsigned, unsigned>, unsigned> computeCodeCoverage(KFunction *kf);
+    void computeDetailedCoverageSnapshot(data::CoverageInfo &coverageInfo, bool complete);
+    void getCallgraphProfile(data::GlobalProfile &globalProfile);
+
+    void writeDetailedCoverageSnapshot(bool is_header);
+    void writeCallgraphProfile();
+    void writeSolverQueries();
+    void writeStatistics();
+    void writeStates();
+
+    void readCoverageFocus(std::istream &is);
+    std::string formatCoverageInfo(unsigned total, unsigned covered);
+    void recordStateUpdate(const ExecutionState &state, bool terminated,
+                           bool set_stamp, data::ExecutionState *es_data);
+    void flushAllStates();
 
   public:
     StatsTracker(Executor &_executor, std::string _objectFilename,
@@ -88,7 +136,15 @@ namespace klee {
 
     void computeReachableUncovered();
 
-    void computeCodeCoverage();
+    void recordSolverQuery(uint64_t time_stamp, uint64_t solving_time,
+        data::QueryReason reason, data::QueryOperation operation,
+        bool shadow, const ExecutionState &state);
+    void updateStates(ExecutionState *current,
+                      const std::set<ExecutionState*> &addedStates,
+                      const std::set<ExecutionState*> &removedStates);
+    void recordStats();
+    void commitDetailedLogs();
+    void logSummary();
   };
 
   uint64_t computeMinDistToUncovered(const KInstruction *ki,

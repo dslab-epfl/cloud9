@@ -1,0 +1,43 @@
+// Copyright 2011 Google Inc. All Rights Reserved.
+//
+// author: Burak Emir <bqe@google.com>
+//
+// These definitions constitute the interface to the cloud9_smt_server.
+// For maximum flexibility, we just copy the definitions here instead of adding
+// a build dependency just for the service interface.
+//
+// Please cf. the cloud9_smt_server sources and documentation for more
+// inforrmation on the protocol.
+syntax="proto2";
+package cloud9.smt_server;
+
+message SmtRequest {
+  required string query = 1;
+}
+
+message SmtResponse {
+  // tentative. TODO: figure out what we need
+  enum Status {
+    OK = 0;
+    PARSE_FAILURE = 1;
+    OTHER_FAILURE = 2;
+    NOT_IMPLEMENTED = 3;
+  }
+  // tentative. TODO: figure out what we need
+  enum Verdict {
+    VALID = 0;
+    INVALID = 1;
+  }
+  required Status status = 1;  // TODO: enum
+
+  // only set if status was OK
+  optional Verdict verdict = 2;
+
+  message Assignment {
+    // object index
+    required uint32 index = 1;
+    // bit vector TODO: specify
+    repeated bool value = 2;
+  };
+  repeated Assignment assignment = 3;
+}

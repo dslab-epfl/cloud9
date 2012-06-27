@@ -17,7 +17,6 @@
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/SmallVector.h"
 
-#include "cloud9/Logger.h"
 #include "cloud9/Utils.h"
 
 #include <set>
@@ -55,7 +54,7 @@ The general rules are:
      <li> \c Ne, \c Ugt, \c Uge, \c Sgt, \c Sge are not used </li>
      <li> The only acceptable operations with boolean arguments are 
           \c Not \c And, \c Or, \c Xor, \c Eq, 
-	  as well as \c SExt, \c ZExt,
+    as well as \c SExt, \c ZExt,
           \c Select and \c NotOptimized. </li>
      <li> The only boolean operation which may involve a constant is boolean not (<tt>== false</tt>). </li>
      </ol>
@@ -331,6 +330,11 @@ public:
     return value.getZExtValue();
   }
 
+  uint64_t getSExtValue(unsigned bits = 64) const {
+    assert(getWidth() <= bits && "Value may be out of range!");
+    return value.getSExtValue();
+  }
+
   /// getLimitedValue - If this value is smaller than the specified limit,
   /// return it, otherwise return the limit value.
   uint64_t getLimitedValue(uint64_t Limit = ~0ULL) const {
@@ -388,12 +392,12 @@ public:
 
   /// isZero - Is this a constant zero.
   bool isZero() const {
-	  return value == 0;
+    return value.isMinValue();
   }
 
   /// isOne - Is this a constant one.
   bool isOne() const {
-	  return value == 1;
+    return getLimitedValue() == 1;
   }
   
   /// isTrue - Is this the true expression.
@@ -408,7 +412,7 @@ public:
 
   /// isAllOnes - Is this constant all ones.
   bool isAllOnes() const {
-	  return value.isAllOnesValue();
+    return value.isAllOnesValue();
   }
 
   /* Constant Operations */
@@ -601,13 +605,11 @@ public:
       stpInitialArray(0) {
     assert((isSymbolicArray() || constantValues.size() == size) &&
            "Invalid size for constant array!");
-    //CLOUD9_DEBUG("Array " << _name << " created! Stack trace: " << CLOUD9_STACKTRACE);
-    //cloud9::breakSignal();
 
-#ifdef NDEBUG
+#ifndef NDEBUG
     for (const ref<ConstantExpr> *it = constantValuesBegin;
          it != constantValuesEnd; ++it)
-      assert(it->getWidth() == getRange() &&
+      assert((*it)->getWidth() == getRange() &&
              "Invalid initial constant value!");
 #endif
   }
@@ -782,11 +784,11 @@ public:
   /// Shortcuts to create larger concats.  The chain returned is unbalanced to the right
   static ref<Expr> createN(unsigned nKids, const ref<Expr> kids[]);
   static ref<Expr> create4(const ref<Expr> &kid1, const ref<Expr> &kid2,
-			   const ref<Expr> &kid3, const ref<Expr> &kid4);
+         const ref<Expr> &kid3, const ref<Expr> &kid4);
   static ref<Expr> create8(const ref<Expr> &kid1, const ref<Expr> &kid2,
-			   const ref<Expr> &kid3, const ref<Expr> &kid4,
-			   const ref<Expr> &kid5, const ref<Expr> &kid6,
-			   const ref<Expr> &kid7, const ref<Expr> &kid8);
+         const ref<Expr> &kid3, const ref<Expr> &kid4,
+         const ref<Expr> &kid5, const ref<Expr> &kid6,
+         const ref<Expr> &kid7, const ref<Expr> &kid8);
   
   virtual ref<Expr> rebuild(ref<Expr> kids[]) const { return create(kids[0], kids[1]); }
   

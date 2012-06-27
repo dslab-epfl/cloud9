@@ -29,16 +29,16 @@ StatisticManager::~StatisticManager() {
 }
 
 void StatisticManager::useIndexedStats(unsigned _totalIndices) {
-	totalIndices = _totalIndices;
+  totalIndices = _totalIndices;
 
-	if (indexedStats)
-		delete[] indexedStats;
-	indexedStats = new uint64_t[_totalIndices * stats.size()];
-	memset(indexedStats, 0, sizeof(*indexedStats) * _totalIndices
-			* stats.size());
+  if (indexedStats)
+    delete[] indexedStats;
+  indexedStats = new uint64_t[_totalIndices * stats.size()];
+  memset(indexedStats, 0, sizeof(*indexedStats) * _totalIndices
+      * stats.size());
 
-	changedIdxStats.clear();
-	changedIdxStats.resize(stats.size(), std::make_pair(false, std::vector<char>()));
+  changedIdxStats.clear();
+  changedIdxStats.resize(stats.size(), std::make_pair(false, std::vector<char>()));
 }
 
 void StatisticManager::registerStatistic(Statistic &s) {
@@ -85,6 +85,11 @@ Statistic::~Statistic() {
 
 Statistic &Statistic::operator +=(const uint64_t addend) {
   theStatisticManager->incrementStatistic(*this, addend);
+  return *this;
+}
+
+Statistic &Statistic::operator -=(const uint64_t addend) {
+  theStatisticManager->incrementStatistic(*this, -addend);
   return *this;
 }
 

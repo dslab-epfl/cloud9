@@ -14,7 +14,7 @@ namespace BEEV {
   //error printing
   static void BVConstEvaluatorError(CONSTANTBV::ErrCode e, const ASTNode& t){
     std::string ss("BVConstEvaluator:");
-    ss += (const char*)BitVector_Error(e);	
+    ss += (const char*)BitVector_Error(e);  
     FatalError(ss.c_str(), t);
   }
 
@@ -158,10 +158,10 @@ namespace BEEV {
       bool carry = false;
       ASTVec c = t.GetChildren();
       for(ASTVec::iterator it=c.begin(),itend=c.end();it!=itend;it++) {
-	CBV kk = BVConstEvaluator(*it).GetBVConst();
-	CONSTANTBV::BitVector_add(output,output,kk,&carry);
-	carry = false;
-	//CONSTANTBV::BitVector_Destroy(kk);
+  CBV kk = BVConstEvaluator(*it).GetBVConst();
+  CONSTANTBV::BitVector_add(output,output,kk,&carry);
+  carry = false;
+  //CONSTANTBV::BitVector_Destroy(kk);
       }
       OutputNode = CreateBVConst(output, outputwidth);
       break;
@@ -187,18 +187,18 @@ namespace BEEV {
       CONSTANTBV::BitVector_Destroy(tmp0);
       
       if(0 != e) {
-	//error printing
-	if(counterexample_checking_during_refinement) {
+  //error printing
+  if(counterexample_checking_during_refinement) {
           output = CONSTANTBV::BitVector_Create(inputwidth,true);
-	  OutputNode = CreateBVConst(output, outputwidth);
-	  bvdiv_exception_occured = true;
+    OutputNode = CreateBVConst(output, outputwidth);
+    bvdiv_exception_occured = true;
           
           //  CONSTANTBV::BitVector_Destroy(output);
-	  break;
-	}
-	else {
-	  BVConstEvaluatorError(e,t);
-	}
+    break;
+  }
+  else {
+    BVConstEvaluatorError(e,t);
+  }
       } //end of error printing
 
       //FIXME Not very standard in the current scheme
@@ -214,78 +214,78 @@ namespace BEEV {
     }
     case ITE:
       if(ASTTrue == t[0])
-	OutputNode = BVConstEvaluator(t[1]);
+  OutputNode = BVConstEvaluator(t[1]);
       else if(ASTFalse == t[0])
-	OutputNode = BVConstEvaluator(t[2]);
+  OutputNode = BVConstEvaluator(t[2]);
       else
-	FatalError("BVConstEvaluator: ITE condiional must be either TRUE or FALSE:",t);
+  FatalError("BVConstEvaluator: ITE condiional must be either TRUE or FALSE:",t);
       break;
     case EQ: 
       if(CONSTANTBV::BitVector_equal(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case NEQ:
       if(!CONSTANTBV::BitVector_equal(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVLT:
       if(-1 == CONSTANTBV::BitVector_Lexicompare(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVLE: {
       int comp = CONSTANTBV::BitVector_Lexicompare(tmp0,tmp1);
       if(comp <= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVGT:
       if(1 == CONSTANTBV::BitVector_Lexicompare(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVGE: {
       int comp = CONSTANTBV::BitVector_Lexicompare(tmp0,tmp1);
       if(comp >= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     } 
     case BVSLT:
       if(-1 == CONSTANTBV::BitVector_Compare(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVSLE: {
       signed int comp = CONSTANTBV::BitVector_Compare(tmp0,tmp1);
       if(comp <= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVSGT:
       if(1 == CONSTANTBV::BitVector_Compare(tmp0,tmp1))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVSGE: {
       int comp = CONSTANTBV::BitVector_Compare(tmp0,tmp1);
       if(comp >= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     } 
     default:
@@ -384,9 +384,9 @@ namespace BEEV {
       unsigned int low = GetUnsignedConst(BVConstEvaluator(t[2]));
 
       if(!(0 <= hi <= 64))
-	FatalError("ConstantEvaluator: hi bit in BVEXTRACT is > 32bits",t);
+  FatalError("ConstantEvaluator: hi bit in BVEXTRACT is > 32bits",t);
       if(!(0 <= low <= hi <= 64))
-	FatalError("ConstantEvaluator: low bit in BVEXTRACT is > 32bits or hi",t);
+  FatalError("ConstantEvaluator: low bit in BVEXTRACT is > 32bits or hi",t);
 
       //64 bit mask.
       unsigned long long int mask1 = 0xffffffffffffffffLL;
@@ -407,8 +407,8 @@ namespace BEEV {
       unsigned int rlen = t[1].GetValueWidth();
       unsigned int slen = t.GetValueWidth();
       if(!(0 <  qlen + rlen  <= 64))
-	FatalError("BVConstEvaluator:"
-		   "lengths of childnodes of BVCONCAT are > 64:",t);
+  FatalError("BVConstEvaluator:"
+       "lengths of childnodes of BVCONCAT are > 64:",t);
 
       //64 bit mask for q
       unsigned long long int qmask = 0xffffffffffffffffLL;     
@@ -447,7 +447,7 @@ namespace BEEV {
     case BVPLUS: {
       ASTVec c = t.GetChildren();
       for(ASTVec::iterator it=c.begin(),itend=c.end();it!=itend;it++)
-	output += BVConstEvaluator(*it).GetBVConst();
+  output += BVConstEvaluator(*it).GetBVConst();
 
       //64 bit mask
       unsigned long long int mask = 0xffffffffffffffffLL;
@@ -462,17 +462,17 @@ namespace BEEV {
     }
     case BVDIV: {
       if(0 == t1.GetBVConst()) {
-	//if denominator is 0 then 
-	//  (if refinement is ON then output is set to 0) 
-	//   (else produce a fatal error)
-	if(counterexample_checking_during_refinement) {
-	  output = 0;
-	  bvdiv_exception_occured = true;
-	  break;
-	}
-	else {
-	  FatalError("BVConstEvaluator: divide by zero not allowed:",t);
-	}
+  //if denominator is 0 then 
+  //  (if refinement is ON then output is set to 0) 
+  //   (else produce a fatal error)
+  if(counterexample_checking_during_refinement) {
+    output = 0;
+    bvdiv_exception_occured = true;
+    break;
+  }
+  else {
+    FatalError("BVConstEvaluator: divide by zero not allowed:",t);
+  }
       }
 
       output = t0.GetBVConst() / t1.GetBVConst();
@@ -484,17 +484,17 @@ namespace BEEV {
     }
     case BVMOD: {
       if(0 == t1.GetBVConst()) {
-	//if denominator is 0 then 
-	//  (if refinement is ON then output is set to 0) 
-	//   (else produce a fatal error)
-	if(counterexample_checking_during_refinement) {
-	  output = 0;
-	  bvdiv_exception_occured = true;
-	  break;
-	}
-	else {
-	  FatalError("BVConstEvaluator: divide by zero not allowed:",t);
-	}
+  //if denominator is 0 then 
+  //  (if refinement is ON then output is set to 0) 
+  //   (else produce a fatal error)
+  if(counterexample_checking_during_refinement) {
+    output = 0;
+    bvdiv_exception_occured = true;
+    break;
+  }
+  else {
+    FatalError("BVConstEvaluator: divide by zero not allowed:",t);
+  }
       }
 
       output = t0.GetBVConst() % t1.GetBVConst();
@@ -506,87 +506,87 @@ namespace BEEV {
     }
     case ITE:
       if(ASTTrue == t[0])
-	OutputNode = BVConstEvaluator(t[1]);
+  OutputNode = BVConstEvaluator(t[1]);
       else if(ASTFalse == t[0])
-	OutputNode = BVConstEvaluator(t[2]);
+  OutputNode = BVConstEvaluator(t[2]);
       else
-	FatalError("BVConstEvaluator:" 
-		   "ITE condiional must be either TRUE or FALSE:",t);
+  FatalError("BVConstEvaluator:" 
+       "ITE condiional must be either TRUE or FALSE:",t);
       break;
     case EQ:
       if(t0.GetBVConst() == t1.GetBVConst())
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case NEQ:
       if(t0.GetBVConst() != t1.GetBVConst())
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
       break;
     case BVLT: {
       unsigned long long n0 = t0.GetBVConst();
       unsigned long long n1 = t1.GetBVConst();
       if(n0 < n1)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVLE:
       if(t0.GetBVConst() <= t1.GetBVConst())
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVGT:
       if(t0.GetBVConst() > t1.GetBVConst())
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVGE:
       if(t0.GetBVConst() >= t1.GetBVConst())
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVSLT: {
       signed long long int n0 = SXBVConst64(t0);
       signed long long int n1 = SXBVConst64(t1);
       if(n0 < n1)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVSLE: {
       signed long long int n0 = SXBVConst64(t0);
       signed long long int n1 = SXBVConst64(t1);
       if(n0 <= n1)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVSGT: {   
       signed long long int n0 = SXBVConst64(t0);
       signed long long int n1 = SXBVConst64(t1);
       if(n0 > n1)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVSGE: {   
       signed long long int n0 = SXBVConst64(t0);
       signed long long int n1 = SXBVConst64(t1);
       if(n0 >= n1)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     default:
@@ -620,7 +620,7 @@ namespace BEEV {
     //error printing
     if(0 != e) {
       std::string ss("BVConstEvaluator:");
-      ss += (const char*)BitVector_Error(e);	
+      ss += (const char*)BitVector_Error(e);  
       FatalError(ss.c_str(), t);
     }
 
@@ -662,39 +662,39 @@ namespace BEEV {
       unsigned * out0 = ConvertToCONSTANTBV(BVConstEvaluator(t[0]).GetBVConst());
       unsigned t0_width = t[0].GetValueWidth();
       if(inputwidth == t0_width) {
-	cccc = (char *)CONSTANTBV::BitVector_to_Bin(out0);
-	OutputNode = CreateBVConst(cccc,2);
+  cccc = (char *)CONSTANTBV::BitVector_to_Bin(out0);
+  OutputNode = CreateBVConst(cccc,2);
 
-	//AARON
-	free(cccc);
-	//AARON
+  //AARON
+  free(cccc);
+  //AARON
 
-	CONSTANTBV::BitVector_Destroy(out0);     
+  CONSTANTBV::BitVector_Destroy(out0);     
       }
       else {
-	// FIXME: (Dill) I'm guessing that BitVector sign returns 1 if the
-	// number is positive, 0 if 0, and -1 if negative.  But I'm only
-	// guessing.
-	signed int topbit_sign = (CONSTANTBV::BitVector_Sign(out0) < 0);
-	//out1 is the sign-extension bits
-	unsigned * out1 =  CONSTANTBV::BitVector_Create(inputwidth-t0_width,true);      
-	if(topbit_sign)
-	  CONSTANTBV::BitVector_Fill(out1);
+  // FIXME: (Dill) I'm guessing that BitVector sign returns 1 if the
+  // number is positive, 0 if 0, and -1 if negative.  But I'm only
+  // guessing.
+  signed int topbit_sign = (CONSTANTBV::BitVector_Sign(out0) < 0);
+  //out1 is the sign-extension bits
+  unsigned * out1 =  CONSTANTBV::BitVector_Create(inputwidth-t0_width,true);      
+  if(topbit_sign)
+    CONSTANTBV::BitVector_Fill(out1);
 
-	//AARON
-	CONSTANTBV::BitVector_Destroy(output);
-	//AARON
+  //AARON
+  CONSTANTBV::BitVector_Destroy(output);
+  //AARON
 
-	output = CONSTANTBV::BitVector_Concat(out1,out0);
-	cccc = (char *)CONSTANTBV::BitVector_to_Bin(output);
-	OutputNode = CreateBVConst(cccc,2);
+  output = CONSTANTBV::BitVector_Concat(out1,out0);
+  cccc = (char *)CONSTANTBV::BitVector_to_Bin(output);
+  OutputNode = CreateBVConst(cccc,2);
 
-	//AARON
-	free(cccc);
-	//AARON
+  //AARON
+  free(cccc);
+  //AARON
 
-	CONSTANTBV::BitVector_Destroy(out0);
-	CONSTANTBV::BitVector_Destroy(out1);
+  CONSTANTBV::BitVector_Destroy(out0);
+  CONSTANTBV::BitVector_Destroy(out1);
       }
       break;
     }
@@ -788,14 +788,14 @@ namespace BEEV {
       CONSTANTBV::ErrCode e = CONSTANTBV::BitVector_Multiply(output1,iii,jjj);
       //error printing
       if(0 != e) {
-	std::string ss("BVConstEvaluator:");
-	ss += (const char*)BitVector_Error(e);	
-	//destroy all the CONSTANTBV bitvectors
-	CONSTANTBV::BitVector_Destroy(iii);
-	CONSTANTBV::BitVector_Destroy(jjj);       
-	CONSTANTBV::BitVector_Destroy(One);
-	CONSTANTBV::BitVector_Destroy(Zero);
-	FatalError(ss.c_str(), t);
+  std::string ss("BVConstEvaluator:");
+  ss += (const char*)BitVector_Error(e);  
+  //destroy all the CONSTANTBV bitvectors
+  CONSTANTBV::BitVector_Destroy(iii);
+  CONSTANTBV::BitVector_Destroy(jjj);       
+  CONSTANTBV::BitVector_Destroy(One);
+  CONSTANTBV::BitVector_Destroy(Zero);
+  FatalError(ss.c_str(), t);
       }
 
       cccc = (char *)CONSTANTBV::BitVector_to_Bin(output1);
@@ -814,10 +814,10 @@ namespace BEEV {
       bool carry = false;
       ASTVec c = t.GetChildren();
       for(ASTVec::iterator it=c.begin(),itend=c.end();it!=itend;it++) {
-	unsigned int * kk = ConvertToCONSTANTBV(BVConstEvaluator(*it).GetBVConst());
-	CONSTANTBV::BitVector_add(output,output,kk,&carry);
-	carry = false;
-	CONSTANTBV::BitVector_Destroy(kk);
+  unsigned int * kk = ConvertToCONSTANTBV(BVConstEvaluator(*it).GetBVConst());
+  CONSTANTBV::BitVector_add(output,output,kk,&carry);
+  carry = false;
+  CONSTANTBV::BitVector_Destroy(kk);
       }
       cccc = (char *)CONSTANTBV::BitVector_to_Bin(output);
       OutputNode = CreateBVConst(cccc,2);
@@ -840,27 +840,27 @@ namespace BEEV {
       CONSTANTBV::ErrCode e = CONSTANTBV::BitVector_Div_Pos(quotient,iii,jjj,remainder);
 
       if(0 != e) {
-	//error printing
-	if(counterexample_checking_during_refinement) {
-	  OutputNode = CreateZeroConst(inputwidth);
-	  bvdiv_exception_occured = true;
-	  break;
-	}
-	else {
-	  std::string ss("BVConstEvaluator:");
-	  ss += (const char*)BitVector_Error(e);	
-	  //destroy all the CONSTANTBV bitvectors
-	  CONSTANTBV::BitVector_Destroy(iii);
-	  CONSTANTBV::BitVector_Destroy(jjj);       
-	  CONSTANTBV::BitVector_Destroy(One);
-	  CONSTANTBV::BitVector_Destroy(Zero);
+  //error printing
+  if(counterexample_checking_during_refinement) {
+    OutputNode = CreateZeroConst(inputwidth);
+    bvdiv_exception_occured = true;
+    break;
+  }
+  else {
+    std::string ss("BVConstEvaluator:");
+    ss += (const char*)BitVector_Error(e);  
+    //destroy all the CONSTANTBV bitvectors
+    CONSTANTBV::BitVector_Destroy(iii);
+    CONSTANTBV::BitVector_Destroy(jjj);       
+    CONSTANTBV::BitVector_Destroy(One);
+    CONSTANTBV::BitVector_Destroy(Zero);
 
-	  //AARON
-	  iii = jjj = One = Zero = NULL;
-	  //AARON
+    //AARON
+    iii = jjj = One = Zero = NULL;
+    //AARON
 
-	  FatalError(ss.c_str(), t);
-	}
+    FatalError(ss.c_str(), t);
+  }
       } //end of error printing
 
       cccc = (char *)CONSTANTBV::BitVector_to_Bin(quotient);
@@ -881,27 +881,27 @@ namespace BEEV {
       CONSTANTBV::ErrCode e = CONSTANTBV::BitVector_Div_Pos(quotient,iii,jjj,remainder);
 
       if(0 != e) {
-	//error printing
-	if(counterexample_checking_during_refinement) {
-	  OutputNode = CreateZeroConst(inputwidth);
-	  bvdiv_exception_occured = true;
-	  break;
-	}
-	else {
-	  std::string ss("BVConstEvaluator:");
-	  ss += (const char*)BitVector_Error(e);
-	  //destroy all the CONSTANTBV bitvectors
-	  CONSTANTBV::BitVector_Destroy(iii);
-	  CONSTANTBV::BitVector_Destroy(jjj);       
-	  CONSTANTBV::BitVector_Destroy(One);
-	  CONSTANTBV::BitVector_Destroy(Zero);	
+  //error printing
+  if(counterexample_checking_during_refinement) {
+    OutputNode = CreateZeroConst(inputwidth);
+    bvdiv_exception_occured = true;
+    break;
+  }
+  else {
+    std::string ss("BVConstEvaluator:");
+    ss += (const char*)BitVector_Error(e);
+    //destroy all the CONSTANTBV bitvectors
+    CONSTANTBV::BitVector_Destroy(iii);
+    CONSTANTBV::BitVector_Destroy(jjj);       
+    CONSTANTBV::BitVector_Destroy(One);
+    CONSTANTBV::BitVector_Destroy(Zero);  
 
-	  //AARON
-	  iii = jjj = One = Zero = NULL;
-	  //AARON
+    //AARON
+    iii = jjj = One = Zero = NULL;
+    //AARON
 
-	  FatalError(ss.c_str(), t);
-	}
+    FatalError(ss.c_str(), t);
+  }
       } //end of errory printing
 
       cccc = (char *)CONSTANTBV::BitVector_to_Bin(remainder);
@@ -917,78 +917,78 @@ namespace BEEV {
     }
     case ITE:
       if(ASTTrue == t[0])
-	OutputNode = BVConstEvaluator(t[1]);
+  OutputNode = BVConstEvaluator(t[1]);
       else if(ASTFalse == t[0])
-	OutputNode = BVConstEvaluator(t[2]);
+  OutputNode = BVConstEvaluator(t[2]);
       else
-	FatalError("BVConstEvaluator: ITE condiional must be either TRUE or FALSE:",t);
+  FatalError("BVConstEvaluator: ITE condiional must be either TRUE or FALSE:",t);
       break;
     case EQ: 
       if(CONSTANTBV::BitVector_equal(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case NEQ:
       if(!CONSTANTBV::BitVector_equal(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVLT:
       if(-1 == CONSTANTBV::BitVector_Lexicompare(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVLE: {
       int comp = CONSTANTBV::BitVector_Lexicompare(iii,jjj);
       if(comp <= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVGT:
       if(1 == CONSTANTBV::BitVector_Lexicompare(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVGE: {
       int comp = CONSTANTBV::BitVector_Lexicompare(iii,jjj);
       if(comp >= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     } 
     case BVSLT:
       if(-1 == CONSTANTBV::BitVector_Compare(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVSLE: {
       signed int comp = CONSTANTBV::BitVector_Compare(iii,jjj);
       if(comp <= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     }
     case BVSGT:
       if(1 == CONSTANTBV::BitVector_Compare(iii,jjj))
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     case BVSGE: {
       int comp = CONSTANTBV::BitVector_Compare(iii,jjj);
       if(comp >= 0)
-	OutputNode = ASTTrue;
+  OutputNode = ASTTrue;
       else
-	OutputNode = ASTFalse;
+  OutputNode = ASTFalse;
       break;
     } 
     default:
@@ -1006,9 +1006,9 @@ namespace BEEV {
 //     if(k == BVNEG || k == BVUMINUS)
 //       CONSTANTBV::BitVector_Destroy(One);
 //     else if(k == BVAND   || k == BVOR  || k == BVXOR   || k == BVSUB || 
-// 	    k == BVMULT  || k == EQ    || k == NEQ     || k == BVLT  ||
-// 	    k == BVLE    || k == BVGT  || k == BVGE    || k == BVSLT ||
-// 	    k == BVSLE   || k == BVSGT || k == BVSGE) {
+//      k == BVMULT  || k == EQ    || k == NEQ     || k == BVLT  ||
+//      k == BVLE    || k == BVGT  || k == BVGE    || k == BVSLT ||
+//      k == BVSLE   || k == BVSGT || k == BVSGE) {
 //       CONSTANTBV::BitVector_Destroy(One);
 //       CONSTANTBV::BitVector_Destroy(Zero);
 //     }    

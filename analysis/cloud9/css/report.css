@@ -1,0 +1,44 @@
+/* The main report page */
+
+h1, h2 {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1em;
+}
+
+.source_entry {
+    font-family: Arial, sans-serif;
+    font-size: 0.8em;
+    margin-bottom: 0.8em;
+}
+
+.source_header {
+    font-weight: bold;
+    margin-bottom: 0.2em;
+}
+
+.source_contents {
+    padding-left: 30px;
+}
+
+.bull_empty, .bull_covered, .bull_uncovered {
+    background-color: #ddd
+}
+
+.bull_empty {
+    color: #eee;
+}
+
+.bull_covered {
+    color: #090;
+}
+
+.bull_uncovered {
+    color: #900;
+}

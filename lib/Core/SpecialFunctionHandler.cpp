@@ -7,14 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
 #include "Memory.h"
 #include "SpecialFunctionHandler.h"
 #include "TimingSolver.h"
 
 #include "klee/ExecutionState.h"
 #include "klee/util/ExprPPrinter.h"
+#include "klee/data/ExprSerializer.h"
 
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
@@ -29,6 +28,8 @@
 #include "llvm/DerivedTypes.h"
 #include "llvm/InstrTypes.h"
 #include "llvm/LLVMContext.h"
+
+#include <glog/logging.h>
 
 #include <errno.h>
 #include <stdarg.h>
@@ -75,6 +76,10 @@ HandlerInfo handlerInfo[] = {
   add("calloc", handleCalloc, true),
   add("free", handleFree, false),
   add("klee_assume", handleAssume, false),
+#if 0
+  add("klee_shadow_check", handleShadowCheck, false),
+#endif
+  add("klee_record_expr", handleRecordExpr, false),
   add("klee_event", handleEvent, false),
   add("klee_check_memory_access", handleCheckMemoryAccess, false),
   add("klee_get_valuef", handleGetValue, true),
@@ -115,6 +120,10 @@ HandlerInfo handlerInfo[] = {
 
   add("klee_get_time", handleGetTime, true),
   add("klee_set_time", handleSetTime, false),
+
+  add("klee_begin_checked", handleBeginChecked, false),
+  add("klee_end_checked", handleEndChecked, false),
+  add("klee_memcmp", handleMemCmp, true),
 
   add("malloc", handleMalloc, true),
   add("realloc", handleRealloc, true),
@@ -222,7 +231,7 @@ void SpecialFunctionHandler::processMemoryLocation(ExecutionState &state,
     // FIXME: Type coercion should be done consistently somewhere.
     bool res;
     bool success =
-      executor.solver->mustBeTrue(*s,
+      executor.solver->mustBeTrue(data::OTHER, *s,
                                   EqExpr::create(ZExtExpr::create(size,
                                                                   Context::get().getPointerWidth()),
                                                  mo->getSizeExpr()),
@@ -278,10 +287,10 @@ SpecialFunctionHandler::readStringAtAddress(ExecutionState &state,
 
   ref<Expr> offset_expr = SubExpr::create(address, op.first->getBaseExpr());
   if (isa<ConstantExpr>(offset_expr)) {
-	  ref<ConstantExpr> value = cast<ConstantExpr>(offset_expr.get());
-  	  ioffset = value.get()->getZExtValue();
+    ref<ConstantExpr> value = cast<ConstantExpr>(offset_expr.get());
+      ioffset = value.get()->getZExtValue();
   } else
-	  return std::string("<KLEE<invalstring>>");
+    return std::string("<KLEE<invalstring>>");
 
   assert(ioffset < mo->size);
 
@@ -320,8 +329,8 @@ void SpecialFunctionHandler::handleSilentExit(ExecutionState &state,
 }
 
 void SpecialFunctionHandler::handleAliasFunction(ExecutionState &state,
-						 KInstruction *target,
-						 std::vector<ref<Expr> > &arguments) {
+             KInstruction *target,
+             std::vector<ref<Expr> > &arguments) {
   assert(arguments.size()==2 && 
          "invalid number of arguments to klee_alias_function");
   std::string old_fn = readStringAtAddress(state, arguments[0]);
@@ -418,8 +427,8 @@ void SpecialFunctionHandler::handleMalloc(ExecutionState &state,
 
 
 void SpecialFunctionHandler::handleValloc(ExecutionState &state, 
-					  KInstruction *target, 
-					  std::vector<ref<Expr> > &arguments) {
+            KInstruction *target, 
+            std::vector<ref<Expr> > &arguments) {
   
   // XXX ignoring for now the "multiple of page size " requirement 
   //- executing the regular alloc
@@ -439,7 +448,7 @@ void SpecialFunctionHandler::handleAssume(ExecutionState &state,
     e = NeExpr::create(e, ConstantExpr::create(0, e->getWidth()));
   
   bool res;
-  bool success = executor.solver->mustBeFalse(state, e, res);
+  bool success = executor.solver->mustBeFalse(data::CHECK_ASSUMPTION, state, e, res);
   assert(success && "FIXME: Unhandled solver failure");
   if (res) {
     executor.terminateStateOnError(state, 
@@ -524,8 +533,8 @@ void SpecialFunctionHandler::handleWarning(ExecutionState &state,
   assert(arguments.size()==1 && "invalid number of arguments to klee_warning");
 
   std::string msg_str = readStringAtAddress(state, arguments[0]);
-  klee_warning("%s: %s", state.stack().back().kf->function->getName().data(),
-               msg_str.c_str());
+  LOG(WARNING) << state.stack().back().kf->function->getName().data() << ": " <<
+               msg_str.c_str();
 }
 
 void SpecialFunctionHandler::handleDebug(ExecutionState &state,
@@ -590,8 +599,9 @@ void SpecialFunctionHandler::handleWarningOnce(ExecutionState &state,
          "invalid number of arguments to klee_warning_once");
 
   std::string msg_str = readStringAtAddress(state, arguments[0]);
-  klee_warning_once(0, "%s: %s", state.stack().back().kf->function->getName().data(),
-                    msg_str.c_str());
+  LOG_EVERY_N(WARNING, 1)
+      << state.stack().back().kf->function->getName().data() << ": "
+      << msg_str.c_str();
 }
 
 void SpecialFunctionHandler::handlePrintRange(ExecutionState &state,
@@ -605,10 +615,10 @@ void SpecialFunctionHandler::handlePrintRange(ExecutionState &state,
   if (!isa<ConstantExpr>(arguments[1])) {
     // FIXME: Pull into a unique value method?
     ref<ConstantExpr> value;
-    bool success = executor.solver->getValue(state, arguments[1], value);
+    bool success = executor.solver->getValue(data::OTHER, state, arguments[1], value);
     assert(success && "FIXME: Unhandled solver failure");
     bool res;
-    success = executor.solver->mustBeTrue(state, 
+    success = executor.solver->mustBeTrue(data::OTHER, state,
                                           EqExpr::create(arguments[1], value), 
                                           res);
     assert(success && "FIXME: Unhandled solver failure");
@@ -617,7 +627,7 @@ void SpecialFunctionHandler::handlePrintRange(ExecutionState &state,
     } else { 
       std::cerr << " ~= " << value;
       std::pair< ref<Expr>, ref<Expr> > res =
-        executor.solver->getRange(state, arguments[1]);
+        executor.solver->getRange(data::OTHER, state, arguments[1]);
       std::cerr << " (in [" << res.first << ", " << res.second <<"])";
     }
   }
@@ -938,7 +948,7 @@ void SpecialFunctionHandler::handleFork(ExecutionState &state,
     return;
   }
 
-  int reason = cast<ConstantExpr>(arguments[0])->getZExtValue();
+  uint64_t reason = cast<ConstantExpr>(arguments[0])->getZExtValue();
 
   executor.executeFork(state, target, reason);
 }
@@ -1030,9 +1040,8 @@ void SpecialFunctionHandler::handleDefineFixedObject(ExecutionState &state,
   mo->isUserSpecified = true; // XXX hack;
 }
 
-void SpecialFunctionHandler::handleMakeSymbolic(ExecutionState &state,
-                                                KInstruction *target,
-                                                std::vector<ref<Expr> > &arguments) {
+void SpecialFunctionHandler::makeSymbolic(ExecutionState &state,
+    std::vector<ref<Expr> > &arguments) {
   std::string name;
 
   // FIXME: For backwards compatibility, we should eventually enforce the
@@ -1042,13 +1051,14 @@ void SpecialFunctionHandler::handleMakeSymbolic(ExecutionState &state,
   } else {
     // FIXME: Should be a user.err, not an assert.
     assert(arguments.size()==3 &&
-           "invalid number of arguments to klee_make_symbolic");  
+           "invalid number of arguments to klee_make_symbolic");
     name = readStringAtAddress(state, arguments[2]);
   }
 
   resolutions_ty resList;
 
-  processMemoryLocation(state, arguments[0], arguments[1], "make_symbolic", resList);
+  processMemoryLocation(state, arguments[0], arguments[1],
+      "make_symbolic", resList);
 
   for (resolutions_ty::iterator it = resList.begin(); it != resList.end();
       it++) {
@@ -1066,6 +1076,12 @@ void SpecialFunctionHandler::handleMakeSymbolic(ExecutionState &state,
       executor.executeMakeSymbolic(*s, mo, os->isShared);
     }
   }
+}
+
+void SpecialFunctionHandler::handleMakeSymbolic(ExecutionState &state,
+                                                KInstruction *target,
+                                                std::vector<ref<Expr> > &arguments) {
+  makeSymbolic(state, arguments);
 }
 
 void SpecialFunctionHandler::handleEvent(ExecutionState &state,
@@ -1118,7 +1134,7 @@ void SpecialFunctionHandler::handleSyscall(ExecutionState &state,
     case SYS_rt_sigprocmask:
     case SYS_rt_sigreturn:
     case SYS_rt_sigsuspend:
-      CLOUD9_DEBUG("Blocked syscall " << syscallNo->getZExtValue());
+      LOG(INFO) << "Blocked syscall " << syscallNo->getZExtValue();
       executor.bindLocal(target, state, ConstantExpr::create(0,
             executor.getWidthForLLVMType(target->inst->getType())));
       break;
@@ -1131,4 +1147,60 @@ void SpecialFunctionHandler::handleSyscall(ExecutionState &state,
   } else {
     executor.terminateStateOnError(state, "syscall requires a concrete syscall number", "user.err");
   }
+}
+
+void SpecialFunctionHandler::handleRecordExpr(ExecutionState &state,
+                            KInstruction *target,
+                            std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 2
+      && "invalid number of arguments to klee_record_expr");
+
+  assert(isa<ConstantExpr>(arguments[0]) && "FIXME");
+}
+
+void SpecialFunctionHandler::handleBeginChecked(ExecutionState &state,
+                            KInstruction *target,
+                            std::vector<ref<Expr> > &arguments) {
+  LOG(INFO) << "Enabling full checks on path";
+}
+
+void SpecialFunctionHandler::handleEndChecked(ExecutionState &state,
+                            KInstruction *target,
+                            std::vector<ref<Expr> > &arguments) {
+  LOG(INFO) << "Disabling full checks on path";
+
+}
+
+void SpecialFunctionHandler::handleMemCmp(ExecutionState &state,
+                            KInstruction *target,
+                            std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 3 && "Invalid number of args in klee_memcpy");
+
+  assert(isa<ConstantExpr>(arguments[0]) && "FIXME");
+  assert(isa<ConstantExpr>(arguments[1]) && "FIXME");
+  assert(isa<ConstantExpr>(arguments[2]) && "FIXME");
+
+  ObjectPair op1, op2;
+  bool success;
+
+  uint64_t address1 = cast<ConstantExpr>(arguments[0])->getZExtValue();
+  uint64_t address2 = cast<ConstantExpr>(arguments[1])->getZExtValue();
+
+  success = state.addressSpace().resolveOne(cast<ConstantExpr>(arguments[0]), op1);
+  assert(success && "FIXME");
+
+  success = state.addressSpace().resolveOne(cast<ConstantExpr>(arguments[1]), op2);
+  assert(success && "FIXME");
+
+  unsigned size = cast<ConstantExpr>(arguments[2])->getZExtValue();
+
+  ref<Expr> expr1 = op1.second->read(address1 - op1.first->address, 8*size);
+  ref<Expr> expr2 = op2.second->read(address2 - op2.first->address, 8*size);
+
+  bool res;
+  success = executor.solver->mustBeTrue(data::OTHER, state, EqExpr::create(expr1, expr2), res);
+  assert(success && "FIXME");
+
+  executor.bindLocal(target, state, ConstantExpr::create(res,
+        executor.getWidthForLLVMType(target->inst->getType())));
 }

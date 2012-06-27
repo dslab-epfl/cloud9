@@ -32,13 +32,11 @@
 
 #include "files.h"
 
-#include "common.h"
-#include "models.h"
-
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <klee/klee.h>
 #include <fcntl.h>
@@ -47,6 +45,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/syscall.h>
+
+#include "common.h"
+#include "models.h"
+#include "symfs.h"
 
 // __NR_lseek was removed in ubuntu 11.04
 #ifdef __NR3264_lseek
@@ -65,100 +67,6 @@
       return -1; \
     } \
   } while (0)
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Internal File System Routines
-////////////////////////////////////////////////////////////////////////////////
-
-static int __isupper(const char c) {
-  return (('A' <= c) & (c <= 'Z'));
-}
-
-/* Returns pointer to the symbolic file structure if the pathname is symbolic */
-disk_file_t *__get_sym_file(const char *pathname) {
-  char c = pathname[0];
-
-  if (c == 0 || pathname[1] != 0)
-    return NULL;
-
-  unsigned int i;
-  for (i = 0; i < __fs.count; i++) {
-    if (c == 'A' + (char)i) {
-      disk_file_t *df = __fs.files[i];
-      return df;
-    }
-  }
-
-  return NULL;
-}
-
-static void _init_stats(disk_file_t *dfile, const struct stat *defstats) {
-  struct stat *stat = dfile->stat;
-
-  /* Important since we copy this out through getdents, and readdir
-     will otherwise skip this entry. For same reason need to make sure
-     it fits in low bits. */
-  klee_assume((stat->st_ino & 0x7FFFFFFF) != 0);
-
-  /* uclibc opendir uses this as its buffer size, try to keep
-     reasonable. */
-  klee_assume((stat->st_blksize & ~0xFFFF) == 0);
-
-  klee_prefer_cex(stat, !(stat->st_mode & ~(S_IFMT | 0777)));
-  klee_prefer_cex(stat, stat->st_dev == defstats->st_dev);
-  klee_prefer_cex(stat, stat->st_rdev == defstats->st_rdev);
-  klee_prefer_cex(stat, (stat->st_mode&0700) == 0600);
-  klee_prefer_cex(stat, (stat->st_mode&0070) == 0020);
-  klee_prefer_cex(stat, (stat->st_mode&0007) == 0002);
-  klee_prefer_cex(stat, (stat->st_mode&S_IFMT) == S_IFREG);
-  klee_prefer_cex(stat, stat->st_nlink == 1);
-  klee_prefer_cex(stat, stat->st_uid == defstats->st_uid);
-  klee_prefer_cex(stat, stat->st_gid == defstats->st_gid);
-  klee_prefer_cex(stat, stat->st_blksize == 4096);
-  klee_prefer_cex(stat, stat->st_atime == defstats->st_atime);
-  klee_prefer_cex(stat, stat->st_mtime == defstats->st_mtime);
-  klee_prefer_cex(stat, stat->st_ctime == defstats->st_ctime);
-
-  stat->st_size = dfile->contents.size;
-  stat->st_blocks = 8;
-}
-
-void __init_disk_file(disk_file_t *dfile, size_t maxsize, const char *symname,
-    const struct stat *defstats, int symstats) {
-  char namebuf[64];
-
-  // Initializing the file name...
-  dfile->name = (char*)malloc(MAX_PATH_LEN);
-
-  strcpy(namebuf, symname); strcat(namebuf, "-name");
-  klee_make_symbolic(dfile->name, MAX_PATH_LEN, namebuf);
-  klee_make_shared(dfile->name, MAX_PATH_LEN);
-
-  unsigned int i;
-  for (i = 0; i < MAX_PATH_LEN; i++) {
-    klee_prefer_cex(dfile->name, __isupper(dfile->name[i]));
-  }
-
-  // Initializing the buffer contents...
-  _block_init(&dfile->contents, maxsize);
-  dfile->contents.size = maxsize;
-  strcpy(namebuf, symname); strcat(namebuf, "-data");
-  klee_make_symbolic(dfile->contents.contents, maxsize, namebuf);
-  klee_make_shared(dfile->contents.contents, maxsize);
-
-  // Initializing the statistics...
-  dfile->stat = (struct stat*)malloc(sizeof(struct stat));
-
-  if (symstats) {
-    strcpy(namebuf, symname); strcat(namebuf, "-stat");
-    klee_make_symbolic(dfile->stat, sizeof(struct stat), namebuf);
-    klee_make_shared(dfile->stat, sizeof(struct stat));
-    _init_stats(dfile, defstats);
-  } else {
-    memcpy(dfile->stat, defstats, sizeof(struct stat));
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Internal File Routines
@@ -226,24 +134,30 @@ ssize_t _read_file(file_t *file, void *buf, size_t count, off_t offset) {
     return res;
   }
 
-  ssize_t res = _block_read(&file->storage->contents, buf, count,
-      offset >= 0 ? offset : file->offset);
+  if (file->storage->ops.read) {
+    ssize_t res = file->storage->ops.read(
+        file->storage, buf, count, offset >= 0 ? offset : file->offset);
 
-  if (res < 0) {
+    if (res < 0) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (offset < 0)
+      file->offset += res;
+
+    return res;
+  } else {
     errno = EINVAL;
     return -1;
   }
-
-  if (offset < 0)
-    file->offset += res;
-
-  return res;
 }
 
 ssize_t _write_file(file_t *file, const void *buf, size_t count, off_t offset) {
   if (_file_is_concrete(file)) {
     buf = __concretize_ptr(buf);
     count = __concretize_size(count);
+    offset = __concretize_offset(offset);
     /* XXX In terms of looking for bugs we really should do this check
       before concretization, at least once the routine has been fixed
       to properly work with symbolics. */
@@ -272,23 +186,27 @@ ssize_t _write_file(file_t *file, const void *buf, size_t count, off_t offset) {
 
   //klee_debug("Writing symbolically %d bytes...\n", count);
 
-  ssize_t res = _block_write(&file->storage->contents, buf, count,
-      offset >= 0 ? offset : file->offset);
+  if (file->storage->ops.write) {
+    ssize_t res = file->storage->ops.write(
+        file->storage, buf, count, offset >= 0 ? offset : file->offset);
 
-  if (res < 0) {
+    if (res < 0) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (offset < 0) {
+      file->offset += res;
+    }
+
+    if (res == 0)
+      errno = EFBIG;
+
+    return res;
+  } else {
     errno = EINVAL;
     return -1;
   }
-
-  if (offset < 0) {
-    file->offset += res;
-    file->storage->stat->st_size = file->storage->contents.size;
-  }
-
-  if (res == 0)
-    errno = EFBIG;
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,11 +284,19 @@ DEFINE_MODEL(int, lstat, const char *path, struct stat *buf) {
 int _ioctl_file(file_t *file, unsigned long request, char *argp) {
   // For now, this works only on concrete FDs
   if (_file_is_concrete(file)) {
-    int res = CALL_UNDERLYING(ioctl, file->concrete_fd, request, argp);
-    if (res == -1) {
-      errno = klee_get_errno();
+    int res;
+    switch (request) {
+    // Filter the TTY requests
+    case TCGETS:
+      errno = ENOTTY;
+      return -1;
+    default:
+      res = CALL_UNDERLYING(ioctl, file->concrete_fd, request, argp);
+      if (res == -1) {
+        errno = klee_get_errno();
+      }
+      return res;
     }
-    return res;
   }
 
   klee_warning("operation not supported on symbolic files");
@@ -437,7 +363,7 @@ DEFINE_MODEL(int, open, const char *pathname, int flags, ...) {
   if (dfile) {
     return _open_symbolic(dfile, flags, mode);
   } else {
-    if ((flags & O_ACCMODE) != O_RDONLY && !__fs.unsafe) {
+    if ((flags & O_ACCMODE) != O_RDONLY && !_fs.allow_unsafe) {
       klee_warning("blocked non-r/o access to concrete file");
       errno = EACCES;
       return -1;
@@ -490,7 +416,7 @@ int _open_concrete(int concrete_fd, int flags) {
   int res = CALL_UNDERLYING(fstat, concrete_fd, &s);
   assert(res == 0);
 
-  if ((S_ISREG(s.st_mode) && !__fs.overlapped) || (S_ISCHR(s.st_mode) || S_ISFIFO(s.st_mode) ||
+  if ((S_ISREG(s.st_mode) && !_fs.overlapped_writes) || (S_ISCHR(s.st_mode) || S_ISFIFO(s.st_mode) ||
       S_ISSOCK(s.st_mode))) {
     file->offset = -1;
   } else {
@@ -557,11 +483,15 @@ int _open_symbolic(disk_file_t *dfile, int flags, mode_t mode) {
   file->concrete_fd = -1;
 
   if ((flags & O_ACCMODE) != O_RDONLY && (flags & O_TRUNC)) {
-    file->storage->contents.size = 0;
+    if (file->storage->ops.truncate) {
+      file->storage->ops.truncate(file->storage, 0);
+    } else {
+      klee_warning("Trunc operation not supported.");
+    }
   }
 
   if (flags & O_APPEND) {
-    file->offset = file->storage->contents.size;
+    file->offset = file->storage->stat->st_size;
   }
 
   if (flags & O_CLOEXEC) {
@@ -627,14 +557,14 @@ static off_t _lseek(file_t *file, off_t offset, int whence) {
     newOff = file->offset + offset;
     break;
   case SEEK_END:
-    newOff = file->storage->contents.size + offset;
+    newOff = file->storage->stat->st_size + offset;
     break;
   default:
     errno = EINVAL;
     return -1;
   }
 
-  if (newOff < 0 || (size_t)newOff > file->storage->contents.size) {
+  if (newOff < 0 || newOff > file->storage->stat->st_size) {
     errno = EINVAL;
     return -1;
   }
@@ -649,12 +579,17 @@ DEFINE_MODEL(off_t, lseek, int fd, off_t offset, int whence) {
   file_t *file = (file_t*)__fdt[fd].io_object;
 
   if (_file_is_concrete(file)) {
+    offset = __concretize_offset(offset);
+
     int res = CALL_UNDERLYING(lseek, file->concrete_fd, offset, whence);
     if (res == -1) {
       errno = klee_get_errno();
     } else {
-      assert(file->offset >= 0);
-      file->offset = res;
+      if (file->offset == -1) {
+        klee_debug("lseek attempted on stream fd (or non-overlapping mode?). Concrete offset not recorded.");
+      } else {
+        file->offset = res;
+      }
     }
 
     return res;
@@ -731,13 +666,13 @@ int getdents(unsigned int fd, struct dirent64 *dirp, unsigned int count) {
     /* What happens for bad offsets? */
     i = file->offset / sizeof(*dirp);
     if (((off64_t) (i * sizeof(*dirp)) != file->offset) ||
-        i > __fs.count) {
+        i > _fs.count) {
       errno = EINVAL;
       return -1;
     }
 
-    for (; i< __fs.count; ++i) {
-      disk_file_t *df = __fs.files[i];
+    for (; i< _fs.count; ++i) {
+      disk_file_t *df = _fs.files[i];
 
       dirp->d_ino = df->stat->st_ino;
       dirp->d_reclen = sizeof(*dirp);

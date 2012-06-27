@@ -1,5 +1,5 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t.bc
-// RUN: %klee --libc=uclibc --posix-runtime --init-env %t.bc --sym-files 0 10 --sym-stdout >%t.log
+// RUN: %klee --libc=uclibc --posix-runtime --init-env %t.bc --sym-files 0 10 --no-overlapped >%t.log
 
 // RUN: test -f klee-last/test000001.ktest
 
@@ -16,13 +16,13 @@ int main(int argc, char** argv) {
 
   int r = isatty(fd0);
   if (r) 
-    fprintf(stderr, "stdin is a tty\n");
-  else fprintf(stderr, "stdin is NOT a tty\n");
+    printf("stdin is a tty\n");
+  else printf("stdin is NOT a tty\n");
   
   r = isatty(fd1);
   if (r) 
-    fprintf(stderr, "stdout is a tty\n");
-  else fprintf(stderr, "stdout is NOT a tty\n");
+    printf("stdout is a tty\n");
+  else printf("stdout is NOT a tty\n");
 
   return 0;
 }

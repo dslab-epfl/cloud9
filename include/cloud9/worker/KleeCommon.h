@@ -37,7 +37,7 @@
 
 #include <string>
 
-#define KLEE_ROOT_VAR	"KLEE_ROOT"
+#define KLEE_ROOT_VAR "KLEE_ROOT"
 #define KLEE_UCLIBC_ROOT_VAR "KLEE_UCLIBC_ROOT"
 
 std::string getKleePath();

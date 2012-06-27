@@ -285,7 +285,7 @@ int __syscall_sigaction(int signum, const struct sigaction *act,
 
 int sigaction(int signum, const struct sigaction *act,
               struct sigaction *oldact)
-	      __attribute__((weak));
+        __attribute__((weak));
 
 int sigaction(int signum, const struct sigaction *act,
               struct sigaction *oldact) {

@@ -41,29 +41,29 @@
 #include <string.h>
 
 
-#define BREAK_SIGNAL	SIGUSR2
+#define BREAK_SIGNAL  SIGUSR2
 
 namespace cloud9 {
 
 void initBreakSignal() {
-	struct sigaction act;
-	memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
 
-	act.sa_handler = SIG_IGN;
-	act.sa_flags = 0;
-	act.sa_restorer = NULL;
+  act.sa_handler = SIG_IGN;
+  act.sa_flags = 0;
+  act.sa_restorer = NULL;
 
-	int result = sigaction(BREAK_SIGNAL, &act, NULL);
+  int result = sigaction(BREAK_SIGNAL, &act, NULL);
 
-	assert(result == 0);
+  assert(result == 0);
 }
 
 void breakSignal() {
-	pid_t pid = getpid();
+  pid_t pid = getpid();
 
-	int result = kill(pid, BREAK_SIGNAL);
+  int result = kill(pid, BREAK_SIGNAL);
 
-	assert(result == 0);
+  assert(result == 0);
 }
 
 }

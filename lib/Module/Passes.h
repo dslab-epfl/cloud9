@@ -38,11 +38,11 @@ class RaiseAsmPass : public llvm::ModulePass {
 
   llvm::Function *getIntrinsic(llvm::Module &M,
                                unsigned IID,
-                               const llvm::Type **Tys,
+                               llvm::Type **Tys,
                                unsigned NumTys);
   llvm::Function *getIntrinsic(llvm::Module &M,
                                unsigned IID, 
-                               const llvm::Type *Ty0) {
+                               llvm::Type *Ty0) {
     return getIntrinsic(M, IID, &Ty0, 1);
   }
 
@@ -72,6 +72,17 @@ public:
       LowerIntrinsics(LI) {}
   ~IntrinsicCleanerPass() { delete IL; } 
   
+  virtual bool runOnModule(llvm::Module &M);
+};
+
+class ThrowCleanerPass : public llvm::ModulePass {
+  static char ID;
+
+  bool runOnBasicBlock(llvm::BasicBlock &b);
+public:
+  ThrowCleanerPass()
+    : llvm::ModulePass(ID) {}
+
   virtual bool runOnModule(llvm::Module &M);
 };
   
@@ -136,11 +147,11 @@ public:
   virtual bool runOnFunction(llvm::Function &F);
   
   struct SwitchCase {
-    llvm ::Constant *value;
+    llvm::Value *value;
     llvm::BasicBlock *block;
     
     SwitchCase() : value(0), block(0) { }
-    SwitchCase(llvm::Constant *v, llvm::BasicBlock *b) :
+    SwitchCase(llvm::Value *v, llvm::BasicBlock *b) :
       value(v), block(b) { }
   };
   

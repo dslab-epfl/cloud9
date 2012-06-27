@@ -34,11 +34,12 @@
 #include "cloud9/worker/WorkerCommon.h"
 #include "cloud9/worker/JobManager.h"
 #include "cloud9/Protocols.h"
-#include "cloud9/Logger.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/bind.hpp>
 #include <vector>
+
+#include <glog/logging.h>
 
 using namespace cloud9::data;
 
@@ -47,72 +48,72 @@ namespace cloud9 {
 namespace worker {
 
 PeerConnection::PeerConnection(boost::asio::io_service& service,
-		JobManager *jm) :
-	socket(service), jobManager(jm),
-	msgReader(socket) {
+    JobManager *jm) :
+  socket(service), jobManager(jm),
+  msgReader(socket) {
 
 }
 
 void PeerConnection::start() {
-	// All we do is to read the job transfer request
-	msgReader.recvMessage(boost::bind(&PeerConnection::handleMessageReceived,
+  // All we do is to read the job transfer request
+  msgReader.recvMessage(boost::bind(&PeerConnection::handleMessageReceived,
         shared_from_this(), _1, _2));
 }
 
 void PeerConnection::handleMessageReceived(std::string &msgString,
-		const boost::system::error_code &error) {
-	if (!error) {
-		// Decode the message and apply the changes
-		PeerTransferMessage message;
-		message.ParseFromString(msgString);
+    const boost::system::error_code &error) {
+  if (!error) {
+    // Decode the message and apply the changes
+    PeerTransferMessage message;
+    message.ParseFromString(msgString);
 
-		const cloud9::data::ExecutionPathSet &pathSet = message.path_set();
+    const cloud9::data::ExecutionPathSet &pathSet = message.path_set();
 
-		ExecutionPathSetPin paths = parseExecutionPathSet(pathSet);
-		std::vector<long> replayInstrs;
+    ExecutionPathSetPin paths = parseExecutionPathSet(pathSet);
+    std::vector<long> replayInstrs;
 
-		for (int i = 0; i < message.instr_since_fork_size(); i++) {
-		  replayInstrs.push_back(message.instr_since_fork(i));
-		}
+    for (int i = 0; i < message.instr_since_fork_size(); i++) {
+      replayInstrs.push_back(message.instr_since_fork(i));
+    }
 
-		jobManager->importJobs(paths, replayInstrs);
-	} else {
-		CLOUD9_ERROR("Error receiving message from peer");
-	}
+    jobManager->importJobs(paths, replayInstrs);
+  } else {
+    LOG(ERROR) << "Error receiving message from peer";
+  }
 }
 
 PeerServer::PeerServer(boost::asio::io_service &service, JobManager *jm) :
-	acceptor(service, tcp::endpoint(tcp::v4(), LocalPort)), jobManager(jm) {
+  acceptor(service, tcp::endpoint(tcp::v4(), LocalPort)), jobManager(jm) {
 
-	startAccept();
+  startAccept();
 }
 
 PeerServer::~PeerServer() {
-	// TODO Auto-generated destructor stub
+  // TODO Auto-generated destructor stub
 }
 
 void PeerServer::startAccept() {
-	CLOUD9_INFO("Listening for peer connections on port " <<
-			acceptor.local_endpoint().port());
+  LOG(INFO) << "Listening for peer connections on port " <<
+      acceptor.local_endpoint().port();
 
 
-	PeerConnection::pointer newConn = PeerConnection::create(acceptor.io_service(),
-			jobManager);
+  PeerConnection::pointer newConn = PeerConnection::create(acceptor.io_service(),
+      jobManager);
 
-	acceptor.async_accept(newConn->getSocket(), boost::bind(&PeerServer::handleAccept,
-			this, newConn, boost::asio::placeholders::error));
+  acceptor.async_accept(newConn->getSocket(), boost::bind(&PeerServer::handleAccept,
+      this, newConn, boost::asio::placeholders::error));
 }
 
 void PeerServer::handleAccept(PeerConnection::pointer conn,
-		const boost::system::error_code &error) {
+    const boost::system::error_code &error) {
 
-	if (!error) {
-		conn->start();
-		// Go back accepting other connections
-		startAccept();
-	} else {
-		CLOUD9_ERROR("Error accepting peer connection");
-	}
+  if (!error) {
+    conn->start();
+    // Go back accepting other connections
+    startAccept();
+  } else {
+    LOG(ERROR) << "Error accepting peer connection";
+  }
 
 
 }

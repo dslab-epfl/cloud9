@@ -12,6 +12,7 @@
 
 #include "Context.h"
 #include "klee/Expr.h"
+#include "klee/Internal/Module/KInstruction.h"
 #include "AddressSpace.h"
 
 #include "llvm/ADT/StringExtras.h"
@@ -101,24 +102,24 @@ public:
   ~MemoryObject();
 
   /// Get an identifying string for this allocation.
-	template<class OStream>
-	void getAllocInfo(OStream &info) const {
-		info << "MO" << id << "[" << size << "]";
+  template<class OStream>
+  void getAllocInfo(OStream &info) const {
+    info << "MO" << id << "[" << size << "]";
 
-		if (allocSite) {
-			info << " allocated at ";
-			if (const Instruction *i = dyn_cast<Instruction>(allocSite)) {
-				info << i->getParent()->getParent()->getNameStr() << "():";
-				info << *i;
-			} else if (const GlobalValue *gv = dyn_cast<GlobalValue>(allocSite)) {
-				info << "global:" << gv->getNameStr();
-			} else {
-				info << "value:" << *allocSite;
-			}
-		} else {
-			info << " (no allocation info)";
-		}
-	}
+    if (allocSite) {
+      info << " allocated at ";
+      if (const Instruction *i = dyn_cast<Instruction>(allocSite)) {
+        info << i->getParent()->getParent()->getName() << "():";
+        info << *i;
+      } else if (const GlobalValue *gv = dyn_cast<GlobalValue>(allocSite)) {
+        info << "global:" << gv->getName();
+      } else {
+        info << "value:" << *allocSite;
+      }
+    } else {
+      info << " (no allocation info)";
+    }
+  }
 
   void getAllocInfo(std::string &result) const;
 
@@ -160,8 +161,6 @@ public:
     }
   }
 };
-
-std::ostream &operator<<(std::ostream &os, const MemoryObject &obj);
 
 class ObjectState {
 private:
@@ -226,6 +225,8 @@ public:
   void write16(unsigned offset, uint16_t value);
   void write32(unsigned offset, uint32_t value);
   void write64(unsigned offset, uint64_t value);
+
+  const UpdateList readAll() const;
 
 private:
   const UpdateList &getUpdates() const;

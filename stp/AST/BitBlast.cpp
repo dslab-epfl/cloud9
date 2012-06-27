@@ -124,16 +124,16 @@ const ASTNode BeevMgr::BBTerm(const ASTNode& term) {
       ASTVec::iterator res_end = tmp_res.end();
       // copy LSBs directly from bbvec
       for( ; res_it < res_ext; (res_it++, bb_it++)) {
-	*res_it = *bb_it;
+  *res_it = *bb_it;
       }
       // repeat MSB to fill up rest of result.
       for( ; res_it < res_end; (res_it++, bb_it++)) {
-	*res_it = msb;
+  *res_it = msb;
       }
       
        //Temporary debugging code
        //    cout << "Sign extending:" << endl 
-       //	        << "  Vec ";
+       //         << "  Vec ";
        //    lpvec( bbarg.GetChildren() );
        //    cout << "  Extended to ";
        //    lp(result);
@@ -267,7 +267,7 @@ const ASTNode BeevMgr::BBTerm(const ASTNode& term) {
     // Sum is destructively modified in the loop, so make a copy of value
     // returned by BBTerm.
     ASTNode temp = BBTerm(*it);
-    ASTVec sum(temp.GetChildren());	// First operand.
+    ASTVec sum(temp.GetChildren()); // First operand.
 
     // Iterate over remaining bitvector term operands
     for (++it; it < kids_end; it++) {
@@ -279,7 +279,7 @@ const ASTNode BeevMgr::BBTerm(const ASTNode& term) {
       // FIXME: Why is this not using an iterator???
       int n = y.size();
       for (int i = 0; i < n; i++) {
-	sum[i] = CreateSimpForm(bk, sum[i], y[i]);
+  sum[i] = CreateSimpForm(bk, sum[i], y[i]);
       }
     }
     result = CreateNode(BOOLVEC, sum);
@@ -293,7 +293,7 @@ const ASTNode BeevMgr::BBTerm(const ASTNode& term) {
     ASTVec bbvec;
     for (unsigned int i = 0; i < num_bits; i++) {
       ASTNode bit_node =
-	CreateNode(BVGETBIT, term, CreateBVConst(32,i));
+  CreateNode(BVGETBIT, term, CreateBVConst(32,i));
       bbvec.push_back(bit_node); 
     }
     result = CreateNode(BOOLVEC, bbvec);
@@ -314,7 +314,7 @@ const ASTNode BeevMgr::BBTerm(const ASTNode& term) {
 #endif
     result = CreateNode(BOOLVEC, tmp_res);
     break;
-  }		  
+  }     
   case BOOLVEC: {
     cerr << "Hit a boolvec! what to do?" << endl;
     break;
@@ -396,7 +396,7 @@ const ASTNode BeevMgr::BBForm(const ASTNode& form)
   case IFF: 
   case XOR:
   case IMPLIES: {
-    ASTVec bbkids;		// bit-blasted children (formulas)
+    ASTVec bbkids;    // bit-blasted children (formulas)
 
     // FIXME: Put in fast exits for AND/OR/NAND/NOR/IMPLIES
     ASTVec::const_iterator kids_end = form.end(); 
@@ -532,9 +532,9 @@ ASTNode BeevMgr::Majority(const ASTNode& a, const ASTNode& b,const ASTNode& c)
   else {
     return
       CreateSimpForm(OR,
-		     CreateSimpForm(AND, a, b),
-		     CreateSimpForm(AND, b, c),
-		     CreateSimpForm(AND, a, c));
+         CreateSimpForm(AND, a, b),
+         CreateSimpForm(AND, b, c),
+         CreateSimpForm(AND, a, c));
   }
 }
 
@@ -542,7 +542,7 @@ ASTNode BeevMgr::Majority(const ASTNode& a, const ASTNode& b,const ASTNode& c)
 // Bitwise complement
 ASTVec BeevMgr::BBNeg(const ASTVec& x)
 {
-  ASTVec result = ASTVec(0);		// FIXME: faster to preallocate n entries?
+  ASTVec result = ASTVec(0);    // FIXME: faster to preallocate n entries?
   // Negate each bit.
   ASTVec::const_iterator xend = x.end();
   for (ASTVec::const_iterator it = x.begin(); it < xend; it++) {
@@ -694,10 +694,10 @@ ASTNode BeevMgr::BBBVLE(const ASTVec& left, const ASTVec& right, bool is_signed)
     ASTNode neglit = CreateSimpNot(*lit);
     ASTNode thisbit =
       CreateSimpForm(OR,
-		 CreateSimpForm(AND,neglit,*rit), // TRUE if l < r
-		 CreateSimpForm(AND,
-			    CreateSimpForm(OR, neglit, *rit), // false if not equal
-			    prevbit)); // else prevbit
+     CreateSimpForm(AND,neglit,*rit), // TRUE if l < r
+     CreateSimpForm(AND,
+          CreateSimpForm(OR, neglit, *rit), // false if not equal
+          prevbit)); // else prevbit
     prevbit = thisbit;
   }
 
@@ -713,10 +713,10 @@ ASTNode BeevMgr::BBBVLE(const ASTVec& left, const ASTVec& right, bool is_signed)
   ASTNode neglmsb = CreateSimpNot(lmsb);
   ASTNode msb =
     CreateSimpForm(OR,
-	       CreateSimpForm(AND,neglmsb, rmsb), // TRUE if l < r
-	       CreateSimpForm(AND,
-			  CreateSimpForm(OR, neglmsb, rmsb), // false if not equal
-			  prevbit)); // else prevbit
+         CreateSimpForm(AND,neglmsb, rmsb), // TRUE if l < r
+         CreateSimpForm(AND,
+        CreateSimpForm(OR, neglmsb, rmsb), // false if not equal
+        prevbit)); // else prevbit
   return msb;
 }
 
@@ -731,7 +731,7 @@ void BeevMgr::BBLShift(ASTVec& x)
   for(ASTVec::iterator xit = x.end()-1; xit > xbeg; xit--) {
     *xit = *(xit-1);
   }
-  *xbeg = ASTFalse;		// new LSB is zero.
+  *xbeg = ASTFalse;   // new LSB is zero.
   // cout << "Shifted result" << endl;
   // lpvec(x);
 }
@@ -746,7 +746,7 @@ void BeevMgr::BBRShift(ASTVec& x)
   for( ; xit < xend; xit++) {
     *xit = *(xit+1);
   }
-  *xit = ASTFalse;		// new MSB is zero.
+  *xit = ASTFalse;    // new MSB is zero.
 }
 
 
@@ -797,10 +797,10 @@ ASTNode BeevMgr::BBEQ(const ASTVec& left, const ASTVec& right)
       ASTNode biteq = CreateSimpForm(IFF, *lit, *rit);
       // fast path exit
       if (biteq == ASTFalse) {
-	return ASTFalse;
+  return ASTFalse;
       }
       else {
-	andvec.push_back(biteq);
+  andvec.push_back(biteq);
       }
     }
     ASTNode n = CreateSimpForm(AND, andvec);  

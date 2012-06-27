@@ -35,10 +35,10 @@ namespace klee {
   typedef ImmutableMap<const MemoryObject*, ObjectHolder, MemoryObjectLT> MemoryMap;
   
   class AddressSpace {
-	  friend class ObjectState;
-	  friend class ExecutionState;
+    friend class ObjectState;
+    friend class ExecutionState;
   private:
-	  typedef std::vector<AddressSpace*> cow_domain_t;
+    typedef std::vector<AddressSpace*> cow_domain_t;
 
     /// Epoch counter used to control ownership of objects.
     mutable unsigned cowKey;

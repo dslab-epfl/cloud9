@@ -27,7 +27,8 @@ namespace klee {
     Action visitSRem(const SRemExpr &e);
       
   public:
-    ExprEvaluator() {}
+    ExprEvaluator(bool recursive=false, visited_ty *visited_cache = NULL)
+      : ExprVisitor(recursive, visited_cache) {}
 
     /// getInitialValue - Return the initial value for a symbolic byte.
     ///

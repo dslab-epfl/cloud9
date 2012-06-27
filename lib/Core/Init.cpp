@@ -32,10 +32,8 @@
 
 #include "klee/Init.h"
 
-#include "Common.h"
 #include "cloud9/worker/KleeCommon.h"
 #include "cloud9/worker/WorkerCommon.h"
-#include "cloud9/Logger.h"
 #include "klee/Internal/Support/ModuleUtil.h"
 
 // FIXME: Ugh, this is gross. But otherwise our config.h conflicts with LLVMs.
@@ -49,6 +47,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Module.h"
 #include "llvm/Type.h"
+#include "llvm/Constants.h"
 #include "llvm/InstrTypes.h"
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
@@ -62,6 +61,8 @@
 #include <map>
 #include <set>
 #include <fstream>
+
+#include <glog/logging.h>
 
 using namespace llvm;
 using namespace klee;
@@ -101,24 +102,24 @@ static std::string strip(std::string &in) {
 }
 
 static llvm::Module *patchArgsToMain(llvm::Module *mainModule) {
-	Function *mainFn = mainModule->getFunction("main");
-	if(!WithPOSIXRuntime || mainFn->getFunctionType()->getNumParams() != 0)
-		return mainModule;	
-	mainFn->setName("__argless_main");
+  Function *mainFn = mainModule->getFunction("main");
+  if(!WithPOSIXRuntime || mainFn->getFunctionType()->getNumParams() != 0)
+    return mainModule;  
+  mainFn->setName("__argless_main");
 
-	//Create stub with proper parameters
-	std::vector<const Type*> fArgs;
-	fArgs.push_back(Type::getInt32Ty(getGlobalContext())); // argc
-	fArgs.push_back(PointerType::getUnqual(PointerType::getUnqual(Type::getInt8Ty(getGlobalContext())))); // argv
-	Function *stub = Function::Create(FunctionType::get(Type::getInt32Ty(getGlobalContext()), fArgs, false),
-	GlobalVariable::ExternalLinkage, "main", mainModule);
-	
-	BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", stub);	
-	std::vector<llvm::Value*> args;
-	CallInst* call = CallInst::Create(mainFn, args.begin(), args.begin(), "", bb);
-	ReturnInst::Create(getGlobalContext(), call, bb);
+  //Create stub with proper parameters
+  std::vector<Type*> fArgs;
+  fArgs.push_back(Type::getInt32Ty(getGlobalContext())); // argc
+  fArgs.push_back(PointerType::getUnqual(PointerType::getUnqual(Type::getInt8Ty(getGlobalContext())))); // argv
+  Function *stub = Function::Create(FunctionType::get(Type::getInt32Ty(getGlobalContext()), fArgs, false),
+  GlobalVariable::ExternalLinkage, "main", mainModule);
+  
+  BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", stub); 
 
-	return mainModule;
+  CallInst* call = CallInst::Create(mainFn, ArrayRef<llvm::Value*>(), "", bb);
+  ReturnInst::Create(getGlobalContext(), call, bb);
+
+  return mainModule;
 }
 
 static int patchMain(Module *mainModule) {
@@ -160,8 +161,7 @@ static int patchMain(Module *mainModule) {
   std::vector<Value*> args;
   args.push_back(argcPtr);
   args.push_back(argvPtr);
-  Instruction* procArgsCall = CallInst::Create(procArgsFn, args.begin(), args.end(),
-                          "", firstInst);
+  Instruction* procArgsCall = CallInst::Create(procArgsFn, args, "", firstInst);
   Value *argc = new LoadInst(argcPtr, "newArgc", firstInst);
   Value *argv = new LoadInst(argvPtr, "newArgv", firstInst);
 
@@ -187,8 +187,7 @@ static int patchLibcMain(Module *mainModule) {
   std::vector<Value*> args;
   args.push_back(argc);
   args.push_back(argv);
-  CallInst::Create(initEnvFn, args.begin(), args.end(),
-                          "", firstInst);
+  CallInst::Create(initEnvFn, args, "", firstInst);
   return 0;
 }
 
@@ -405,9 +404,7 @@ void externalsAndGlobalsCheck(const Module *m) {
            it != ie; ++it) {
         if (const CallInst *ci = dyn_cast<CallInst>(it)) {
           if (isa<InlineAsm>(ci->getCalledValue())) {
-            klee_warning_once(&*fnIt,
-                              "function \"%s\" has inline asm",
-                              fnIt->getName().data());
+            LOG(INFO) << "function " << fnIt->getName().data() << " has inline asm";
           }
         }
       }
@@ -441,9 +438,9 @@ void externalsAndGlobalsCheck(const Module *m) {
       if (unsafe.count(ext)) {
         foundUnsafe.insert(*it);
       } else {
-        klee_warning("undefined reference to %s: %s",
-                     it->second ? "variable" : "function",
-                     ext.c_str());
+        LOG(INFO) << "Undefined reference to "
+            << (it->second ? "variable" : "function")
+            << ": " << ext.c_str();
       }
     }
   }
@@ -452,9 +449,9 @@ void externalsAndGlobalsCheck(const Module *m) {
          it = foundUnsafe.begin(), ie = foundUnsafe.end();
        it != ie; ++it) {
     const std::string &ext = it->first;
-    klee_warning("undefined reference to %s: %s (UNSAFE)!",
-                 it->second ? "variable" : "function",
-                 ext.c_str());
+    LOG(WARNING) << "Undefined reference to "
+        << (it->second ? "variable" : "function")
+        << ": " << ext.c_str() << " (UNSAFE)!";
   }
 }
 
@@ -483,84 +480,80 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
   //    Type::getInt32Ty(getGlobalContext()), NULL);
 
   llvm::sys::Path Path(getKleeLibraryPath());
-  Path.appendComponent("libkleeRuntimePOSIX.bca");
-  klee_message("NOTE: Using model: %s", Path.c_str());
+  Path.appendComponent("libkleeRuntimePOSIX.a");
+  LOG(INFO) << "Using model: " << Path.c_str();
   mainModule = klee::linkWithLibrary(mainModule, Path.c_str());
   assert(mainModule && "unable to link with simple model");
 
-  std::map<std::string, GlobalValue*> underlyingFn;
+  std::map<std::string, const GlobalValue*> underlyingFn;
 
   for (Module::iterator it = mainModule->begin(); it != mainModule->end(); it++) {
-    Function *f = it;
-    StringRef fName = f->getName();
+    Function *modelFunction = it;
+    StringRef modelName = modelFunction->getName();
 
-    if (!fName.startswith("__klee_model_"))
+    if (!modelName.startswith("__klee_model_"))
       continue;
 
-    StringRef newName = fName.substr(strlen("__klee_model_"), fName.size());
+    StringRef modelledName = modelName.substr(strlen("__klee_model_"), modelName.size());
 
-    GlobalValue *modelF = mainModule->getNamedValue(newName);
+    const GlobalValue *modelledFunction = mainModule->getNamedValue(modelledName);
 
-    if (modelF != NULL) {
-      if (GlobalAlias *modelA = dyn_cast<GlobalAlias>(modelF)) {
-        const GlobalValue *GV = modelA->resolveAliasedGlobal(false);
-        if (!GV || GV->getType() != modelF->getType())
+    if (modelledFunction != NULL) {
+      if (const GlobalAlias *modelledA = dyn_cast<GlobalAlias>(modelledFunction)) {
+        const GlobalValue *GV = modelledA->resolveAliasedGlobal(false);
+        if (!GV || GV->getType() != modelledFunction->getType())
           continue; // TODO: support bitcasted aliases
-        modelF = const_cast<GlobalValue*>(GV);
+        modelledFunction = GV;
       }
 
-#if 0
-      if (modelF->getType() != f->getType()) {
-        FunctionType *modelFType = dyn_cast<FunctionType>(modelF->getType()->getElementType());
-        FunctionType *FType = dyn_cast<FunctionType>(f->getType()->getElementType());
-        assert(modelFType);
-        assert(FType);
-
-        assert(modelFType->getNumParams() == FType->getNumParams());
-      }
-#endif
-
-      underlyingFn[newName.str()] = modelF;
+      underlyingFn[modelledName.str()] = modelledFunction;
 
       if (DebugModelPatches) {
-        CLOUD9_DEBUG("Patching " << fName.str());
-        modelF->getType()->dump();
-        f->getType()->dump();
+        LOG(INFO) << "Patching " << modelName.str();
+        std::cerr << "Modelled: "; modelledFunction->getType()->dump(); std::cerr << std::endl;
+        std::cerr << "Model:    "; modelFunction->getType()->dump(); std::cerr << std::endl;
       }
-      modelF->replaceAllUsesWith(f);
+
+      Constant *adaptedFunction = mainModule->getOrInsertFunction(
+          modelFunction->getName(), dyn_cast<Function>(modelledFunction)->getFunctionType());
+
+      const_cast<GlobalValue*>(modelledFunction)->replaceAllUsesWith(adaptedFunction);
     }
   }
 
   for (Module::iterator it = mainModule->begin(); it != mainModule->end();) {
-    Function *f = it;
-    StringRef fName = f->getName();
+    Function *originalFunction = it;
+    StringRef originalName = originalFunction->getName();
 
-    if (!fName.startswith("__klee_original_")) {
+    if (!originalName.startswith("__klee_original_")) {
       it++;
       continue;
     }
 
-    StringRef newName = fName.substr(strlen("__klee_original_"));
+    StringRef targetName = originalName.substr(strlen("__klee_original_"));
 
-    if (DebugModelPatches)
-      CLOUD9_DEBUG("Patching " << fName.str());
 
-    GlobalValue *originalF;
-    if (underlyingFn.count(newName.str()) > 0)
-      originalF = underlyingFn[newName.str()];
+    LOG_IF(INFO, DebugModelPatches) << "Patching " << originalName.str();
+
+    const GlobalValue *targetFunction;
+    if (underlyingFn.count(targetName.str()) > 0)
+      targetFunction = underlyingFn[targetName.str()];
     else
-      originalF = mainModule->getNamedValue(newName);
+      targetFunction = mainModule->getNamedValue(targetName);
 
-    if (originalF) {
-      f->replaceAllUsesWith(originalF);
+    if (targetFunction) {
+      Constant *adaptedFunction = mainModule->getOrInsertFunction(
+          targetFunction->getName(), dyn_cast<Function>(originalFunction)->getFunctionType());
+
+      originalFunction->replaceAllUsesWith(adaptedFunction);
       it++;
-      f->eraseFromParent();
+      originalFunction->eraseFromParent();
     } else {
       // We switch to strings in order to avoid memory errors due to StringRef
       // destruction inside setName().
-      std::string newNameStr = newName.str();
-      f->setName(newNameStr);
-      assert(f->getName().str() == newNameStr);
+      std::string targetNameStr = targetName.str();
+      originalFunction->setName(targetNameStr);
+      assert(originalFunction->getName().str() == targetNameStr);
       it++;
     }
 
@@ -571,17 +564,14 @@ static llvm::Module *linkWithPOSIX(llvm::Module *mainModule) {
 
 #if 0
 static void __fix_linkage(llvm::Module *mainModule, std::string libcSymName, std::string libcAliasName) {
-  //CLOUD9_DEBUG("Fixing linkage for " << libcSymName);
   Function *libcSym = mainModule->getFunction(libcSymName);
   if (libcSym == NULL)
     return;
 
   Value *libcAlias = mainModule->getNamedValue(libcAliasName);
   if (libcAlias != NULL) {
-    //CLOUD9_DEBUG("Found the alias");
     libcSym->replaceAllUsesWith(libcAlias);
     if (dyn_cast_or_null<GlobalAlias>(libcAlias)) {
-      //CLOUD9_DEBUG("Fixing back the alias");
       dyn_cast_or_null<GlobalAlias>(libcAlias)->setAliasee(libcSym);
     }
   } else {
@@ -599,12 +589,12 @@ static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
   // force import of __uClibc_main
   mainModule->getOrInsertFunction("__uClibc_main",
                                   FunctionType::get(Type::getVoidTy(getGlobalContext()),
-                                                    std::vector<const Type*>(),
+                                                    ArrayRef<Type*>(),
                                                     true));
 
   // force various imports
   if (WithPOSIXRuntime) {
-    const llvm::Type *i8Ty = Type::getInt8Ty(getGlobalContext());
+    llvm::Type *i8Ty = Type::getInt8Ty(getGlobalContext());
     mainModule->getOrInsertFunction("realpath",
                                     PointerType::getUnqual(i8Ty),
                                     PointerType::getUnqual(i8Ty),
@@ -696,10 +686,10 @@ static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
   assert(uclibcMainFn && "unable to get uclibc main");
   userMainFn->setName("__user_main");
 
-  const FunctionType *ft = uclibcMainFn->getFunctionType();
+  FunctionType *ft = uclibcMainFn->getFunctionType();
   assert(ft->getNumParams() == 7);
 
-  std::vector<const Type*> fArgs;
+  std::vector<Type*> fArgs;
   fArgs.push_back(ft->getParamType(1)); // argc
   fArgs.push_back(ft->getParamType(2)); // argv
   Function *stub = Function::Create(FunctionType::get(Type::getInt32Ty(getGlobalContext()), fArgs, false),
@@ -717,7 +707,7 @@ static llvm::Module *linkWithUclibc(llvm::Module *mainModule) {
   args.push_back(Constant::getNullValue(ft->getParamType(4))); // app_fini
   args.push_back(Constant::getNullValue(ft->getParamType(5))); // rtld_fini
   args.push_back(Constant::getNullValue(ft->getParamType(6))); // stack_end
-  CallInst::Create(uclibcMainFn, args.begin(), args.end(), "", bb);
+  CallInst::Create(uclibcMainFn, args, "", bb);
 
   new UnreachableInst(getGlobalContext(), bb);
 
@@ -730,8 +720,8 @@ Module* loadByteCode() {
   OwningPtr<MemoryBuffer> BufferPtr;
   error_code ec=MemoryBuffer::getFileOrSTDIN(InputFile.c_str(), BufferPtr);
   if (ec) {
-    klee_error("error loading program '%s': %s", InputFile.c_str(),
-               ec.message().c_str());
+    LOG(FATAL) << "error loading program " << InputFile.c_str() << ": " <<
+               ec.message().c_str();
   }
   mainModule = getLazyBitcodeModule(BufferPtr.take(), getGlobalContext(), &ErrorMsg);
   if (mainModule) {
@@ -740,36 +730,26 @@ Module* loadByteCode() {
       mainModule = 0;
     }
   }
-  if (!mainModule)
-    klee_error("error loading program '%s': %s", InputFile.c_str(),
-               ErrorMsg.c_str());
+  if (!mainModule) {
+    LOG(FATAL) << "error loading program " << InputFile.c_str() << ": " <<
+               ec.message().c_str();
+  }
 
   return mainModule;
 }
 
 Module* prepareModule(Module *module) {
-  if (WithPOSIXRuntime)
-    InitEnv = true;
-
   llvm::sys::Path LibraryDir(getKleeLibraryPath());
 
-	module = patchArgsToMain(module);
+  module = patchArgsToMain(module);
 
-  switch (Libc) {
-  case NoLibc: /* silence compiler warning */
-    break;
-
-  case UcLibc:
+  if (Libc == UcLibc || WithPOSIXRuntime)
     module = linkWithUclibc(module);
-    break;
-  }
 
-  if (WithPOSIXRuntime) {
-    module = linkWithUclibc(module);
+  if (WithPOSIXRuntime)
     module = linkWithPOSIX(module);
-  }
 
-  if (InitEnv) {
+  if (WithPOSIXRuntime || InitEnv) {
     int r = initEnv(module);
     if (r != 0)
       return NULL;
@@ -783,9 +763,9 @@ void readProgramArguments(int &pArgc, char **&pArgv, char **&pEnvp, char **envp)
         std::vector<std::string> items;
         std::ifstream f(Environ.c_str());
         if (!f.good())
-            CLOUD9_EXIT("unable to open --environ file: " << Environ);
+            LOG(FATAL) << "unable to open --environ file: " << Environ;
         else
-            CLOUD9_INFO("Using custom environment variables from " << Environ);
+            LOG(INFO) << "Using custom environment variables from " << Environ;
         while (!f.eof()) {
             std::string line;
             std::getline(f, line);

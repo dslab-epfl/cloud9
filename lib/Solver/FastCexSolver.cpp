@@ -699,7 +699,7 @@ public:
 
     case Expr::Not: {
       if (e->getWidth() == Expr::Bool && range.isFixed()) {
-	propogatePossibleValue(e->getKid(0), !range.min());
+  propogatePossibleValue(e->getKid(0), !range.min());
       }
       break;
     }
@@ -897,7 +897,7 @@ public:
     // If a boolean not, and the result is known, propagate it
     case Expr::Not: {
       if (e->getWidth() == Expr::Bool && range.isFixed()) {
-	propogateExactValue(e->getKid(0), !range.min());
+  propogateExactValue(e->getKid(0), !range.min());
       }
       break;
     }
@@ -971,7 +971,7 @@ public:
   FastCexSolver();
   ~FastCexSolver();
 
-  IncompleteSolver::PartialValidity computeTruth(const Query&);  
+  Solver::PartialValidity computeTruth(const Query&);
   bool computeValue(const Query&, ref<Expr> &result);
   bool computeInitialValues(const Query&,
                             const std::vector<const Array*> &objects,
@@ -1047,7 +1047,7 @@ static bool propogateValues(const Query& query, CexData &cd,
   return false;
 }
 
-IncompleteSolver::PartialValidity 
+Solver::PartialValidity
 FastCexSolver::computeTruth(const Query& query) {
   CexData cd;
 
@@ -1055,9 +1055,9 @@ FastCexSolver::computeTruth(const Query& query) {
   bool success = propogateValues(query, cd, true, isValid);
 
   if (!success)
-    return IncompleteSolver::None;
+    return Solver::None;
 
-  return isValid ? IncompleteSolver::MustBeTrue : IncompleteSolver::MayBeFalse;
+  return isValid ? Solver::MustBeTrue : Solver::MayBeFalse;
 }
 
 bool FastCexSolver::computeValue(const Query& query, ref<Expr> &result) {

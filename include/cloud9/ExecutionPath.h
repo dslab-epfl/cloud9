@@ -33,8 +33,6 @@
 #ifndef EXECUTIONPATH_H_
 #define EXECUTIONPATH_H_
 
-#include "cloud9/Logger.h"
-
 #include <vector>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
@@ -52,70 +50,70 @@ typedef boost::shared_ptr<ExecutionPath> ExecutionPathPin;
 typedef boost::shared_ptr<ExecutionPathSet> ExecutionPathSetPin;
 
 class ExecutionPath {
-	template<class, int, int>
-	friend class ExecutionTree;
-	friend class ExecutionPathSet;
+  template<class, int, int>
+  friend class ExecutionTree;
+  friend class ExecutionPathSet;
 
-	friend ExecutionPathSetPin parseExecutionPathSet(const cloud9::data::ExecutionPathSet &ps);
+  friend ExecutionPathSetPin parseExecutionPathSet(const cloud9::data::ExecutionPathSet &ps);
 
-	friend void serializeExecutionPathSet(ExecutionPathSetPin &set,
-			cloud9::data::ExecutionPathSet &result);
+  friend void serializeExecutionPathSet(ExecutionPathSetPin &set,
+      cloud9::data::ExecutionPathSet &result);
 private:
-	std::vector<int> path;
+  std::vector<int> path;
 
-	ExecutionPath *parent;
-	int parentIndex;
+  ExecutionPath *parent;
+  int parentIndex;
 
-	ExecutionPath *getAbsolutePath();
+  ExecutionPath *getAbsolutePath();
 
-	ExecutionPath() : parent(NULL), parentIndex(0) { };
+  ExecutionPath() : parent(NULL), parentIndex(0) { };
 public:
-	virtual ~ExecutionPath() { };
+  virtual ~ExecutionPath() { };
 
-	const std::vector<int> &getPath() const {
-		assert(parent == NULL);
-		return path;
-	};
+  const std::vector<int> &getPath() const {
+    assert(parent == NULL);
+    return path;
+  };
 
-	typedef std::vector<int>::iterator path_iterator;
+  typedef std::vector<int>::iterator path_iterator;
 };
 
 
 class ExecutionPathSet {
-	template<class, int, int>
-	friend class ExecutionTree;
+  template<class, int, int>
+  friend class ExecutionTree;
 
-	friend ExecutionPathSetPin parseExecutionPathSet(const cloud9::data::ExecutionPathSet &ps);
+  friend ExecutionPathSetPin parseExecutionPathSet(const cloud9::data::ExecutionPathSet &ps);
 
-	friend void serializeExecutionPathSet(ExecutionPathSetPin &set,
-			cloud9::data::ExecutionPathSet &result);
+  friend void serializeExecutionPathSet(ExecutionPathSetPin &set,
+      cloud9::data::ExecutionPathSet &result);
 private:
-	std::vector<ExecutionPath*> paths;
+  std::vector<ExecutionPath*> paths;
 
-	ExecutionPathSet();
+  ExecutionPathSet();
 
-	typedef std::vector<ExecutionPath*>::iterator iterator;
+  typedef std::vector<ExecutionPath*>::iterator iterator;
 public:
-	virtual ~ExecutionPathSet();
+  virtual ~ExecutionPathSet();
 
-	unsigned count() const {
-		return paths.size();
-	}
+  unsigned count() const {
+    return paths.size();
+  }
 
-	ExecutionPathPin getPath(unsigned int index);
+  ExecutionPathPin getPath(unsigned int index);
 
-	static ExecutionPathSetPin getEmptySet() {
-		return ExecutionPathSetPin(new ExecutionPathSet());
-	}
+  static ExecutionPathSetPin getEmptySet() {
+    return ExecutionPathSetPin(new ExecutionPathSet());
+  }
 
-	static ExecutionPathSetPin getRootSet() {
-	  ExecutionPathSet *pSet = new ExecutionPathSet();
-	  pSet->paths.push_back(new ExecutionPath());
+  static ExecutionPathSetPin getRootSet() {
+    ExecutionPathSet *pSet = new ExecutionPathSet();
+    pSet->paths.push_back(new ExecutionPath());
 
-	  return ExecutionPathSetPin(pSet);
-	}
+    return ExecutionPathSetPin(pSet);
+  }
 
-	static ExecutionPathSetPin parse(std::istream &is);
+  static ExecutionPathSetPin parse(std::istream &is);
 };
 
 

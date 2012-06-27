@@ -40,6 +40,7 @@
 #include "buffers.h"
 #include "signals.h"
 #include "misc.h"
+#include "symfs.h"
 
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
@@ -955,4 +956,28 @@ DEFINE_MODEL(int, ioctl, int fd, unsigned long request, ...) {
     errno = EINVAL;
     return -1;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialization
+////////////////////////////////////////////////////////////////////////////////
+
+// File descriptor table
+fd_entry_t __fdt[MAX_FDS];
+
+void klee_init_fdt(void) {
+  STATIC_LIST_INIT(__fdt);
+
+  int fd;
+
+  fd = _open_symbolic(_fs.stdin_file, O_RDONLY, 0);
+  if (fd == -1)
+    klee_silent_exit(0);
+  assert(fd == 0);
+
+  fd = _open_concrete(1, O_WRONLY);
+  assert(fd == 1);
+
+  fd = _open_concrete(2, O_WRONLY);
+  assert(fd == 2);
 }

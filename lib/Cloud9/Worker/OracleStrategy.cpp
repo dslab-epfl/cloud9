@@ -38,6 +38,8 @@
 
 #include "llvm/Instruction.h"
 
+#include <glog/logging.h>
+
 namespace cloud9 {
 
 namespace worker {
@@ -61,9 +63,9 @@ bool OracleStrategy::checkProgress(SymbolicState *state) {
     unsigned int obtained = state->_instrProgress[i]->inst->getOpcode();
 
     if (expected != obtained) {
-      CLOUD9_DEBUG("Oracle instruction mismatch. Expected " <<
+      LOG(INFO) << "Oracle instruction mismatch. Expected " <<
           expected << " and got " <<
-          obtained << " instead. Instruction: " << state->_instrProgress[i]->info->assemblyLine);
+          obtained << " instead. Instruction: " << state->_instrProgress[i]->info->assemblyLine;
 
       result = false;
       break;
@@ -89,14 +91,14 @@ ExecutionJob* OracleStrategy::onNextJobSelection() {
 
 void OracleStrategy::onStateActivated(SymbolicState *state) {
   if (checkProgress(state)) {
-    CLOUD9_DEBUG("Valid state added to the oracle, at instr position " << state->_instrPos);
+    LOG(INFO) << "Valid state added to the oracle, at instr position " << state->_instrPos;
     validStates.insert(state);
   }
 }
 
 void OracleStrategy::onStateUpdated(SymbolicState *state, WorkerTree::Node *oldNode) {
   if (!checkProgress(state)) {
-    CLOUD9_DEBUG("State became invalid on the oracle, at instr position " << state->_instrPos);
+    LOG(INFO) << "State became invalid on the oracle, at instr position " << state->_instrPos;
     // Filter out the states that went off the road
     validStates.erase(state);
   }

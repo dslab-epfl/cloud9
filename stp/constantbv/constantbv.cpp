@@ -134,12 +134,12 @@ static void BIT_VECTOR_zro_words(unsigned int *  addr, unsigned int count) {
 }
 
 static void BIT_VECTOR_cpy_words(unsigned int *  target, 
-				 unsigned int *  source, unsigned int count) {
+         unsigned int *  source, unsigned int count) {
     BIT_VECTOR_COPY_WORDS(target,source,count)
 }
 
 static void BIT_VECTOR_mov_words(unsigned int *  target, 
-				 unsigned int *  source, unsigned int count) {
+         unsigned int *  source, unsigned int count) {
     if (target != source) {
         if (target < source) BIT_VECTOR_COPY_WORDS(target,source,count)
         else                 BIT_VECTOR_BACK_WORDS(target,source,count)
@@ -147,7 +147,7 @@ static void BIT_VECTOR_mov_words(unsigned int *  target,
 }
 
 static void BIT_VECTOR_ins_words(unsigned int *  addr, 
-				 unsigned int total, unsigned int count, boolean clear) {
+         unsigned int total, unsigned int count, boolean clear) {
     unsigned int length;
 
     if ((total > 0) && (count > 0)) {
@@ -159,7 +159,7 @@ static void BIT_VECTOR_ins_words(unsigned int *  addr,
 }
 
 static void BIT_VECTOR_del_words(unsigned int *  addr, 
-				 unsigned int total, unsigned int count, boolean clear) {
+         unsigned int total, unsigned int count, boolean clear) {
     unsigned int length;
 
     if ((total > 0) && (count > 0)) {
@@ -1468,9 +1468,9 @@ ErrCode BitVector_from_Hex(unsigned int *  addr, unsigned char * string)
                 digit = toupper(digit);
                 if ((ok = (isxdigit(digit) != 0)))
                 {
-		  if (digit >= (int) 'A') digit -= (int) 'A' - 10;
-		  else                    digit -= (int) '0';
-		  value |= (((unsigned int) digit) << count);
+      if (digit >= (int) 'A') digit -= (int) 'A' - 10;
+      else                    digit -= (int) '0';
+      value |= (((unsigned int) digit) << count);
                 }
             }
             *addr++ = value;

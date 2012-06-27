@@ -58,20 +58,20 @@ ExecutionTrace::ExecutionTrace() {
 }
 
 ExecutionTrace::~ExecutionTrace() {
-	for (iterator it = entries.begin(); it != entries.end(); it++) {
-		delete *it;
-	}
+  for (iterator it = entries.begin(); it != entries.end(); it++) {
+    delete *it;
+  }
 }
 
 ConstraintLogEntry::ConstraintLogEntry(klee::ExecutionState *state) : DebugLogEntry(Constraint) {
-	ostringstream oss(ostringstream::out);
+  ostringstream oss(ostringstream::out);
 
-	klee::c9::printStateConstraints(oss, *state) << std::endl;
+  klee::c9::printStateConstraints(oss, *state) << std::endl;
 
 
-	oss.flush();
+  oss.flush();
 
-	message = oss.str();
+  message = oss.str();
 }
 
 }

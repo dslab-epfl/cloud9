@@ -16,7 +16,6 @@
 #include "klee/util/ExprPPrinter.h"
 #include "klee/ForkTag.h"
 #include "klee/AddressPool.h"
-#include "cloud9/Logger.h"
 
 #include "klee/Expr.h"
 
@@ -33,6 +32,7 @@
 #include <stdarg.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <crypto++/sha.h>
 
 using namespace llvm;
 using namespace klee;
@@ -53,7 +53,6 @@ namespace klee {
 ExecutionState::ExecutionState(Executor *_executor, KFunction *kf)
   : c9State(NULL),
     executor(_executor),
-    fakeState(false),
     depth(0),
     forkDisabled(false),
     queryCost(0.), 
@@ -65,7 +64,16 @@ ExecutionState::ExecutionState(Executor *_executor, KFunction *kf)
     crtForkReason(KLEE_FORK_DEFAULT),
     crtSpecialFork(NULL),
     wlistCounter(1),
-    preemptions(0) {
+    preemptions(0),
+    totalInstructions(0),
+    totalBranches(0),
+    totalForks(0),
+    totalQueries(0),
+    totalTime(0) {
+
+  memset(state_id, 0, sizeof(state_id));
+  memset(parent_id, 0, sizeof(parent_id));
+  memset(fork_id, 0, sizeof(fork_id));
 
   setupMain(kf);
   setupTime();
@@ -75,13 +83,21 @@ ExecutionState::ExecutionState(Executor *_executor, KFunction *kf)
 ExecutionState::ExecutionState(Executor *_executor, const std::vector<ref<Expr> > &assumptions)
   : c9State(NULL),
     executor(_executor),
-    fakeState(true),
     queryCost(0.),
     lastCoveredTime(sys::TimeValue::now()),
     ptreeNode(0),
     globalConstraints(assumptions),
     wlistCounter(1),
-    preemptions(0) {
+    preemptions(0),
+    totalInstructions(0),
+    totalBranches(0),
+    totalForks(0),
+    totalQueries(0),
+    totalTime(0) {
+
+  memset(state_id, 0, sizeof(state_id));
+  memset(parent_id, 0, sizeof(parent_id));
+  memset(fork_id, 0, sizeof(fork_id));
 
   setupMain(NULL);
 
@@ -96,8 +112,8 @@ void ExecutionState::setupAddressPool() {
       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
   assert(startAddress != MAP_FAILED);
 
-  //CLOUD9_DEBUG("Address pool starts at " << startAddress <<
-  //   " although it was requested at " << addressPool.getStartAddress());
+  VLOG(2) << "Address pool starts at " << startAddress <<
+      " although it was requested at " << addressPool.getStartAddress();
 
   addressPool = AddressPool((uint64_t)startAddress, addressPool.getSize()); // Correct the address
 }
@@ -160,7 +176,7 @@ Process& ExecutionState::forkProcess(process_id_t pid) {
 }
 
 void ExecutionState::terminateThread(threads_ty::iterator thrIt) {
-  CLOUD9_DEBUG("Terminating thread...");
+  VLOG(1) << "Terminating thread...";
 
   Process &proc = processes.find(thrIt->second.getPid())->second;
 
@@ -176,7 +192,7 @@ void ExecutionState::terminateThread(threads_ty::iterator thrIt) {
 }
 
 void ExecutionState::terminateProcess(processes_ty::iterator procIt) {
-  CLOUD9_DEBUG("Terminating process " << procIt->second.pid);
+  VLOG(1) << "Terminating process " << procIt->second.pid;
 
   assert(processes.size() > 1);
 
@@ -273,17 +289,21 @@ ExecutionState::~ExecutionState() {
   }
 }
 
-ExecutionState *ExecutionState::branch() {
-  depth++;
+ExecutionState *ExecutionState::branch(bool copy) {
+  if (!copy)
+    depth++;
 
   for (processes_ty::iterator it = processes.begin(); it != processes.end(); it++) {
     it->second.addressSpace.cowKey++;
   }
 
   ExecutionState *falseState = new ExecutionState(*this);
-  
-  falseState->coveredNew = false;
-  falseState->coveredLines.clear();
+
+  if (!copy) {
+    falseState->coveredNew = false;
+    falseState->coveredLines.clear();
+  }
+
   falseState->c9State = NULL;
 
   falseState->crtThreadIt = falseState->threads.find(crtThreadIt->second.tuid);
@@ -303,8 +323,24 @@ ExecutionState *ExecutionState::branch() {
     it->second.addressSpace.cowDomain = &falseState->cowDomain;
   }
 
-  weight *= .5;
-  falseState->weight -= weight;
+  if (!copy) {
+    weight *= .5;
+    falseState->weight -= weight;
+
+    // Compute IDs
+    CryptoPP::SHA1 sha1compute;
+    unsigned char message[21];
+    ::memcpy(message, fork_id, 20);
+
+    message[20] = 1;
+    sha1compute.CalculateDigest(fork_id, message, 21);
+
+    message[20] = 0;
+    sha1compute.CalculateDigest(falseState->fork_id, message, 21);
+
+    ::memcpy(falseState->state_id, falseState->fork_id, 20);
+    ::memcpy(falseState->parent_id, state_id, 20);
+  }
 
   return falseState;
 }
@@ -330,62 +366,62 @@ void ExecutionState::removeFnAlias(std::string fn) {
 namespace c9 {
 
 std::ostream &printStateStack(std::ostream &os, const ExecutionState &state) {
-	for (ExecutionState::stack_ty::const_iterator it = state.stack().begin();
-			it != state.stack().end(); it++) {
-		if (it != state.stack().begin()) {
-			os << '(' << it->caller->info->assemblyLine << ',' << it->caller->info->file << ':' << it->caller->info->line << ')';
-			os << "]/[";
-		} else {
-			os << "[";
-		}
-		os << it->kf->function->getName().str();
-	}
-	os << '(' << state.pc()->info->assemblyLine << ',' << state.pc()->info->file << ':' << state.pc()->info->line << ')';
-	os << "]";
+  for (ExecutionState::stack_ty::const_iterator it = state.stack().begin();
+      it != state.stack().end(); it++) {
+    if (it != state.stack().begin()) {
+      os << '(' << it->caller->info->assemblyLine << ',' << it->caller->info->file << ':' << it->caller->info->line << ')';
+      os << "]/[";
+    } else {
+      os << "[";
+    }
+    os << it->kf->function->getName().str();
+  }
+  os << '(' << state.pc()->info->assemblyLine << ',' << state.pc()->info->file << ':' << state.pc()->info->line << ')';
+  os << "]";
 
-	return os;
+  return os;
 }
 
 
 std::ostream &printStateConstraints(std::ostream &os, const ExecutionState &state) {
-	ExprPPrinter::printConstraints(os, state.constraints());
+  ExprPPrinter::printConstraints(os, state.constraints());
 
-	return os;
+  return os;
 }
 
 std::ostream &printStateMemorySummary(std::ostream &os,
-		const ExecutionState &state) {
-	const MemoryMap &mm = state.addressSpace().objects;
+    const ExecutionState &state) {
+  const MemoryMap &mm = state.addressSpace().objects;
 
-	os << "{";
-	MemoryMap::iterator it = mm.begin();
-	MemoryMap::iterator ie = mm.end();
-	if (it != ie) {
-		os << "MO" << it->first->id << ":" << it->second;
-		for (++it; it != ie; ++it)
-			os << ", MO" << it->first->id << ":" << it->second;
-	}
-	os << "}";
-	return os;
+  os << "{";
+  MemoryMap::iterator it = mm.begin();
+  MemoryMap::iterator ie = mm.end();
+  if (it != ie) {
+    os << "MO" << it->first->id << ":" << it->second;
+    for (++it; it != ie; ++it)
+      os << ", MO" << it->first->id << ":" << it->second;
+  }
+  os << "}";
+  return os;
 }
 
 }
 
 std::ostream &operator<<(std::ostream &os, const MemoryMap &mm) {
-	os << "{";
-	MemoryMap::iterator it = mm.begin();
-	MemoryMap::iterator ie = mm.end();
-	if (it != ie) {
-		os << "MO" << it->first->id << ":" << it->second;
-		for (++it; it != ie; ++it)
-			os << ", MO" << it->first->id << ":" << it->second;
-	}
-	os << "}";
-	return os;
+  os << "{";
+  MemoryMap::iterator it = mm.begin();
+  MemoryMap::iterator ie = mm.end();
+  if (it != ie) {
+    os << "MO" << it->first->id << ":" << it->second;
+    for (++it; it != ie; ++it)
+      os << ", MO" << it->first->id << ":" << it->second;
+  }
+  os << "}";
+  return os;
 }
 
 std::ostream &operator<<(std::ostream &os, const ExecutionState &state) {
-	return klee::c9::printStateStack(os, state);
+  return klee::c9::printStateStack(os, state);
 }
 
 

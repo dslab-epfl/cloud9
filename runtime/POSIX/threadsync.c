@@ -68,12 +68,12 @@ int pthread_mutexattr_init(pthread_mutexattr_t *attr)
 }
 int pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
 {
-	return 0;
+  return 0;
 }
 int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 {
-	_set_mutexattr_data(attr, type);
-	return 0;
+  _set_mutexattr_data(attr, type);
+  return 0;
 }
 
 static void _mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) {
@@ -84,15 +84,15 @@ static void _mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 
   mdata->wlist = klee_get_wlist();
   mdata->taken = 0;
-	mdata->queued = 0;
-	if(attr != 0) {
-		if(_get_mutexattr_data(attr) == PTHREAD_MUTEX_RECURSIVE)
-			mdata->count = 0;
-		else
-			mdata->count = -1;
-	}
-	else
-		mdata->count = -1;
+  mdata->queued = 0;
+  if(attr != 0) {
+    if(_get_mutexattr_data(attr) == PTHREAD_MUTEX_RECURSIVE)
+      mdata->count = 0;
+    else
+      mdata->count = -1;
+  }
+  else
+    mdata->count = -1;
 }
 
 static mutex_data_t *_get_mutex_data(pthread_mutex_t *mutex) {
@@ -126,10 +126,10 @@ int pthread_mutex_destroy(pthread_mutex_t *mutex) {
 }
 
 static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
-	if (mdata->taken && mdata->count >= 0 && mdata->owner == pthread_self()) {
-		mdata->count++;
-		return 0;
-	}
+  if (mdata->taken && mdata->count >= 0 && mdata->owner == pthread_self()) {
+    mdata->count++;
+    return 0;
+  }
   else if (mdata->queued > 0 || mdata->taken) {
     if (try) {
       errno = EBUSY;
@@ -142,8 +142,8 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   }
   mdata->taken = 1;
   mdata->owner = pthread_self();
-	if(mdata->count != -1)
-		mdata->count = 1;
+  if(mdata->count != -1)
+    mdata->count = 1;
 
   return 0;
 }
@@ -171,11 +171,11 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex) {
 }
 
 static int _atomic_mutex_unlock(mutex_data_t *mdata) {
-	if (mdata->taken && mdata->count > 0 && mdata->owner == pthread_self()) {
-		mdata->count--;
-		if(mdata->count != 0)
-			return 0;
-	}
+  if (mdata->taken && mdata->count > 0 && mdata->owner == pthread_self()) {
+    mdata->count--;
+    if(mdata->count != 0)
+      return 0;
+  }
   else if (!mdata->taken || mdata->owner != pthread_self()) {
     errno = EPERM;
     return -1;

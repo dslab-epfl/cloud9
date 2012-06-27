@@ -57,14 +57,14 @@
 
 
 #define CHECK_SEND_FLAGS(flags) \
-		do { \
-		  /*XXX: Ignore the MSG_NOSIGNAL flag since we don't support signals anyway*/ \
-			if ((flags != 0) && (flags != MSG_NOSIGNAL)) { \
-				klee_warning("sendto() flags unsupported for now"); \
-				errno = EINVAL; \
-				return -1;\
-			}\
-		} while (0)
+    do { \
+      /*XXX: Ignore the MSG_NOSIGNAL flag since we don't support signals anyway*/ \
+      if ((flags != 0) && (flags != MSG_NOSIGNAL)) { \
+        klee_warning("sendto() flags unsupported for now"); \
+        errno = EINVAL; \
+        return -1;\
+      }\
+    } while (0)
 
 #define CHECK_IS_SOCKET(fd) \
   do { \
@@ -305,7 +305,7 @@ static int __create_shared_datagram(datagram_t* datagram,
     const struct sockaddr* addr, size_t addr_len,
     const struct iovec *iov, int iovcnt) {
 
-  size_t count = __count_iovec(iov, iovcnt);
+  size_t count = _count_iovec(iov, iovcnt);
 
   // Capping to the max dgram size
   count = (count > MAX_DGRAM_SIZE) ? MAX_DGRAM_SIZE : count;
@@ -341,8 +341,6 @@ static void __free_all_datagrams(stream_buffer_t* buf) {
   }
 }
 
-// close() /////////////////////////////////////////////////////////////////////
-
 static int _bind(socket_t *sock, const struct sockaddr *addr, socklen_t addrlen);
 
 static int __is_bound(socket_t* sock) {
@@ -374,6 +372,8 @@ static int __autobind(socket_t* sock) {
     assert(0 && "invalid socket domain");
   }
 }
+
+// close() /////////////////////////////////////////////////////////////////////
 
 static void _shutdown(socket_t *sock, int how);
 
@@ -495,7 +495,7 @@ static ssize_t __read_datagram_socket(socket_t *sock, const struct iovec *iov,
   assert(dgram_read == sizeof(datagram_t));
 
   // Compute the total size of the buffers
-  size_t count = __count_iovec(iov, iovcnt);
+  size_t count = _count_iovec(iov, iovcnt);
   if (count == 0)
     return 0;
 
@@ -583,7 +583,7 @@ static ssize_t __write_datagram_socket(socket_t *sock,
 
   if (sock->domain == AF_NETLINK) {
     if (__is_netlink_kernel((const struct sockaddr_nl*)addr)) {
-      res = __count_iovec(iov, iovcnt);
+      res = _count_iovec(iov, iovcnt);
       _netlink_handler(sock, iov, iovcnt, res);
       done = 1;
     }
@@ -602,7 +602,7 @@ static ssize_t __write_datagram_socket(socket_t *sock,
     }
 
     if (remote_end == NULL || remote_end->socket == NULL || remote_end->socket->in == NULL)
-      res = __count_iovec(iov, iovcnt); //no such remote in net, closed, shutdown
+      res = _count_iovec(iov, iovcnt); //no such remote in net, closed, shutdown
     else
       res = __write_datagram_to_stream(remote_end->socket->in,
           sock->local_end->addr, sizeof(struct sockaddr_in), iov, iovcnt);
@@ -1915,8 +1915,10 @@ void freeaddrinfo(struct addrinfo *res) {
 
 // getnameinfo() ///////////////////////////////////////////////////////////////
 
-int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, socklen_t hostlen,
-    char *serv, socklen_t servlen, unsigned int flags) {
+int getnameinfo(const struct sockaddr *sa, socklen_t salen,
+                char *host, socklen_t hostlen,
+                char *serv, socklen_t servlen,
+                int flags) {
 
   if (sa->sa_family != AF_INET || salen < sizeof(struct sockaddr_in)) {
     return EAI_FAMILY;
@@ -1961,4 +1963,30 @@ uint16_t ntohs(uint16_t v) {
 
 uint32_t ntohl(uint32_t v) {
   return htonl(v);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialization
+////////////////////////////////////////////////////////////////////////////////
+
+// Symbolic network
+network_t       __net;
+unix_t          __unix_net;
+netlink_t       __netlink_net;
+
+void klee_init_network(void) {
+  // Initialize the INET domain
+  klee_make_shared(&__net, sizeof(__net));
+
+  __net.net_addr.s_addr = htonl(DEFAULT_NETWORK_ADDR);
+  __net.next_port = htons(DEFAULT_UNUSED_PORT);
+  STATIC_LIST_INIT(__net.end_points);
+
+  // Initialize the UNIX domain
+  klee_make_shared(&__unix_net, sizeof(__unix_net));
+  STATIC_LIST_INIT(__unix_net.end_points);
+
+  // Initialize the netlink domain
+  klee_make_shared(&__netlink_net, sizeof(__netlink_net));
+  STATIC_LIST_INIT(__netlink_net.end_points);
 }

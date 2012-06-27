@@ -29,8 +29,9 @@ UpdateNode::UpdateNode(const UpdateNode *_next,
   if (next) {
     ++next->refCount;
     size = 1 + next->size;
+  } else {
+    size = 1;
   }
-  else size = 1;
 }
 
 extern "C" void vc_DeleteExpr(void*);

@@ -19,16 +19,19 @@ endif
 
 include $(LLVM_SRC_ROOT)/Makefile.rules
 
-# LLVMCC was added in 2.7.
-ifeq ($(LLVMCC),)
-LLVMCC := $(LLVMGCC)
-LLVMCXX := $(LLVMGXX)
-endif
+CC := $(LLVM_OBJ_ROOT)/Release+Asserts/bin/clang
+CXX := $(LLVM_OBJ_ROOT)/Release+Asserts/bin/clang++
+LLVMCC := $(CC)
+LLVMCXX := $(CXX)
 
-LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib
+
+LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib \
+            -L$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector \
+            -L$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector/picosat \
+            -Wl,--rpath=$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector
 
 CXX.Flags += -DLLVM_23 -fexceptions -fno-omit-frame-pointer -DEXT_HASH_MAP
-CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include
+CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include -I$(PROJ_SRC_ROOT)/../third_party/boolector
 
 PROTOC ?= protoc
 
@@ -42,7 +45,7 @@ endif
 
 CXX.Flags += -DKLEE_DIR=\"$(PROJ_OBJ_ROOT)\"
 
-LD.Flags += -lrt
+LD.Flags += -lrt -lz
 
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --cpp_out=./ $<

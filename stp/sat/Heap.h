@@ -90,7 +90,7 @@ class Heap {
     if(BEEV::print_sat_varorder) {
       // fprintf(stderr, "Vijay: heap before getmin: ");
       //       for (uint i = 1; i < (uint)heap.size(); i++)
-      // 	fprintf(stderr, "%d ", heap[i]);
+      //  fprintf(stderr, "%d ", heap[i]);
       //       fprintf(stderr, "\n");
     }
     

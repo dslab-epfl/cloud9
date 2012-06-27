@@ -146,7 +146,7 @@ void _stream_close(stream_buffer_t *buff) {
 }
 
 ssize_t _stream_readv(stream_buffer_t *buff, const struct iovec *iov, int iovcnt) {
-  size_t count = __count_iovec(iov, iovcnt);
+  size_t count = _count_iovec(iov, iovcnt);
 
   if (count == 0) {
     return 0;
@@ -211,7 +211,7 @@ ssize_t _stream_readv(stream_buffer_t *buff, const struct iovec *iov, int iovcnt
 }
 
 ssize_t _stream_writev(stream_buffer_t *buff, const struct iovec *iov, int iovcnt) {
-  size_t count = __count_iovec(iov, iovcnt);
+  size_t count = _count_iovec(iov, iovcnt);
 
   if (count == 0) {
     return 0;
@@ -312,7 +312,7 @@ ssize_t _block_readv(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
     return -1;
 
   if (!count)
-    count = __count_iovec(iov, iovcnt);
+    count = _count_iovec(iov, iovcnt);
 
   if (offset + count > buff->size)
     count = buff->size - offset;
@@ -340,7 +340,7 @@ ssize_t _block_writev(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
     return -1;
 
   if (!count)
-    count = __count_iovec(iov, iovcnt);
+    count = _count_iovec(iov, iovcnt);
 
   if (offset + count > buff->max_size)
     count = buff->max_size - offset;

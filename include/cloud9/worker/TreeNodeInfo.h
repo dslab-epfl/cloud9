@@ -52,32 +52,32 @@ class SymbolicState;
 class ExecutionJob;
 
 class WorkerNodeInfo {
-	friend class JobManager;
-	friend class SymbolicState;
-	friend class ExecutionJob;
+  friend class JobManager;
+  friend class SymbolicState;
+  friend class ExecutionJob;
 private:
-	SymbolicState *symState;
-	ExecutionJob *job;
-	ExecutionTrace trace;
-	klee::ForkTag forkTag;
+  SymbolicState *symState;
+  ExecutionJob *job;
+  ExecutionTrace trace;
+  klee::ForkTag forkTag;
 public:
-	WorkerNodeInfo() : symState(NULL), job(NULL), forkTag(klee::KLEE_FORK_DEFAULT) { }
+  WorkerNodeInfo() : symState(NULL), job(NULL), forkTag(klee::KLEE_FORK_DEFAULT) { }
 
-	virtual ~WorkerNodeInfo() { }
+  virtual ~WorkerNodeInfo() { }
 
-	SymbolicState* getSymbolicState() const { return symState; }
-	ExecutionJob* getJob() const { return job; }
-	klee::ForkTag getForkTag() const { return forkTag; }
+  SymbolicState* getSymbolicState() const { return symState; }
+  ExecutionJob* getJob() const { return job; }
+  klee::ForkTag getForkTag() const { return forkTag; }
 
-	const ExecutionTrace &getTrace() const { return trace; }
+  const ExecutionTrace &getTrace() const { return trace; }
 };
 
-#define WORKER_LAYER_COUNT			5
+#define WORKER_LAYER_COUNT      5
 
-#define WORKER_LAYER_JOBS			1
-#define WORKER_LAYER_STATES			2
-#define WORKER_LAYER_STATISTICS		3
-#define WORKER_LAYER_BREAKPOINTS	4
+#define WORKER_LAYER_JOBS     1
+#define WORKER_LAYER_STATES     2
+#define WORKER_LAYER_STATISTICS   3
+#define WORKER_LAYER_BREAKPOINTS  4
 
 typedef ExecutionTree<WorkerNodeInfo, WORKER_LAYER_COUNT, 2> WorkerTree; // Four layered, binary tree
 

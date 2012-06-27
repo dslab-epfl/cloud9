@@ -10,14 +10,14 @@
 #ifndef KLEE_SOLVER_H
 #define KLEE_SOLVER_H
 
+#include "klee/util/Ref.h"
 #include "klee/Expr.h"
 
 #include <vector>
 
 namespace klee {
-  class ConstraintManager;
-  class Expr;
-  class SolverImpl;
+  class ConstraintManager;  // "klee/Constraints.h"
+  class SolverImpl;         // "klee/SolverImpl.h"
 
   struct Query {
   public:
@@ -25,7 +25,7 @@ namespace klee {
     ref<Expr> expr;
 
     Query(const ConstraintManager& _constraints, ref<Expr> _expr)
-      : constraints(_constraints), expr(_expr) {
+        : constraints(_constraints), expr(_expr) {
     }
 
     /// withExpr - Return a copy of the query with the given expression.
@@ -45,25 +45,42 @@ namespace klee {
   };
 
   class Solver {
-    // DO NOT IMPLEMENT.
-    Solver(const Solver&);
-    void operator=(const Solver&);
-
   public:
     enum Validity {
       True = 1,
       False = -1,
       Unknown = 0
     };
-  
-  public:
+
+    /// PartialValidity - Represent a possibility incomplete query
+    /// validity.
+    enum PartialValidity {
+      /// The query is provably true.
+      MustBeTrue = 1,
+
+      /// The query is provably false.
+      MustBeFalse = -1,
+
+      /// The query is not provably false (a true assignment is known to
+      /// exist).
+      MayBeTrue = 2,
+
+      /// The query is not provably true (a false assignment is known to
+      /// exist).
+      MayBeFalse = -2,
+
+      /// The query is known to have both true and false assignments.
+      TrueOrFalse = 0,
+
+      /// The validity of the query is unknown.
+      None = 3
+    };
+
     /// validity_to_str - Return the name of given Validity enum value.
     static const char *validity_to_str(Validity v);
 
-  public:
-    SolverImpl *impl;
+    SolverImpl *impl;  // TODO(bqe): Does this have to be public?
 
-  public:
     Solver(SolverImpl *_impl) : impl(_impl) {}
     virtual ~Solver();
 
@@ -148,6 +165,11 @@ namespace klee {
     //
     // FIXME: This should go into a helper class, and should handle failure.
     virtual std::pair< ref<Expr>, ref<Expr> > getRange(const Query&);
+
+  private:
+    // DO NOT IMPLEMENT.
+    Solver(const Solver&);
+    void operator=(const Solver&);
   };
 
   /// STPSolver - A complete solver based on STP.
@@ -161,8 +183,6 @@ namespace klee {
     /// be optimized into add/shift/multiply operations.
     STPSolver(bool useForkedSTP, bool optimizeDivides = true);
 
-    
-    
     /// getConstraintLog - Return the constraint log for the given state in CVC
     /// format.
     char *getConstraintLog(const Query&);
@@ -210,7 +230,7 @@ namespace klee {
   ///
   /// \param s - The underlying solver to use.
   Solver *createIndependentSolver(Solver *s);
-  
+
   /// createPCLoggingSolver - Create a solver which will forward all queries
   /// after writing them to the given path in .pc format.
   Solver *createPCLoggingSolver(Solver *s, std::string path);

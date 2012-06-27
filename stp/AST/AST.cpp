@@ -105,10 +105,10 @@ namespace BEEV {
       // Make a new ASTInterior node
       // We want (NOT alpha) always to have alpha.nodenum + 1.
       if (n_ptr->GetKind() == NOT) {
-	n_ptr->SetNodeNum(n_ptr->GetChildren()[0].GetNodeNum()+1);
+  n_ptr->SetNodeNum(n_ptr->GetChildren()[0].GetNodeNum()+1);
       }
       else {
-	n_ptr->SetNodeNum(NewNodeNum());
+  n_ptr->SetNodeNum(NewNodeNum());
       }
       pair<ASTInteriorSet::const_iterator, bool> p = _interior_unique_table.insert(n_ptr);
       return *(p.first);
@@ -177,7 +177,7 @@ namespace BEEV {
 
   // Print newline and indentation, then print the thing.
   ostream &ASTNode::LispPrint_indent(ostream &os,
-				     int indentation) const
+             int indentation) const
   {
     os << endl << spaces(indentation);
     LispPrint1(os, indentation);
@@ -197,7 +197,7 @@ namespace BEEV {
 //    if (kind == READ) {
 //      const ASTVec &children = GetChildren();
 //      children[0].LispPrint1(os, indentation);
-//	os << "[" << children[1] << "]";
+//  os << "[" << children[1] << "]";
 //    } else 
     if(kind == BVGETBIT) {
       const ASTVec &children = GetChildren();
@@ -213,14 +213,14 @@ namespace BEEV {
       os << "}";
     } else if (kind == NOT) {
       const ASTVec &children = GetChildren();
-      os << GetNodeNum() << ":";	
+      os << GetNodeNum() << ":";  
       os << "(NOT ";
       children[0].LispPrint1(os, indentation);
       os << ")";
     }
     else if (Degree() == 0) {
       // Symbol or a kind with no children print as index:NAME if shared,
-      // even if they have been printed before.	
+      // even if they have been printed before. 
       os << GetNodeNum() << ":";
       _int_node_ptr->nodeprint(os); 
       // os << "(" << _int_node_ptr->_ref_count << ")";
@@ -229,20 +229,20 @@ namespace BEEV {
     else if (IsAlreadyPrinted()) {
       // print non-symbols as "[index]" if seen before.
       os << "[" << GetNodeNum() << "]";
-      //	   << "(" << _int_node_ptr->_ref_count << ")";
+      //     << "(" << _int_node_ptr->_ref_count << ")";
     }
     else {
       MarkAlreadyPrinted();
       const ASTVec &children = GetChildren();
       os << GetNodeNum() << ":"
-	//<< "(" << _int_node_ptr->_ref_count << ")" 
-	 << "(" << kind << " ";
+  //<< "(" << _int_node_ptr->_ref_count << ")" 
+   << "(" << kind << " ";
       // os << "{" << GetValueWidth() << "}";
       ASTVec::const_iterator iend = children.end();
       for (ASTVec::const_iterator i = children.begin(); i != iend; i++) {
-	i->LispPrint_indent(os, indentation+2);
-	}
-      os << ")";	
+  i->LispPrint_indent(os, indentation+2);
+  }
+      os << ")";  
     }
     return os;
   }
@@ -258,7 +258,7 @@ namespace BEEV {
   //2. as follows: Every occurence of a node occuring more than
   //2. once is replaced with the corresponding let variable.
   ostream& ASTNode::PL_Print(ostream &os,
-			     int indentation) const {
+           int indentation) const {
     // Clear the PrintMap
     BeevMgr& bm = GetBeevMgr(); 
     bm.PLPrintNodeSet.clear();
@@ -295,11 +295,11 @@ namespace BEEV {
 
       for(it++;it!=itend;it++) {
         os << "," << endl;
-	//print the let var first
-	it->first.PL_Print1(os,indentation,false);
-	os << " = ";
-	//print the expr
-	it->second.PL_Print1(os,indentation,false);
+  //print the let var first
+  it->first.PL_Print1(os,indentation,false);
+  os << " = ";
+  //print the expr
+  it->second.PL_Print1(os,indentation,false);
 
         //update the second map for proper printing of LET
         bm.NodeLetVarMap1[it->second] = it->first;
@@ -333,61 +333,61 @@ namespace BEEV {
     for(ASTVec::const_iterator it=c.begin(),itend=c.end();it!=itend;it++){
       ASTNode ccc = *it;
       if(bm.PLPrintNodeSet.find(ccc) == bm.PLPrintNodeSet.end()){
-	//If branch: if *it is not in NodeSet then,
-	//
-	//1. add it to NodeSet
-	//
-	//2. Letize its childNodes
+  //If branch: if *it is not in NodeSet then,
+  //
+  //1. add it to NodeSet
+  //
+  //2. Letize its childNodes
 
-	//FIXME: Fetching BeevMgr is annoying.  Can we put this in
-	//some kind of a printer class
-	bm.PLPrintNodeSet.insert(ccc);
-	//debugging
-	//cerr << ccc;
-	ccc.LetizeNode();
+  //FIXME: Fetching BeevMgr is annoying.  Can we put this in
+  //some kind of a printer class
+  bm.PLPrintNodeSet.insert(ccc);
+  //debugging
+  //cerr << ccc;
+  ccc.LetizeNode();
       } 
       else{
-	Kind k = ccc.GetKind();
-	if(k == SYMBOL  || 
-	   k == BVCONST ||
-	   k == FALSE   ||
-	   k == TRUE)
-	  continue;
-	
-	//0. Else branch: Node has been seen before
-	//
-	//1. Check if the node has a corresponding letvar in the
-	//1. NodeLetVarMap.
-	//
-	//2. if no, then create a new var and add it to the
-	//2. NodeLetVarMap
-	if(bm.NodeLetVarMap.find(ccc) == bm.NodeLetVarMap.end()) {
-	  //Create a new symbol. Get some name. if it conflicts with a
-	  //declared name, too bad. 
-	  int sz = bm.NodeLetVarMap.size();
-	  ostringstream oss;
-	  oss << "let_k_" << sz;
+  Kind k = ccc.GetKind();
+  if(k == SYMBOL  || 
+     k == BVCONST ||
+     k == FALSE   ||
+     k == TRUE)
+    continue;
+  
+  //0. Else branch: Node has been seen before
+  //
+  //1. Check if the node has a corresponding letvar in the
+  //1. NodeLetVarMap.
+  //
+  //2. if no, then create a new var and add it to the
+  //2. NodeLetVarMap
+  if(bm.NodeLetVarMap.find(ccc) == bm.NodeLetVarMap.end()) {
+    //Create a new symbol. Get some name. if it conflicts with a
+    //declared name, too bad. 
+    int sz = bm.NodeLetVarMap.size();
+    ostringstream oss;
+    oss << "let_k_" << sz;
 
-	  ASTNode CurrentSymbol = bm.CreateSymbol(oss.str().c_str());
-	  CurrentSymbol.SetValueWidth(this->GetValueWidth());
-	  CurrentSymbol.SetIndexWidth(this->GetIndexWidth());	  
-	  /* If for some reason the variable being created here is
-	   * already declared by the user then the printed output will
-	   * not be a legal input to the system. too bad. I refuse to
-	   * check for this.  [Vijay is the author of this comment.]
-	   */
-	  
-	  bm.NodeLetVarMap[ccc] = CurrentSymbol;
-	  std::pair<ASTNode,ASTNode> node_letvar_pair(CurrentSymbol,ccc);
-	  bm.NodeLetVarVec.push_back(node_letvar_pair);
-	}
+    ASTNode CurrentSymbol = bm.CreateSymbol(oss.str().c_str());
+    CurrentSymbol.SetValueWidth(this->GetValueWidth());
+    CurrentSymbol.SetIndexWidth(this->GetIndexWidth());   
+    /* If for some reason the variable being created here is
+     * already declared by the user then the printed output will
+     * not be a legal input to the system. too bad. I refuse to
+     * check for this.  [Vijay is the author of this comment.]
+     */
+    
+    bm.NodeLetVarMap[ccc] = CurrentSymbol;
+    std::pair<ASTNode,ASTNode> node_letvar_pair(CurrentSymbol,ccc);
+    bm.NodeLetVarVec.push_back(node_letvar_pair);
+  }
       }    
     }
   } //end of LetizeNode()
 
   void ASTNode::PL_Print1(ostream& os,
-			  int indentation, 
-			  bool letize) const {
+        int indentation, 
+        bool letize) const {
     //os << spaces(indentation);
     //os << endl << spaces(indentation);
     if (!IsDefined()) {
@@ -524,8 +524,8 @@ namespace BEEV {
       os << kind << "(";
       os << this->GetValueWidth();
       for(ASTVec::const_iterator it=c.begin(),itend=c.end();it!=itend;it++) {
-	os << ", " << endl;
-	it->PL_Print1(os,indentation,letize);	
+  os << ", " << endl;
+  it->PL_Print1(os,indentation,letize); 
       }
       os << ")" << endl;
       break;    
@@ -605,9 +605,9 @@ namespace BEEV {
 
       it++;
       for(;it!=itend;it++) {
-	os << " " << kind << " ";
-	it->PL_Print1(os,indentation,letize);
-	os << endl;
+  os << " " << kind << " ";
+  it->PL_Print1(os,indentation,letize);
+  os << endl;
       }
       os << ")";
       break;
@@ -665,8 +665,8 @@ namespace BEEV {
   }
   
   ASTNode BeevMgr::CreateNode(Kind kind,
-			      const ASTNode& child0,
-			      const ASTVec & back_children) {
+            const ASTNode& child0,
+            const ASTVec & back_children) {
 
     ASTInterior *n_ptr = new ASTInterior(kind, *this);
     ASTVec &front_children = n_ptr->_children;
@@ -676,9 +676,9 @@ namespace BEEV {
   }
   
   ASTNode BeevMgr::CreateNode(Kind kind,
-			      const ASTNode& child0,
-			      const ASTNode& child1,
-			      const ASTVec & back_children) {
+            const ASTNode& child0,
+            const ASTNode& child1,
+            const ASTVec & back_children) {
 
     ASTInterior *n_ptr = new ASTInterior(kind, *this);
     ASTVec &front_children = n_ptr->_children;
@@ -690,10 +690,10 @@ namespace BEEV {
   
   
   ASTNode BeevMgr::CreateNode(Kind kind,
-			      const ASTNode& child0,
-			      const ASTNode& child1,
-			      const ASTNode& child2,
-			      const ASTVec & back_children) {
+            const ASTNode& child0,
+            const ASTNode& child1,
+            const ASTNode& child2,
+            const ASTVec & back_children) {
     ASTInterior *n_ptr = new ASTInterior(kind, *this);
     ASTVec &front_children = n_ptr->_children;
     front_children.push_back(child0);
@@ -705,9 +705,9 @@ namespace BEEV {
   
   
   ASTInterior *BeevMgr::CreateInteriorNode(Kind kind,
-					   // children array of this node will be modified.
-					   ASTInterior *n_ptr,
-					   const ASTVec & back_children) {
+             // children array of this node will be modified.
+             ASTInterior *n_ptr,
+             const ASTVec & back_children) {
 
     // insert back_children at end of front_children
     ASTVec &front_children = n_ptr->_children;
@@ -718,7 +718,7 @@ namespace BEEV {
     ASTVec::const_iterator it_end = front_children.end();
     for (ASTVec::const_iterator it = front_children.begin(); it != it_end; it++) {
       if (it->IsNull())
-	FatalError("CreateInteriorNode: Undefined childnode in CreateInteriorNode: ", ASTUndefined);      
+  FatalError("CreateInteriorNode: Undefined childnode in CreateInteriorNode: ", ASTUndefined);      
     }
 
     return LookupOrCreateInterior(n_ptr);
@@ -750,7 +750,7 @@ namespace BEEV {
 #ifndef NATIVE_C_ARITH
   //Create a ASTBVConst node
   ASTNode BeevMgr::CreateBVConst(unsigned int width, 
-				 unsigned long long int bvconst){ 
+         unsigned long long int bvconst){ 
     if(width == 0 || width > (sizeof(unsigned long long int)<<3))
       FatalError("CreateBVConst: trying to create a bvconst of width: ", ASTUndefined, width);
 
@@ -881,7 +881,7 @@ namespace BEEV {
 #else
   //Create a ASTBVConst node
   ASTNode BeevMgr::CreateBVConst(const unsigned int width, 
-				 const unsigned long long int bvconst) { 
+         const unsigned long long int bvconst) { 
     if(width > 64 || width <= 0)
       FatalError("Fatal Error: CreateBVConst: trying to create a bvconst of width:", ASTUndefined, width);
     
@@ -926,7 +926,7 @@ namespace BEEV {
   //To ensure unique BVConst nodes, lookup the node in unique-table
   //before creating a new one.
   ASTBVConst *BeevMgr::LookupOrCreateBVConst(ASTBVConst &s) {
-    ASTBVConst *s_ptr = &s;	// it's a temporary key.
+    ASTBVConst *s_ptr = &s; // it's a temporary key.
 
     // Do an explicit lookup to see if we need to create a copy of the
     // string.
@@ -1092,34 +1092,34 @@ namespace BEEV {
     if(is_Term_kind(k)) {
       switch(k) {
       case BVCONST:
-	if(BITVECTOR_TYPE != n.GetType())
-	  FatalError("BVTypeCheck: The term t does not typecheck, where t = \n",n);
-	break;
+  if(BITVECTOR_TYPE != n.GetType())
+    FatalError("BVTypeCheck: The term t does not typecheck, where t = \n",n);
+  break;
       case SYMBOL:
-	return;
+  return;
       case ITE:     
-	if(BOOLEAN_TYPE != n[0].GetType() && 
-	   BITVECTOR_TYPE != n[1].GetType() &&
-	   BITVECTOR_TYPE != n[2].GetType())
-	  FatalError("BVTypeCheck: The term t does not typecheck, where t = \n",n);
-	if(n[1].GetValueWidth() != n[2].GetValueWidth())
-	  FatalError("BVTypeCheck: length of THENbranch != length of ELSEbranch in the term t = \n",n);
-	if(n[1].GetIndexWidth() != n[2].GetIndexWidth())
-	  FatalError("BVTypeCheck: length of THENbranch != length of ELSEbranch in the term t = \n",n);
-	break;
+  if(BOOLEAN_TYPE != n[0].GetType() && 
+     BITVECTOR_TYPE != n[1].GetType() &&
+     BITVECTOR_TYPE != n[2].GetType())
+    FatalError("BVTypeCheck: The term t does not typecheck, where t = \n",n);
+  if(n[1].GetValueWidth() != n[2].GetValueWidth())
+    FatalError("BVTypeCheck: length of THENbranch != length of ELSEbranch in the term t = \n",n);
+  if(n[1].GetIndexWidth() != n[2].GetIndexWidth())
+    FatalError("BVTypeCheck: length of THENbranch != length of ELSEbranch in the term t = \n",n);
+  break;
       case READ:
-	if(n[0].GetIndexWidth() != n[1].GetValueWidth()) {
-	  cerr << "Length of indexwidth of array: " << n[0] << " is : " << n[0].GetIndexWidth() << endl;
-	  cerr << "Length of the actual index is: " << n[1] << " is : " << n[1].GetValueWidth() << endl;
-	  FatalError("BVTypeCheck: length of indexwidth of array != length of actual index in the term t = \n",n);
-	}
-	break;      
+  if(n[0].GetIndexWidth() != n[1].GetValueWidth()) {
+    cerr << "Length of indexwidth of array: " << n[0] << " is : " << n[0].GetIndexWidth() << endl;
+    cerr << "Length of the actual index is: " << n[1] << " is : " << n[1].GetValueWidth() << endl;
+    FatalError("BVTypeCheck: length of indexwidth of array != length of actual index in the term t = \n",n);
+  }
+  break;      
       case WRITE:
-	if(n[0].GetIndexWidth() != n[1].GetValueWidth())
-	  FatalError("BVTypeCheck: length of indexwidth of array != length of actual index in the term t = \n",n);
-	if(n[0].GetValueWidth() != n[2].GetValueWidth())
-	  FatalError("BVTypeCheck: valuewidth of array != length of actual value in the term t = \n",n);
-	break;      
+  if(n[0].GetIndexWidth() != n[1].GetValueWidth())
+    FatalError("BVTypeCheck: length of indexwidth of array != length of actual index in the term t = \n",n);
+  if(n[0].GetValueWidth() != n[2].GetValueWidth())
+    FatalError("BVTypeCheck: valuewidth of array != length of actual value in the term t = \n",n);
+  break;      
       case BVOR:
       case BVAND:
       case BVXOR:
@@ -1131,89 +1131,89 @@ namespace BEEV {
       case BVDIV:
       case BVMOD:
       case BVSUB: {
-	if(!(v.size() >= 2))
-	  FatalError("BVTypeCheck:bitwise Booleans and BV arith operators must have atleast two arguments\n",n);
-	unsigned int width = n.GetValueWidth();
-	for(ASTVec::iterator it=v.begin(),itend=v.end();it!=itend;it++){
-	  if(width != it->GetValueWidth()) {
-	    cerr << "BVTypeCheck:Operands of bitwise-Booleans and BV arith operators must be of equal length\n";
-	    cerr << n << endl;
-	    cerr << "width of term:" << width << endl;
-	    cerr << "width of offending operand:" << it->GetValueWidth() << endl;
-	    FatalError("BVTypeCheck:Offending operand:\n",*it);
-	  }
-	  if(BITVECTOR_TYPE != it->GetType())
-	    FatalError("BVTypeCheck: ChildNodes of bitvector-terms must be bitvectors\n",n);
-	}
-	break;
+  if(!(v.size() >= 2))
+    FatalError("BVTypeCheck:bitwise Booleans and BV arith operators must have atleast two arguments\n",n);
+  unsigned int width = n.GetValueWidth();
+  for(ASTVec::iterator it=v.begin(),itend=v.end();it!=itend;it++){
+    if(width != it->GetValueWidth()) {
+      cerr << "BVTypeCheck:Operands of bitwise-Booleans and BV arith operators must be of equal length\n";
+      cerr << n << endl;
+      cerr << "width of term:" << width << endl;
+      cerr << "width of offending operand:" << it->GetValueWidth() << endl;
+      FatalError("BVTypeCheck:Offending operand:\n",*it);
+    }
+    if(BITVECTOR_TYPE != it->GetType())
+      FatalError("BVTypeCheck: ChildNodes of bitvector-terms must be bitvectors\n",n);
+  }
+  break;
       }
       case BVSX:
-	//in BVSX(n[0],len), the length of the BVSX term must be
-	//greater than the length of n[0]
-	if(n[0].GetValueWidth() >= n.GetValueWidth()) {
-	  FatalError("BVTypeCheck: BVSX(t,bvsx_len) : length of 't' must be <= bvsx_len\n",n);
-	} 
-	break;
+  //in BVSX(n[0],len), the length of the BVSX term must be
+  //greater than the length of n[0]
+  if(n[0].GetValueWidth() >= n.GetValueWidth()) {
+    FatalError("BVTypeCheck: BVSX(t,bvsx_len) : length of 't' must be <= bvsx_len\n",n);
+  } 
+  break;
       default:
-	for(ASTVec::iterator it=v.begin(),itend=v.end();it!=itend;it++)
-	  if(BITVECTOR_TYPE != it->GetType()) {
-	    cerr << "The type is: " << it->GetType() << endl;
-	    FatalError("BVTypeCheck:ChildNodes of bitvector-terms must be bitvectors\n",n);
-	  }
-	break;
+  for(ASTVec::iterator it=v.begin(),itend=v.end();it!=itend;it++)
+    if(BITVECTOR_TYPE != it->GetType()) {
+      cerr << "The type is: " << it->GetType() << endl;
+      FatalError("BVTypeCheck:ChildNodes of bitvector-terms must be bitvectors\n",n);
+    }
+  break;
       }
       
       switch(k) {
       case BVCONCAT:
-	if(n.Degree() != 2)
-	  FatalError("BVTypeCheck: should have exactly 2 args\n",n);
-	if(n.GetValueWidth() != n[0].GetValueWidth() + n[1].GetValueWidth())
-	  FatalError("BVTypeCheck:BVCONCAT: lengths do not add up\n",n);	
-	break;
+  if(n.Degree() != 2)
+    FatalError("BVTypeCheck: should have exactly 2 args\n",n);
+  if(n.GetValueWidth() != n[0].GetValueWidth() + n[1].GetValueWidth())
+    FatalError("BVTypeCheck:BVCONCAT: lengths do not add up\n",n);  
+  break;
       case BVUMINUS:
       case BVNEG:
-	if(n.Degree() != 1)
-	  FatalError("BVTypeCheck: should have exactly 1 args\n",n);
-	break;
+  if(n.Degree() != 1)
+    FatalError("BVTypeCheck: should have exactly 1 args\n",n);
+  break;
       case BVEXTRACT:
-	if(n.Degree() != 3)
-	  FatalError("BVTypeCheck: should have exactly 3 args\n",n);
-	if(!(BVCONST == n[1].GetKind() && BVCONST == n[2].GetKind()))
-	  FatalError("BVTypeCheck: indices should be BVCONST\n",n);
-	if(n.GetValueWidth() != GetUnsignedConst(n[1])- GetUnsignedConst(n[2])+1)
-	  FatalError("BVTypeCheck: length mismatch\n",n);
-	break;
+  if(n.Degree() != 3)
+    FatalError("BVTypeCheck: should have exactly 3 args\n",n);
+  if(!(BVCONST == n[1].GetKind() && BVCONST == n[2].GetKind()))
+    FatalError("BVTypeCheck: indices should be BVCONST\n",n);
+  if(n.GetValueWidth() != GetUnsignedConst(n[1])- GetUnsignedConst(n[2])+1)
+    FatalError("BVTypeCheck: length mismatch\n",n);
+  break;
       case BVLEFTSHIFT:
       case BVRIGHTSHIFT:
-	if(n.Degree() != 2)
-	  FatalError("BVTypeCheck: should have exactly 2 args\n",n);
-	break;
-	//case BVVARSHIFT:
-	//case BVSRSHIFT:
-	break;
+  if(n.Degree() != 2)
+    FatalError("BVTypeCheck: should have exactly 2 args\n",n);
+  break;
+  //case BVVARSHIFT:
+  //case BVSRSHIFT:
+  break;
       default:
-	break;
+  break;
       }
     }
     else {
       if(!(is_Form_kind(k) && BOOLEAN_TYPE == n.GetType()))
-	FatalError("BVTypeCheck: not a formula:",n);
+  FatalError("BVTypeCheck: not a formula:",n);
       switch(k){
       case TRUE:
       case FALSE:
       case SYMBOL:
-	return;
+  return;
       case EQ:
-      case NEQ:	 
-	if(!(n[0].GetValueWidth() == n[1].GetValueWidth() &&
-	     n[0].GetIndexWidth() == n[1].GetIndexWidth())) {
-	  cerr << "valuewidth of lhs of EQ: " << n[0].GetValueWidth() << endl;
-	  cerr << "valuewidth of rhs of EQ: " << n[1].GetValueWidth() << endl;
-	  cerr << "indexwidth of lhs of EQ: " << n[0].GetIndexWidth() << endl;
-	  cerr << "indexwidth of rhs of EQ: " << n[1].GetIndexWidth() << endl;
-	  FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
-	}
-	break;
+      case NEQ:  
+  if(!(n[0].GetValueWidth() == n[1].GetValueWidth() &&
+       n[0].GetIndexWidth() == n[1].GetIndexWidth())) {
+    cerr << "valuewidth of lhs of EQ: " << n[0].GetValueWidth() << endl;
+    cerr << "valuewidth of rhs of EQ: " << n[1].GetValueWidth() << endl;
+    cerr << "indexwidth of lhs of EQ: " << n[0].GetIndexWidth() << endl;
+    cerr << "indexwidth of rhs of EQ: " << n[1].GetIndexWidth() << endl;
+    FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
+  }
+  break;
       case BVLT:
       case BVLE:
       case BVGT:
@@ -1221,38 +1221,38 @@ namespace BEEV {
       case BVSLT:
       case BVSLE:
       case BVSGT:
-      case BVSGE:	
-	if(BITVECTOR_TYPE != n[0].GetType() && BITVECTOR_TYPE != n[1].GetType())
-	  FatalError("BVTypeCheck: terms in atomic formulas must be bitvectors",n);
-	if(n[0].GetValueWidth() != n[1].GetValueWidth())
-	  FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
-	if(n[0].GetIndexWidth() != n[1].GetIndexWidth())
-	  FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
-	break;
+      case BVSGE: 
+  if(BITVECTOR_TYPE != n[0].GetType() && BITVECTOR_TYPE != n[1].GetType())
+    FatalError("BVTypeCheck: terms in atomic formulas must be bitvectors",n);
+  if(n[0].GetValueWidth() != n[1].GetValueWidth())
+    FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
+  if(n[0].GetIndexWidth() != n[1].GetIndexWidth())
+    FatalError("BVTypeCheck: terms in atomic formulas must be of equal length",n);
+  break;
       case NOT:
-	if(1 != n.Degree())
-	  FatalError("BVTypeCheck: NOT formula can have exactly one childNode",n);
-	break;
+  if(1 != n.Degree())
+    FatalError("BVTypeCheck: NOT formula can have exactly one childNode",n);
+  break;
       case AND:
       case OR:
       case XOR:
       case NAND:
       case NOR:
-	if(2 > n.Degree())
-	  FatalError("BVTypeCheck: AND/OR/XOR/NAND/NOR: must have atleast 2 ChildNodes",n);
-	break;
+  if(2 > n.Degree())
+    FatalError("BVTypeCheck: AND/OR/XOR/NAND/NOR: must have atleast 2 ChildNodes",n);
+  break;
       case IFF:
-      case IMPLIES:	
-	if(2 != n.Degree())
-	  FatalError("BVTypeCheck:IFF/IMPLIES must have exactly 2 ChildNodes",n);
-	break;
+      case IMPLIES: 
+  if(2 != n.Degree())
+    FatalError("BVTypeCheck:IFF/IMPLIES must have exactly 2 ChildNodes",n);
+  break;
       case ITE:
-	if(3 != n.Degree())
-	  FatalError("BVTypeCheck:ITE must have exactly 3 ChildNodes",n);		
-	break;
+  if(3 != n.Degree())
+    FatalError("BVTypeCheck:ITE must have exactly 3 ChildNodes",n);   
+  break;
       default:
-	FatalError("BVTypeCheck: Unrecognized kind: ",ASTUndefined);
-	break;
+  FatalError("BVTypeCheck: Unrecognized kind: ",ASTUndefined);
+  break;
       }
     }
   } //End of TypeCheck function
@@ -1277,7 +1277,7 @@ namespace BEEV {
       v = new ASTVec();
       //v->push_back(TransformFormula(assert));
       v->push_back(assert);
-      _asserts.push_back(v);	
+      _asserts.push_back(v);  
     }
   }
   
@@ -1321,7 +1321,7 @@ namespace BEEV {
     ASTVec v;
     for(;it!=itend;it++) {
       if(!(*it)->empty())
-	  v.insert(v.end(),(*it)->begin(),(*it)->end());
+    v.insert(v.end(),(*it)->begin(),(*it)->end());
     }
     return v;
   }
@@ -1402,20 +1402,20 @@ namespace BEEV {
     _SATVar_to_AST.clear();
 
     for(ASTtoBitvectorMap::iterator it=_ASTNode_to_Bitvector.begin(),
-	  itend=_ASTNode_to_Bitvector.end();it!=itend;it++) {
+    itend=_ASTNode_to_Bitvector.end();it!=itend;it++) {
       delete it->second;
     }
     _ASTNode_to_Bitvector.clear();
     
     /* OLD Destructor
      * for(ASTNodeToVecMap::iterator ivec = BBTermMemo.begin(),
-	  ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
+    ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
       ivec->second.clear();
     }*/
 
     /*What should I do here? For ASTNodes?
      * for(ASTNodeMap::iterator ivec = BBTermMemo.begin(),
-	  ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
+    ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
       ivec->second.clear();
     }*/
     BBTermMemo.clear();
@@ -1438,13 +1438,13 @@ namespace BEEV {
     StatInfoSet.clear();
 
     // for(std::vector<ASTVec *>::iterator it=_asserts.begin(),
-    // 	  itend=_asserts.end();it!=itend;it++) {
+    //    itend=_asserts.end();it!=itend;it++) {
     //       (*it)->clear();
     //     }
     _asserts.clear();
     for(ASTNodeToVecMap::iterator iset = _arrayname_readindices.begin(), 
-	  iset_end = _arrayname_readindices.end();
-	iset!=iset_end;iset++) {
+    iset_end = _arrayname_readindices.end();
+  iset!=iset_end;iset++) {
       iset->second.clear();
     }
 
@@ -1461,20 +1461,20 @@ namespace BEEV {
 
 
     for(ASTtoBitvectorMap::iterator it=_ASTNode_to_Bitvector.begin(),
-	  itend=_ASTNode_to_Bitvector.end();it!=itend;it++) {
+    itend=_ASTNode_to_Bitvector.end();it!=itend;it++) {
       delete it->second;
     }
     _ASTNode_to_Bitvector.clear();
     
     /*OLD destructor
      * for(ASTNodeToVecMap::iterator ivec = BBTermMemo.begin(),
-	  ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
+    ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
       ivec->second.clear();
     }*/
 
     /*What should I do here?
      *for(ASTNodeMap::iterator ivec = BBTermMemo.begin(),
-	  ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
+    ivec_end=BBTermMemo.end();ivec!=ivec_end;ivec++) {
       ivec->second.clear();
     }*/
     BBTermMemo.clear();
@@ -1497,8 +1497,8 @@ namespace BEEV {
     StatInfoSet.clear();
 
     for(ASTNodeToVecMap::iterator iset = _arrayname_readindices.begin(), 
-	  iset_end = _arrayname_readindices.end();
-	iset!=iset_end;iset++) {
+    iset_end = _arrayname_readindices.end();
+  iset!=iset_end;iset++) {
       iset->second.clear();
     }
 
@@ -1541,7 +1541,7 @@ namespace BEEV {
   //var into a ASTNODE var. It then prints this var along with
   //variable order dcisions taken by MINISAT.
   void Convert_MINISATVar_To_ASTNode_Print(int minisat_var, 
-  					   int decision_level, int polarity) {
+               int decision_level, int polarity) {
     BEEV::ASTNode vv = globalBeevMgr_for_parser->_SATVar_to_AST[minisat_var];
     cout << spaces(decision_level);
     if(polarity) {

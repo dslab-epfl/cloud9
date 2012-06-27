@@ -13,6 +13,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <glog/logging.h>
+
 #define KTEST_VERSION 3
 #define KTEST_MAGIC_SIZE 5
 #define KTEST_MAGIC "KTEST"
@@ -96,8 +98,9 @@ KTest *kTest_fromFile(const char *path) {
   KTest *res = 0;
   unsigned i, version;
 
-  if (!f) 
+  if (!f) {
     goto error;
+  }
   if (!kTest_checkHeader(f)) 
     goto error;
 
@@ -179,35 +182,58 @@ int kTest_toFile(KTest *bo, const char *path) {
   FILE *f = fopen(path, "wb");
   unsigned i;
 
-  if (!f) 
+  if (!f) {
+    LOG(WARNING) << "Cannot open test file '" << path << "'";
     goto error;
-  if (fwrite(KTEST_MAGIC, strlen(KTEST_MAGIC), 1, f)!=1)
+  }
+  if (fwrite(KTEST_MAGIC, strlen(KTEST_MAGIC), 1, f)!=1) {
+    LOG(WARNING) << "Cannot write test magic";
     goto error;
-  if (!write_uint32(f, KTEST_VERSION))
+  }
+  if (!write_uint32(f, KTEST_VERSION)) {
+    LOG(WARNING) << "Cannot write test version";
     goto error;
+  }
       
-  if (!write_uint32(f, bo->numArgs))
+  if (!write_uint32(f, bo->numArgs)) {
+    LOG(WARNING) << "Cannot write the number of arguments";
     goto error;
-  for (i=0; i<bo->numArgs; i++) {
-    if (!write_string(f, bo->args[i]))
-      goto error;
   }
 
-  if (!write_uint32(f, bo->symArgvs))
+  for (i=0; i<bo->numArgs; i++) {
+    if (!write_string(f, bo->args[i])) {
+      LOG(WARNING) << "Cannot write argument " << i << "/" << bo->numArgs;
+      goto error;
+    }
+  }
+
+  if (!write_uint32(f, bo->symArgvs)) {
+    LOG(WARNING) << "Cannot write symArgvs";
     goto error;
-  if (!write_uint32(f, bo->symArgvLen))
+  }
+  if (!write_uint32(f, bo->symArgvLen)) {
+    LOG(WARNING) << "Cannot write symArgvLen";
     goto error;
+  }
   
-  if (!write_uint32(f, bo->numObjects))
+  if (!write_uint32(f, bo->numObjects)) {
+    LOG(WARNING) << "Cannot write the number of objects";
     goto error;
+  }
   for (i=0; i<bo->numObjects; i++) {
     KTestObject *o = &bo->objects[i];
-    if (!write_string(f, o->name))
+    if (!write_string(f, o->name)) {
+      LOG(WARNING) << "Object " << i << "/" << bo->numObjects << ": Cannot write name";
       goto error;
-    if (!write_uint32(f, o->numBytes))
+    }
+    if (!write_uint32(f, o->numBytes)) {
+      LOG(WARNING) << "Object " << i << "/" << bo->numObjects << ": Cannot write size";
       goto error;
-    if (fwrite(o->bytes, o->numBytes, 1, f)!=1)
+    }
+    if (fwrite(o->bytes, o->numBytes, 1, f)!=1) {
+      LOG(WARNING) << "Object " << i << "/" << bo->numObjects << ": Cannot write contents";
       goto error;
+    }
   }
 
   fclose(f);

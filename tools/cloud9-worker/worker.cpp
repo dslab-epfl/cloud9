@@ -54,7 +54,7 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Target/TargetSelect.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/system_error.h"
 
@@ -71,7 +71,6 @@
 #include "klee/Internal/Support/ModuleUtil.h"
 #include "klee/Init.h"
 
-#include "cloud9/Logger.h"
 #include "cloud9/ExecutionTree.h"
 #include "cloud9/ExecutionPath.h"
 #include "cloud9/Protocols.h"
@@ -81,7 +80,8 @@
 #include "cloud9/worker/KleeCommon.h"
 #include "cloud9/worker/CommManager.h"
 #include "cloud9/Utils.h"
-#include "cloud9/instrum/InstrumentationManager.h"
+
+#include <glog/logging.h>
 
 using namespace llvm;
 using namespace cloud9::worker;
@@ -93,7 +93,7 @@ cl::opt<bool>
                 cl::init(false));
 
 cl::opt<std::string> ReplayPath("c9-replay-path", cl::desc(
-		"Instead of executing jobs, just do a replay of a path. No load balancer involved."));
+    "Instead of executing jobs, just do a replay of a path. No load balancer involved."));
 
 }
 
@@ -111,12 +111,12 @@ JobManager *theJobManager = NULL;
  * This function invokes haltExecution() via gdb.
  */
 static void haltViaGDB(int pid) {
-	char buffer[256];
-	sprintf(buffer, "gdb --batch --eval-command=\"p haltExecution()\" "
-		"--eval-command=detach --pid=%d &> /dev/null", pid);
+  char buffer[256];
+  sprintf(buffer, "gdb --batch --eval-command=\"p haltExecution()\" "
+    "--eval-command=detach --pid=%d &> /dev/null", pid);
 
-	if (system(buffer) == -1)
-		perror("system");
+  if (system(buffer) == -1)
+    perror("system");
 }
 
 /*
@@ -124,35 +124,35 @@ static void haltViaGDB(int pid) {
  */
 // Pulled out so it can be easily called from a debugger.
 extern "C" void haltExecution() {
-	theJobManager->requestTermination();
+  theJobManager->requestTermination();
 }
 
 /*
  *
  */
 static void parseArguments(int argc, char **argv) {
-	// TODO: Implement some filtering, or reading from a settings file, or
-	// from stdin
-	cl::ParseCommandLineOptions(argc, argv, "Cloud9 worker");
+  // TODO: Implement some filtering, or reading from a settings file, or
+  // from stdin
+  cl::ParseCommandLineOptions(argc, argv, "Cloud9 worker");
 }
 
 /*
  *
  */
 static void interrupt_handle() {
-	if (!Interrupted && theJobManager) {
-		CLOUD9_INFO("Ctrl-C detected, requesting interpreter to halt.");
-		haltExecution();
-		sys::SetInterruptFunction(interrupt_handle);
-	} else {
-		CLOUD9_INFO("Ctrl+C detected, exiting.");
-		exit(1); // XXX Replace this with pthread_exit() or with longjmp
-	}
-	Interrupted = true;
+  if (!Interrupted && theJobManager) {
+    LOG(INFO) << "Ctrl-C detected, requesting interpreter to halt.";
+    haltExecution();
+    sys::SetInterruptFunction(interrupt_handle);
+  } else {
+    LOG(INFO) << "Ctrl+C detected, exiting.";
+    exit(1); // XXX Replace this with pthread_exit() or with longjmp
+  }
+  Interrupted = true;
 }
 
 static int watchdog(int pid) {
-  CLOUD9_INFO("Watchdog: Watching " << pid);
+  LOG(INFO) << "Watchdog: Watching " << pid;
   
   double nextStep = klee::util::getWallTime() + MaxTime * 1.1;
   int level = 0;
@@ -165,45 +165,45 @@ static int watchdog(int pid) {
 
     if (res < 0) {
       if (errno == ECHILD) { // No child, no need to watch but
-	// return error since we didn't catch
-	// the exit.
-	perror("waitpid:");
-	CLOUD9_INFO("Watchdog exiting (no child) @ " << klee::util::getWallTime());
-	return 1;
+  // return error since we didn't catch
+  // the exit.
+  perror("waitpid:");
+  LOG(INFO) << "Watchdog exiting (no child) @ " << klee::util::getWallTime();
+  return 1;
       } else if (errno != EINTR) {
-	perror("Watchdog waitpid");
-	exit(1);
+  perror("Watchdog waitpid");
+  exit(1);
       }
     } else if (res == pid && WIFEXITED(status)) {
       return WEXITSTATUS(status);
     } else if (res == pid && WIFSIGNALED(status)) {
-      CLOUD9_INFO("killed by signal " <<  WTERMSIG(status));
+      LOG(INFO) << "killed by signal " <<  WTERMSIG(status);
     } else if (res == pid && WIFSTOPPED(status)) {
-      CLOUD9_INFO("stopped by signal " <<  WSTOPSIG(status));
+      LOG(INFO) << "stopped by signal " <<  WSTOPSIG(status);
     } else if ( res == pid && WIFCONTINUED(status)) {
-      CLOUD9_INFO("continued\n");
+      LOG(INFO) << "continued\n";
     } else {
       double time = klee::util::getWallTime();
 
       if (time > nextStep) {
-	++level;
+  ++level;
 
-	if (level == 1) {
-	  CLOUD9_INFO("Watchdog: time expired, attempting halt via INT");
-	  kill(pid, SIGINT);
-	} else if (level == 2) {
-	  CLOUD9_INFO("Watchdog: time expired, attempting halt via gdb");
-	  haltViaGDB(pid);
-	} else {
-	  CLOUD9_INFO("Watchdog: kill(9)ing child (I tried to be nice)");
-	  kill(pid, SIGKILL);
-	  return 1; // what more can we do
-	}
+  if (level == 1) {
+    LOG(INFO) << "Watchdog: time expired, attempting halt via INT";
+    kill(pid, SIGINT);
+  } else if (level == 2) {
+    LOG(INFO) << "Watchdog: time expired, attempting halt via gdb";
+    haltViaGDB(pid);
+  } else {
+    LOG(INFO) << "Watchdog: kill(9)ing child (I tried to be nice)";
+    kill(pid, SIGKILL);
+    return 1; // what more can we do
+  }
 
-	// Ideally this triggers a dump, which may take a while,
-	// so try and give the process extra time to clean up.
-	nextStep = klee::util::getWallTime() + std::max(15., MaxTime
-							* .1);
+  // Ideally this triggers a dump, which may take a while,
+  // so try and give the process extra time to clean up.
+  nextStep = klee::util::getWallTime() + std::max(15., MaxTime
+              * .1);
       }
     }
   }
@@ -212,90 +212,86 @@ static int watchdog(int pid) {
 }
 
 int main(int argc, char **argv, char **envp) {
-	// Make sure to clean up properly before any exit point in the program
-	atexit(llvm::llvm_shutdown);
+  // Make sure to clean up properly before any exit point in the program
+  atexit(llvm::llvm_shutdown);
 
-	GOOGLE_PROTOBUF_VERIFY_VERSION;
+  google::InitGoogleLogging(argv[0]);
 
-	cloud9::Logger::getLogger().setLogPrefix("Worker<   >: ");
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-	// JIT initialization
-	llvm::InitializeNativeTarget();
+  // JIT initialization
+  llvm::InitializeNativeTarget();
 
-	sys::PrintStackTraceOnErrorSignal();
+  sys::PrintStackTraceOnErrorSignal();
 
-	cloud9::initBreakSignal();
+  cloud9::initBreakSignal();
 
-	// Fill up every global cl::opt object declared in the program
-	parseArguments(argc, argv);
+  // Fill up every global cl::opt object declared in the program
+  parseArguments(argc, argv);
 
-	// Setup the watchdog process
-	if (MaxTime == 0) {
-		CLOUD9_INFO("No max time specified; running without watchdog");
-	} else {
-		int pid = fork();
-		if (pid < 0) {
-			CLOUD9_EXIT("Unable to fork watchdog");
-		} else if (pid) {
-			int returnCode = watchdog(pid);
-			CLOUD9_INFO("Watchdog child exited with ret = " <<  returnCode);
-			return returnCode;
-			//return watchdog(pid);
-		}
-	}
+  // Setup the watchdog process
+  if (MaxTime == 0) {
+    LOG(INFO) << "No max time specified; running without watchdog";
+  } else {
+    int pid = fork();
+    if (pid < 0) {
+      LOG(FATAL) << "Unable to fork watchdog";
+    } else if (pid) {
+      int returnCode = watchdog(pid);
+      LOG(INFO) << "Watchdog child exited with ret = " <<  returnCode;
+      return returnCode;
+      //return watchdog(pid);
+    }
+  }
 
-	// At this point, if the watchdog is enabled, we are in the child process of
-	// the fork().
+  // At this point, if the watchdog is enabled, we are in the child process of
+  // the fork().
 
-	// Take care of Ctrl+C requests
-	sys::SetInterruptFunction(interrupt_handle);
+  // Take care of Ctrl+C requests
+  sys::SetInterruptFunction(interrupt_handle);
 
-	Module *mainModule = klee::loadByteCode();
-	mainModule = klee::prepareModule(mainModule);
+  Module *mainModule = klee::loadByteCode();
+  mainModule = klee::prepareModule(mainModule);
 
-	int pArgc;
-	char **pArgv;
-	char **pEnvp;
-	klee::readProgramArguments(pArgc, pArgv, pEnvp, envp);
+  int pArgc;
+  char **pArgv;
+  char **pEnvp;
+  klee::readProgramArguments(pArgc, pArgv, pEnvp, envp);
 
-	// Create the job manager
-	theJobManager = new JobManager(mainModule, "main", pArgc, pArgv, envp);
+  // Create the job manager
+  theJobManager = new JobManager(mainModule, "main", pArgc, pArgv, envp);
 
-	if (ReplayPath.size() > 0) {
-      CLOUD9_INFO("Running in replay mode. No load balancer involved.");
+  if (ReplayPath.size() > 0) {
+      LOG(INFO) << "Running in replay mode. No load balancer involved.";
 
       std::ifstream is(ReplayPath.c_str());
 
       if (is.fail()) {
-          CLOUD9_EXIT("Could not open the replay file " << ReplayPath);
+          LOG(FATAL) << "Could not open the replay file " << ReplayPath;
       }
 
       cloud9::ExecutionPathSetPin pathSet = cloud9::ExecutionPathSet::parse(is);
 
       theJobManager->replayJobs(pathSet);
-	} else if (StandAlone) {
-	  CLOUD9_INFO("Running in stand-alone mode. No load balancer involved.");
+  } else if (StandAlone) {
+    LOG(INFO) << "Running in stand-alone mode. No load balancer involved.";
 
-	  theJobManager->processJobs(true, (int)MaxTime.getValue());
+    theJobManager->processJobs(true, (int)MaxTime.getValue());
 
-	  cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::TimeOut, "Timeout");
-
-	  theJobManager->finalize();
-	} else {
+    theJobManager->finalize();
+  } else {
       CommManager commManager(theJobManager); // Handle outside communication
       commManager.setup();
 
       theJobManager->processJobs(false, (int)MaxTime.getValue()); // Blocking when no jobs are on the queue
 
-      cloud9::instrum::theInstrManager.recordEvent(cloud9::instrum::TimeOut, "Timeout");
-
       // The order here matters, in order to avoid memory corruption
       commManager.finalize();
       theJobManager->finalize();
-	}
+  }
 
-	delete theJobManager;
-	theJobManager = NULL;
+  delete theJobManager;
+  theJobManager = NULL;
 
-	return 0;
+  return 0;
 }

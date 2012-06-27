@@ -33,13 +33,14 @@
 #include "cloud9/worker/LBConnection.h"
 #include "cloud9/worker/WorkerCommon.h"
 #include "cloud9/worker/JobManager.h"
-#include "cloud9/Logger.h"
 #include "cloud9/Protocols.h"
 
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 
 #include <string>
+
+#include <glog/logging.h>
 
 using namespace llvm;
 using namespace cloud9::data;
@@ -67,11 +68,20 @@ LBConnection::~LBConnection() {
   socket.close();
 }
 
-void LBConnection::updateLogPrefix() {
-  char prefix[] = "Worker<   >: ";
-  sprintf(prefix, "Worker<%03d>: ", id);
+PartitioningStrategy *LBConnection::getPartitioningStrategy() {
+  RandomJobFromStateStrategy *jStrategy =
+      dynamic_cast<RandomJobFromStateStrategy*>(jobManager->getStrategy());
+  if (!jStrategy) {
+    return NULL;
+  }
 
-  cloud9::Logger::getLogger().setLogPrefix(prefix);
+  PartitioningStrategy *pStrategy =
+      dynamic_cast<PartitioningStrategy*>(jStrategy->getStateStrategy());
+  if (!pStrategy) {
+    return NULL;
+  }
+
+  return pStrategy;
 }
 
 void LBConnection::registerWorker() {
@@ -87,6 +97,7 @@ void LBConnection::registerWorker() {
   reg->set_prog_name(llvm::sys::path::parent_path(InputFile));
   reg->set_stat_id_count(jobManager->getCoverageIDCount());
   reg->set_prog_crc(jobManager->getModuleCRC());
+  reg->set_has_partitions(getPartitioningStrategy() != NULL);
 
   // Send the message
   std::string msgString;
@@ -105,9 +116,7 @@ void LBConnection::registerWorker() {
 
   id = response.id();
 
-  updateLogPrefix();
-
-  CLOUD9_INFO("Worker registered with the load balancer - ID: " << id);
+  LOG(INFO) << "Worker registered with the load balancer - ID: " << id;
 
   processResponse(response);
 }
@@ -122,14 +131,14 @@ void LBConnection::sendJobStatistics(WorkerReportMessage &message) {
   jobManager->getStatisticsData(data, paths, true);
 
   //CLOUD9_DEBUG("Sending " << data.size() << " update values and " <<
-  //		paths.size() << " update nodes");
+  //    paths.size() << " update nodes");
 
   for (std::vector<int>::iterator it = data.begin(); it != data.end(); it++) {
     dataUpdate->add_data(*it);
     total += *it;
   }
 
-  CLOUD9_DEBUG("[" << total << "] jobs reported to the load balancer");
+  LOG(INFO) << "[" << total << "] jobs reported to the load balancer";
 
   if (paths->count() > 0 || data.size() == 0) {
     assert(paths->count() == data.size());
@@ -147,13 +156,30 @@ void LBConnection::sendCoverageUpdates(WorkerReportMessage &message) {
   jobManager->getUpdatedLocalCoverage(data);
 
   if (data.size() > 0) {
-    CLOUD9_DEBUG("Sending " << data.size() << " local coverage updates.");
+    LOG(INFO) << "Sending " << data.size() << " local coverage updates.";
     if (DebugLBCommuncation) {
-      CLOUD9_DEBUG("Coverage updates sent: " << covUpdatesToString(data));
+      LOG(INFO) << "Coverage updates sent: " << covUpdatesToString(data);
     }
 
     StatisticUpdate *update = message.add_localupdates();
     serializeStatisticUpdate(CLOUD9_STAT_NAME_LOCAL_COVERAGE, data, *update);
+  }
+}
+
+void LBConnection::sendPartitionStatistics(WorkerReportMessage &message) {
+  PartitioningStrategy *pStrategy = getPartitioningStrategy();
+  if (!pStrategy) {
+    return;
+  }
+
+  part_stats_t stats;
+  pStrategy->getStatistics(stats);
+
+  for (part_stats_t::iterator it = stats.begin(); it != stats.end(); it++) {
+    PartitionData *pData = message.add_partitionupdates();
+    pData->set_partition(it->first);
+    pData->set_total(it->second.first);
+    pData->set_active(it->second.second);
   }
 }
 
@@ -165,6 +191,8 @@ void LBConnection::sendUpdates() {
   sendJobStatistics(message);
 
   sendCoverageUpdates(message);
+
+  sendPartitionStatistics(message);
 
   std::string msgString;
   bool result = message.SerializeToString(&msgString);
@@ -188,23 +216,36 @@ void LBConnection::processResponse(LBResponseMessage &response) {
     jobManager->setRefineStatistics();
   }
 
-  if (response.has_jobtransfer()) {
-    CLOUD9_DEBUG("Job transfer request");
+  if (response.jobtransfer_size() > 0) {
+    // Treat each job request individually
+    for (int i = 0; i < response.jobtransfer_size(); i++) {
+      LOG(INFO) << "Job transfer request";
 
-    const LBResponseMessage_JobTransfer &transDetails = response.jobtransfer();
+      const LBResponseMessage_JobTransfer &transDetails = response.jobtransfer(i);
 
-    std::string destAddress = transDetails.dest_address();
-    int destPort = transDetails.dest_port();
+      std::string destAddress = transDetails.dest_address();
+      int destPort = transDetails.dest_port();
 
-    ExecutionPathSetPin paths;
-    std::vector<int> counts;
+      std::vector<int> counts;
+      std::vector<WorkerTree::Node*> nodes;
+      nodes.push_back(jobManager->getTree()->getRoot());
+      ExecutionPathSetPin paths =
+          jobManager->getTree()->buildPathSet(nodes.begin(), nodes.end(),
+              (std::map<WorkerTree::Node*, unsigned>*)NULL);
+      counts.push_back(transDetails.count());
 
-    paths = parseExecutionPathSet(transDetails.path_set());
+      part_select_t partSelect;
+      if (transDetails.partitions_size() > 0) {
+        for (int i = 0; i < transDetails.partitions_size(); i++) {
+          part_id_t partID = transDetails.partitions(i).partition();
+          unsigned count = transDetails.partitions(i).total();
+          partSelect.insert(std::make_pair(partID, count));
+        }
+      }
 
-    counts.insert(counts.begin(), transDetails.count().begin(),
-        transDetails.count().end());
+      transferJobs(destAddress, destPort, paths, counts, partSelect);
 
-    transferJobs(destAddress, destPort, paths, counts);
+    }
   }
 
   if (response.has_jobseed()) {
@@ -215,7 +256,7 @@ void LBConnection::processResponse(LBResponseMessage &response) {
 
     paths = parseExecutionPathSet(pathSet);
 
-    CLOUD9_DEBUG("Job seed request: " << paths->count() << " paths");
+    LOG(INFO) << "Job seed request: " << paths->count() << " paths";
 
     std::vector<long> replayInstrs;
     jobManager->importJobs(paths, replayInstrs);
@@ -235,9 +276,9 @@ void LBConnection::processResponse(LBResponseMessage &response) {
         parseStatisticUpdate(update, data);
 
         if (data.size() > 0) {
-          CLOUD9_DEBUG("Receiving " << data.size() << " global coverage updates.");
+          LOG(INFO) << "Receiving " << data.size() << " global coverage updates.";
           if (DebugLBCommuncation) {
-            CLOUD9_DEBUG("Coverage updates received: " << covUpdatesToString(data));
+            LOG(INFO) << "Coverage updates received: " << covUpdatesToString(data);
           }
 
           jobManager->setUpdatedGlobalCoverage(data);
@@ -248,11 +289,22 @@ void LBConnection::processResponse(LBResponseMessage &response) {
 }
 
 void LBConnection::transferJobs(std::string &destAddr, int destPort,
-    ExecutionPathSetPin paths, std::vector<int> counts) {
+    ExecutionPathSetPin paths, std::vector<int> counts,
+    part_select_t &partHints) {
 
   std::vector<long> replayInstrs;
-  ExecutionPathSetPin jobPaths = jobManager->exportJobs(paths, counts,
-      replayInstrs);
+  ExecutionPathSetPin jobPaths;
+
+  if (partHints.size() > 0) {
+    PartitioningStrategy *pStrategy = getPartitioningStrategy();
+    assert(pStrategy);
+
+    ExecutionPathSetPin stateRoots = pStrategy->selectStates(partHints);
+    std::vector<int> emptyCounts;
+    jobPaths = jobManager->exportJobs(stateRoots, emptyCounts, replayInstrs);
+  } else {
+    jobPaths = jobManager->exportJobs(paths, counts, replayInstrs);
+  }
 
   tcp::socket peerSocket(service);
   boost::system::error_code error;
@@ -260,7 +312,7 @@ void LBConnection::transferJobs(std::string &destAddr, int destPort,
   connectSocket(service, peerSocket, destAddr, destPort, error);
 
   if (error) {
-    CLOUD9_ERROR("Could not connect to the peer worker");
+    LOG(ERROR) << "Could not connect to the peer worker";
     return;
   }
 

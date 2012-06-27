@@ -22,6 +22,8 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/Path.h"
 
+#include <glog/logging.h>
+
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -33,6 +35,9 @@ using namespace klee;
 
 Module *klee::linkWithLibrary(Module *module, 
                               const std::string &libraryName) {
+
+  LOG(INFO) << "Linking library: " << libraryName;
+
   Linker linker("klee", module, false);
 
   llvm::sys::Path libraryPath(libraryName);
@@ -58,7 +63,7 @@ Function *klee::getDirectCallTarget(const Instruction *i) {
 
     // NOTE: This assert may fire, it isn't necessarily a problem and
     // can be disabled, I just wanted to know when and if it happened.
-    assert(0 && "FIXME: Unresolved direct target for a constant expression.");
+    // assert(0 && "FIXME: Unresolved direct target for a constant expression.");
   }
   
   return 0;

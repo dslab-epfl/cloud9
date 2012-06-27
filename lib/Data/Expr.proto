@@ -1,0 +1,152 @@
+/*
+ * Cloud9 Parallel Symbolic Execution Engine
+ *
+ * Copyright 2012 Google Inc. All Rights Reserved.
+ * Author: sbucur@google.com (Stefan Bucur)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Dependable Systems Laboratory, EPFL nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE DEPENDABLE SYSTEMS LABORATORY, EPFL BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * All contributors are listed in CLOUD9-AUTHORS file.
+ *
+ */
+
+package klee.data;
+
+// Bit-compatible with the Kind enumeration in the Expr class
+enum ExprKind {
+  // Primitive
+  CONSTANT = 0;
+
+  // Special
+  NOT_OPTIMIZED = 1;
+
+
+  READ = 3;
+  SELECT = 4;
+  CONCAT = 5;
+  EXTRACT = 6;
+
+  // Casting
+  CAST_KIND_FIRST = 7;
+    ZEXT = 7;
+    SEXT = 8;
+  CAST_KIND_LAST = 8;
+
+  // Arithmetic
+  BINARY_KIND_FIRST = 9;
+    ADD = 9;
+    SUB = 10;
+    MUL = 11;
+    UDIV = 12;
+    SDIV = 13;
+    UREM = 14;
+    SREM = 15;
+
+    // Bit
+    NOT = 16;
+    AND = 17;
+    OR = 18;
+    XOR = 19;
+    SHL = 20;
+    LSHR = 21;
+    ASHR = 22;
+
+    // Compare
+    CMP_KIND_FIRST = 23;
+      EQ = 23;
+      NE = 24;
+      ULT = 25;
+      ULE = 26;
+      UGT = 27;
+      UGE = 28;
+      SLT = 29;
+      SLE = 30;
+      SGT = 31;
+      SGE = 32;
+    CMP_KIND_LAST = 32;
+  BINARY_KIND_LAST = 32;
+}
+
+message Array {
+  required uint64 id = 2;
+  required string name = 1;
+  required uint64 size = 3;
+
+  // Missing for symbolic arrays
+  optional bytes contents = 4;
+}
+
+message UpdateNode {
+  required uint64 id = 1;
+  required uint64 index_expr_id = 2;
+  required uint64 value_expr_id = 3;
+
+  // Missing for head updates
+  optional uint64 next_update_id = 4;
+}
+
+message UpdateList {
+  required uint64 array_id = 1;
+
+  // Missing for no updates
+  optional uint64 update_node_id = 2;
+}
+
+message ExprNode {
+  required uint64 id = 3;
+  required ExprKind kind = 2;
+
+  // For constants
+  // TODO(sbucur): Add support for > 64-bit constants
+  optional uint64 value = 4;
+
+  // For non-leaf expressions
+  repeated uint64 child_expr_id = 5;
+
+  // For read operations
+  optional UpdateList update_list = 9;
+
+  // Optional decorators
+  optional uint32 width = 1;
+  optional uint32 offset = 7;
+
+}
+
+message ExpressionData {
+  repeated Array array = 1;
+  repeated UpdateNode update = 2;
+  repeated ExprNode expr = 3;
+}
+
+message PathConstraint {
+  repeated uint64 constraint_expr_id = 1;
+}
+
+message ExpressionSet {
+  // Structural information
+  required ExpressionData data = 1;
+
+  repeated uint64 expr_id = 2;
+
+  optional bool flush_previous_data = 3;
+}

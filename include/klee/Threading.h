@@ -36,14 +36,13 @@
 #include "klee/Expr.h"
 #include "klee/Internal/Module/KInstIterator.h"
 #include "../../lib/Core/AddressSpace.h"
-#include "cloud9/Logger.h"
 
 #include <map>
 
 namespace klee {
 
-class KFunction;
-class KInstruction;
+struct KFunction;
+struct KInstruction;
 class ExecutionState;
 class Process;
 class CallPathNode;

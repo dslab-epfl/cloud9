@@ -11,10 +11,10 @@
 
 #include "klee/Expr.h"
 #include "klee/Solver.h"
+#include "klee/SolverStats.h"
 #include "klee/util/Bits.h"
 
 #include "ConstantDivision.h"
-#include "SolverStats.h"
 
 #include "llvm/Support/CommandLine.h"
 
@@ -478,13 +478,13 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
     if (*width_out <= 64)
       return bvConst64(*width_out, CE->getZExtValue());
 
-    // FIXME: Optimize?
     ref<ConstantExpr> Tmp = CE;
     ExprHandle Res = bvConst64(64, Tmp->Extract(0, 64)->getZExtValue());
-    for (unsigned i = (*width_out / 64) - 1; i; --i) {
-      Tmp = Tmp->LShr(ConstantExpr::alloc(64, Tmp->getWidth()));
-      Res = vc_bvConcatExpr(vc, bvConst64(std::min(64U, Tmp->getWidth()),
-                                          Tmp->Extract(0, 64)->getZExtValue()),
+    while (Tmp->getWidth() > 64) {
+      Tmp = Tmp->Extract(64, Tmp->getWidth()-64);
+      unsigned Width = std::min(64U, Tmp->getWidth());
+      Res = vc_bvConcatExpr(vc, bvConst64(Width,
+                                          Tmp->Extract(0, Width)->getZExtValue()),
                             Res);
     }
     return Res;
@@ -624,8 +624,8 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
 
     if (ConstantExpr *CE = dyn_cast<ConstantExpr>(de->right))
       if (optimizeDivides)
-	if (*width_out == 32) //only works for 32-bit division
-	  return constructSDivByConstant( left, *width_out, 
+  if (*width_out == 32) //only works for 32-bit division
+    return constructSDivByConstant( left, *width_out, 
                                           CE->getZExtValue(32));
 
     // XXX need to test for proper handling of sign, not sure I
@@ -683,15 +683,15 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
 #if 0 //not faster per first benchmark
     if (optimizeDivides) {
       if (ConstantExpr *cre = de->right->asConstant()) {
-	uint64_t divisor = cre->asUInt64;
+  uint64_t divisor = cre->asUInt64;
 
-	//use fast division to compute modulo without explicit division for constant divisor
-      	if( *width_out == 32 ) { //only works for 32-bit division
-	  ExprHandle quotient = constructSDivByConstant( left, *width_out, divisor );
-	  ExprHandle quot_times_divisor = constructMulByConstant( quotient, *width_out, divisor );
-	  ExprHandle rem = vc_bvMinusExpr( vc, *width_out, left, quot_times_divisor );
-	  return rem;
-	}
+  //use fast division to compute modulo without explicit division for constant divisor
+        if( *width_out == 32 ) { //only works for 32-bit division
+    ExprHandle quotient = constructSDivByConstant( left, *width_out, divisor );
+    ExprHandle quot_times_divisor = constructMulByConstant( quotient, *width_out, divisor );
+    ExprHandle rem = vc_bvMinusExpr( vc, *width_out, left, quot_times_divisor );
+    return rem;
+  }
       }
     }
 #endif

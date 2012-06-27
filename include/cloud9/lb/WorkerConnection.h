@@ -71,6 +71,7 @@ private:
   bool processNodeSetUpdate(const WorkerReportMessage &message);
   bool processNodeDataUpdate(const WorkerReportMessage &message);
   bool processStatisticsUpdates(const WorkerReportMessage &message);
+  bool processPartitionUpdates(const WorkerReportMessage &message);
 
   void sendJobTransfers(LBResponseMessage &response);
   void sendStatisticsUpdates(LBResponseMessage &response);

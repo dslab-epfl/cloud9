@@ -123,7 +123,7 @@ typedef struct {
 
   char taken;
   unsigned int owner;
-	int count;
+  int count;
   unsigned int queued;
 
   char allocated;
@@ -156,10 +156,10 @@ typedef struct {
 typedef struct {
   wlist_id_t wlist;
 
-	int count;
+  int count;
   char allocated;
-	int thread_level;
-	pid_t owner;
+  int thread_level;
+  pid_t owner;
 } sem_data_t;
 
 typedef struct {

@@ -35,65 +35,66 @@
 
 #include "cloud9/worker/PeerServer.h"
 #include "cloud9/worker/LBConnection.h"
-#include "cloud9/Logger.h"
 
 #include <boost/asio.hpp>
+
+#include <glog/logging.h>
 
 namespace cloud9 {
 
 namespace worker {
 
 void CommManager::peerCommunicationControl() {
-	PeerServer peerServer(peerCommService, jobManager);
+  PeerServer peerServer(peerCommService, jobManager);
 
-	peerCommService.run();
+  peerCommService.run();
 }
 
 void CommManager::lbCommunicationControl() {
-	boost::system::error_code error;
+  boost::system::error_code error;
 
-	CLOUD9_INFO("Connecting to the load balancer...");
-	LBConnection lbConnection(lbCommService, jobManager);
+  LOG(INFO) << "Connecting to the load balancer...";
+  LBConnection lbConnection(lbCommService, jobManager);
 
-	while (!terminated) {
-		lbConnection.connect(error);
+  while (!terminated) {
+    lbConnection.connect(error);
 
-		if (error) {
-			CLOUD9_ERROR("Could not connect to the load balancer: " <<
-					error.message() << " Retrying in " << RetryConnectTime << " seconds");
+    if (error) {
+      LOG(ERROR) << "Could not connect to the load balancer: " <<
+          error.message() << " Retrying in " << RetryConnectTime << " seconds";
 
-			boost::asio::deadline_timer t(lbCommService, boost::posix_time::seconds(RetryConnectTime));
-			t.wait();
-			continue;
-		}
+      boost::asio::deadline_timer t(lbCommService, boost::posix_time::seconds(RetryConnectTime));
+      t.wait();
+      continue;
+    }
 
-		break;
-	}
+    break;
+  }
 
-	if (terminated)
-		return;
+  if (terminated)
+    return;
 
-	CLOUD9_INFO("Connected to the load balancer");
+  LOG(INFO) << "Connected to the load balancer";
 
-	//try {
-		CLOUD9_INFO("Registering worker with the load balancer...");
-		lbConnection.registerWorker();
+  //try {
+    LOG(INFO) << "Registering worker with the load balancer...";
+    lbConnection.registerWorker();
 
-		boost::asio::deadline_timer t(lbCommService, boost::posix_time::seconds(UpdateTime));
+    boost::asio::deadline_timer t(lbCommService, boost::posix_time::seconds(UpdateTime));
 
-		while (!terminated) {
-			t.wait();
-			t.expires_at(t.expires_at() + boost::posix_time::seconds(UpdateTime));
-			// XXX If the worker is blocked (e.g. debugging), take care not to
-			// trigger the timer multiple times - use expires_from_now() to
-			// check this out.
+    while (!terminated) {
+      t.wait();
+      t.expires_at(t.expires_at() + boost::posix_time::seconds(UpdateTime));
+      // XXX If the worker is blocked (e.g. debugging), take care not to
+      // trigger the timer multiple times - use expires_from_now() to
+      // check this out.
 
-			lbConnection.sendUpdates();
-		}
+      lbConnection.sendUpdates();
+    }
 
-	//} catch (boost::system::system_error &) {
-		// Silently ignore
-	//}
+  //} catch (boost::system::system_error &) {
+    // Silently ignore
+  //}
 }
 
 CommManager::CommManager(JobManager *jm) : jobManager(jm), terminated(false) {
@@ -105,22 +106,22 @@ CommManager::~CommManager() {
 }
 
 void CommManager::setup() {
-	peerCommThread = boost::thread(&CommManager::peerCommunicationControl, this);
-	lbCommThread = boost::thread(&CommManager::lbCommunicationControl, this);
+  peerCommThread = boost::thread(&CommManager::peerCommunicationControl, this);
+  lbCommThread = boost::thread(&CommManager::lbCommunicationControl, this);
 }
 
 void CommManager::finalize() {
-	terminated = true;
+  terminated = true;
 
-	if (peerCommThread.joinable()) {
-		peerCommService.stop();
-		peerCommThread.join();
-	}
+  if (peerCommThread.joinable()) {
+    peerCommService.stop();
+    peerCommThread.join();
+  }
 
-	if (lbCommThread.joinable()) {
-		lbCommService.stop();
-		lbCommThread.join();
-	}
+  if (lbCommThread.joinable()) {
+    lbCommService.stop();
+    lbCommThread.join();
+  }
 }
 
 }

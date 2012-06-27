@@ -34,6 +34,7 @@ extern "C" {
   /// \arg name - An optional name, used for identifying the object in messages,
   /// output files, etc.
   void klee_make_symbolic(void *addr, size_t nbytes, const char *name);
+  void klee_make_shadow(void *addr, size_t nbytes, const char *name);
 
   void klee_event(unsigned int type, long int value);
 
@@ -68,9 +69,9 @@ extern "C" {
   /// \arg suffix - The suffix to use for error files.
   __attribute__((noreturn))
   void klee_report_error(const char *file, 
-			 int line, 
-			 const char *message, 
-			 const char *suffix);
+       int line, 
+       const char *message, 
+       const char *suffix);
   
   /* called by checking code to get size of memory. */
   size_t klee_get_obj_size(void *ptr);
@@ -104,6 +105,7 @@ extern "C" {
      and may have peculiar semantics. */
 
   void klee_assume(uintptr_t condition);
+  void klee_shadow_check(uintptr_t condition);
   void klee_warning(const char *message);
   void klee_warning_once(const char *message);
   void klee_prefer_cex(void *object, uintptr_t condition);
@@ -111,7 +113,7 @@ extern "C" {
 
   /* Return a possible constant value for the input expression. This
      allows programs to forcibly concretize values on their own. */
-#define KLEE_GET_VALUE_PROTO(suffix, type)	type klee_get_value##suffix(type expr)
+#define KLEE_GET_VALUE_PROTO(suffix, type)  type klee_get_value##suffix(type expr)
 
   KLEE_GET_VALUE_PROTO(f, float);
   KLEE_GET_VALUE_PROTO(d, double);
@@ -181,7 +183,7 @@ extern "C" {
   void klee_set_time(uint64_t value);
 
   uintptr_t klee_branch(uintptr_t expr, int reason);
-  int klee_fork(int reason);
+  int klee_fork(uint64_t reason);
 
   // Because of limited support for calling external variadic functions,
   // klee_debug accepts either a set of 32-bit integers, or a single 64-bit value (char*).

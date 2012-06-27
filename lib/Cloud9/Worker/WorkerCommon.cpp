@@ -57,44 +57,44 @@ int UpdateTime;
 
 namespace {
 static cl::opt<std::string, true> InputFileOpt(cl::desc("<input bytecode>"), cl::Positional,
-		cl::location(InputFile), cl::init("-"));
+    cl::location(InputFile), cl::init("-"));
 
 static cl::opt<LibcType, true> LibcOpt("libc", cl::desc(
-		"Choose libc version (none by default)."), cl::values(
-		clEnumValN(NoLibc, "none", "Don't link in a libc"),
-		  clEnumValN(UcLibc, "uclibc", "Link in uclibc (adapted for klee)"),
-		  clEnumValEnd) , cl::location(Libc), cl::init(NoLibc));
+    "Choose libc version (none by default)."), cl::values(
+    clEnumValN(NoLibc, "none", "Don't link in a libc"),
+      clEnumValN(UcLibc, "uclibc", "Link in uclibc (adapted for klee)"),
+      clEnumValEnd) , cl::location(Libc), cl::init(NoLibc));
 
 static cl::opt<bool, true> WithPOSIXRuntimeOpt("posix-runtime", cl::desc(
-		"Link with POSIX runtime"), cl::location(WithPOSIXRuntime), cl::init(false));
+    "Link with POSIX runtime"), cl::location(WithPOSIXRuntime), cl::init(false));
 
 static cl::opt<bool, true> UseGlobalCoverageOpt("c9-use-global-cov",
-		cl::desc("Use global coverage information in the searcher"),
-		cl::location(UseGlobalCoverage), cl::init(false));
+    cl::desc("Use global coverage information in the searcher"),
+    cl::location(UseGlobalCoverage), cl::init(true));
 
 static cl::opt<std::string, true> LBAddressOpt("c9-lb-host",
-		cl::desc("Host name of the load balancer"),
-		cl::location(LBAddress), cl::init("localhost"));
+    cl::desc("Host name of the load balancer"),
+    cl::location(LBAddress), cl::init("localhost"));
 
 static cl::opt<int, true> LBPortOpt("c9-lb-port",
-		cl::desc("Port number of the load balancer"),
-		cl::location(LBPort), cl::init(1337));
+    cl::desc("Port number of the load balancer"),
+    cl::location(LBPort), cl::init(1337));
 
 
 static cl::opt<std::string, true> LocalAddressOpt("c9-local-host",
-		cl::desc("Host name of the local peer server"),
-		cl::location(LocalAddress), cl::init("localhost"));
+    cl::desc("Host name of the local peer server"),
+    cl::location(LocalAddress), cl::init("localhost"));
 
 static cl::opt<int, true> LocalPortOpt("c9-local-port",
-		cl::desc("Port number of the local peer server"),
-		cl::location(LocalPort), cl::init(1234));
+    cl::desc("Port number of the local peer server"),
+    cl::location(LocalPort), cl::init(1234));
 
 static cl::opt<int, true> RetryConnectTimeOpt("c9-lb-connect-retry",
-		cl::desc("The time in seconds after the next connection retry"),
-		cl::location(RetryConnectTime), cl::init(2));
+    cl::desc("The time in seconds after the next connection retry"),
+    cl::location(RetryConnectTime), cl::init(2));
 
 static cl::opt<int, true> UpdateTimeOpt("c9-lb-update",
-		cl::desc("The time in seconds between load balancing updates"),
-		cl::location(UpdateTime), cl::init(5));
+    cl::desc("The time in seconds between load balancing updates"),
+    cl::location(UpdateTime), cl::init(5));
 
 }

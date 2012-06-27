@@ -107,7 +107,7 @@ bool Solver::newClause(const vec<Lit>& ps_, bool learnt, bool normalized)
                     touched[var((*c)[i])] = 1;
 
                     if (heap.inHeap(var((*c)[i])))
-		      updateHeap(var((*c)[i]));
+          updateHeap(var((*c)[i]));
                 }
             }
 
@@ -304,7 +304,7 @@ void Solver::analyze(Clause* confl, vec<Lit>& out_learnt, int& out_btlevel)
         for (int j = (p == lit_Undef) ? 0 : 1; j < c.size(); j++){
             Lit q = c[j];
             if (!seen[var(q)] && position(trailpos[var(q)]) >= trail_lim[0]){
-	      varBumpActivity(q);
+        varBumpActivity(q);
                 seen[var(q)] = 1;
                 if (position(trailpos[var(q)]) >= trail_lim.last())
                     pathC++;
@@ -698,8 +698,8 @@ lbool Solver::search(int nof_conflicts, int nof_learnts)
             }else{
                 // New variable decision:
                 stats.decisions++;
-                next = order.select(params.random_var_freq, decisionLevel());		
-	    }
+                next = order.select(params.random_var_freq, decisionLevel());   
+      }
             if (next == lit_Undef)
                 // Model found:
                 return l_True;

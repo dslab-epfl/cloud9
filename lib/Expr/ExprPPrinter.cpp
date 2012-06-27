@@ -283,7 +283,7 @@ private:
     while (e->getKind() == Expr::Concat) {
       offset = AddExpr::create(offset, strideExpr);
       if (!isReadExprAtOffset(e->getKid(0), base, offset))
-	return NULL;
+  return NULL;
       
       e = e->getKid(1);
     }
@@ -303,15 +303,15 @@ private:
   bool hasAllByteReads(const Expr *ep) {
     switch (ep->kind) {
       Expr::Read: {
-	// right now, all Reads are byte reads but some
-	// transformations might change this
-	return ep->getWidth() == Expr::Int8;
+  // right now, all Reads are byte reads but some
+  // transformations might change this
+  return ep->getWidth() == Expr::Int8;
       }
       Expr::Concat: {
-	for (unsigned i=0; i<ep->getNumKids(); ++i) {
-	  if (!hashAllByteReads(ep->getKid(i)))
-	    return false;
-	}
+  for (unsigned i=0; i<ep->getNumKids(); ++i) {
+    if (!hashAllByteReads(ep->getKid(i)))
+      return false;
+  }
       }
     default: return false;
     }
@@ -377,10 +377,10 @@ public:
       PC << (e->isTrue() ? "true" : "false");
     else {
       if (PCAllConstWidths)
-	printWidth = true;
+  printWidth = true;
     
       if (printWidth)
-	PC << "(w" << e->getWidth() << " ";
+  PC << "(w" << e->getWidth() << " ";
 
       if (e->getWidth() <= 64) {
         PC << e->getZExtValue();
@@ -391,7 +391,7 @@ public:
       }
 
       if (printWidth)
-	PC << ")";
+  PC << ")";
     }    
   }
 
@@ -491,20 +491,23 @@ void ExprPPrinter::printSingleExpr(std::ostream &os, const ref<Expr> &e) {
 
 void ExprPPrinter::printConstraints(std::ostream &os,
                                     const ConstraintManager &constraints) {
-  printQuery(os, constraints, ConstantExpr::alloc(false, Expr::Bool));
+  printQuery(os, constraints, ConstantExpr::alloc(false, Expr::Bool),
+             std::string(), std::string());
 }
 
 
 void ExprPPrinter::printQuery(std::ostream &os,
                               const ConstraintManager &constraints,
                               const ref<Expr> &q,
+                              const std::string &parentID,
+                              const std::string &queryID,
                               const ref<Expr> *evalExprsBegin,
                               const ref<Expr> *evalExprsEnd,
                               const Array * const *evalArraysBegin,
                               const Array * const *evalArraysEnd,
                               bool printArrayDecls) {
   PPrinter p(os);
-  
+
   for (ConstraintManager::const_iterator it = constraints.begin(),
          ie = constraints.end(); it != ie; ++it)
     p.scan(*it);
@@ -514,7 +517,7 @@ void ExprPPrinter::printQuery(std::ostream &os,
     p.scan(*it);
 
   PrintContext PC(os);
-  
+
   // Print array declarations.
   if (printArrayDecls) {
     for (const Array * const* it = evalArraysBegin; it != evalArraysEnd; ++it)
@@ -541,8 +544,16 @@ void ExprPPrinter::printQuery(std::ostream &os,
     }
   }
 
-  PC << "(query [";
-  
+  if (queryID.empty() && parentID.empty()) {
+    PC << "(query [";
+  } else {
+    PC << "(query " << (queryID.empty() ? std::string(40, '0') : queryID);
+    PC.breakLine();
+    PC << (parentID.empty() ? std::string(40, '0') : parentID);
+    PC.breakLine();
+    PC << "[";
+  }
+
   // Ident at constraint list;
   unsigned indent = PC.pos;
   for (ConstraintManager::const_iterator it = constraints.begin(),

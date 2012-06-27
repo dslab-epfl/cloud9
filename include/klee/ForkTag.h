@@ -47,9 +47,10 @@ struct ForkTag {
 
   // The location in the code where the fork was decided (it can be NULL)
   std::string functionName;
+  unsigned instrID;
 
   ForkTag(ForkClass _fclass) :
-    forkClass(_fclass), fiVulnerable(false) { }
+    forkClass(_fclass), fiVulnerable(false), instrID(0) { }
 };
 
 }

@@ -4,6 +4,6 @@
 #include <stdio.h>
 
 int main() {
-	printf("Main executed");
+  printf("Main executed");
   return 0;
 }

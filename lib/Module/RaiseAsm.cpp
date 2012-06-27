@@ -13,8 +13,9 @@
 #include "llvm/LLVMContext.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Host.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Target/TargetLowering.h"
-#include "llvm/Target/TargetRegistry.h"
+#include "llvm/Support/TargetRegistry.h"
 
 using namespace llvm;
 using namespace klee;
@@ -23,9 +24,10 @@ char RaiseAsmPass::ID = 0;
 
 Function *RaiseAsmPass::getIntrinsic(llvm::Module &M,
                                      unsigned IID,
-                                     const Type **Tys,
+                                     Type **Tys,
                                      unsigned NumTys) {  
-  return Intrinsic::getDeclaration(&M, (llvm::Intrinsic::ID) IID, Tys, NumTys);
+  return Intrinsic::getDeclaration(&M, (llvm::Intrinsic::ID) IID,
+      ArrayRef<Type*>(Tys, NumTys));
 }
 
 // FIXME: This should just be implemented as a patch to
@@ -37,8 +39,8 @@ bool RaiseAsmPass::runOnInstruction(Module &M, Instruction *I) {
       //Used as memory barrier in LLVM, not needed in Klee
       const std::string &as = ia->getAsmString();
       if(as.length() == 0){
-	      I->eraseFromParent();
-	      return true;
+        I->eraseFromParent();
+        return true;
       }  
       (void) ia;
       return TLI && TLI->ExpandInlineAsm(ci);
@@ -52,13 +54,15 @@ bool RaiseAsmPass::runOnModule(Module &M) {
   bool changed = false;
   
   std::string Err;
-  std::string HostTriple = llvm::sys::getHostTriple();
-  const Target *NativeTarget = TargetRegistry::lookupTarget(HostTriple, Err);
+  std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
+  std::string CPU = llvm::sys::getHostCPUName();
+  const Target *NativeTarget = TargetRegistry::lookupTarget(TargetTriple, Err);
   if (NativeTarget == 0) {
     llvm::errs() << "Warning: unable to select native target: " << Err << "\n";
     TLI = 0;
   } else {
-    TargetMachine *TM = NativeTarget->createTargetMachine(HostTriple, "");
+    TargetMachine *TM = NativeTarget->createTargetMachine(
+        TargetTriple, CPU, "", TargetOptions());
     TLI = TM->getTargetLowering();
   }
 

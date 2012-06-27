@@ -1,0 +1,25 @@
+/*
+ * Copyright info
+ */
+
+package klee.data;
+
+message ExecutionState {
+  optional uint64 time_stamp = 8;
+
+  required bytes id = 2;
+  required bool terminated = 1;
+
+  optional bytes parent_id = 5;
+
+  optional uint64 instructions = 3;
+  optional uint64 branches = 4;
+  optional uint64 forks = 9;
+  optional uint64 queries = 6;
+
+  optional uint64 total_time = 7;
+}
+
+message ExecutionStateSet {
+  repeated ExecutionState execution_state = 1;
+}

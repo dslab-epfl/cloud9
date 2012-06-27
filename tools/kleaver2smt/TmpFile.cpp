@@ -46,35 +46,35 @@
 using namespace std;
 
 TmpFile::TmpFile() {
-	char pattern[] = "tmpXXXXXX";
-	_fd = mkstemp(pattern);
-	my_assert(_fd != -1);
+  char pattern[] = "tmpXXXXXX";
+  _fd = mkstemp(pattern);
+  my_assert(_fd != -1);
 
-	stringstream ss;
-	ss << "/proc/self/fd/" << _fd;
-	char fileNameChars[1024];
-	memset(fileNameChars, 0, sizeof fileNameChars);
+  stringstream ss;
+  ss << "/proc/self/fd/" << _fd;
+  char fileNameChars[1024];
+  memset(fileNameChars, 0, sizeof fileNameChars);
 
-	int nameIsKnown = readlink(ss.str().c_str(), fileNameChars, sizeof fileNameChars);
-	my_assert(nameIsKnown);
+  int nameIsKnown = readlink(ss.str().c_str(), fileNameChars, sizeof fileNameChars);
+  my_assert(nameIsKnown);
 
-	FileName = string(fileNameChars);
+  FileName = string(fileNameChars);
 }
 
 const string& TmpFile::getTmpFileName() const {
-	return FileName;
+  return FileName;
 }
 
 TmpFile::~TmpFile() {
-	int closed = close(_fd);
-	my_assert(closed == 0);
-	int isRemoved = remove(FileName.c_str());
-	my_assert(isRemoved == 0);
+  int closed = close(_fd);
+  my_assert(closed == 0);
+  int isRemoved = remove(FileName.c_str());
+  my_assert(isRemoved == 0);
 }
 
 void TmpFile::write(const string& str) {
-	ssize_t res = ::write(_fd, (const void*)str.c_str(), str.size());
-	my_assert(res == (int)str.size());
+  ssize_t res = ::write(_fd, (const void*)str.c_str(), str.size());
+  my_assert(res == (int)str.size());
 }
 
 

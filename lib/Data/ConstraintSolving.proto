@@ -1,0 +1,88 @@
+/*
+ * Cloud9 Parallel Symbolic Execution Engine
+ *
+ * Copyright 2012 Google Inc. All Rights Reserved.
+ * Author: sbucur@google.com (Stefan Bucur)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Dependable Systems Laboratory, EPFL nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE DEPENDABLE SYSTEMS LABORATORY, EPFL BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * All contributors are listed in CLOUD9-AUTHORS file.
+ *
+ */
+
+package klee.data;
+
+import "DebugInfo.proto";
+import "States.proto";
+
+enum QueryReason {
+  OTHER = 0;
+
+  BRANCH_FEASIBILITY = 1;
+  SWITCH_FEASIBILITY = 6;
+
+  EXPRESSION_CONCRETIZATION = 4;
+  BRANCH_CONDITION_CONCRETIZATION = 2;
+  EXTERNAL_CALL_CONCRETIZATION = 8;
+  CHECK_UNIQUENESS = 3;
+  CHECK_ASSUMPTION = 12;
+
+  USER_GET_VALUE = 5;
+
+  SINGLE_ADDRESS_RESOLUTION = 7;
+  MULTI_ADDRESS_RESOLUTION = 13;
+  FUNCTION_RESOLUTION = 10;
+
+  ALLOC_RANGE_CHECK = 9;
+
+  TEST_CASE_GENERATION = 11;
+}
+
+enum QueryOperation {
+  EVALUATE = 1;
+  MUST_BE_TRUE = 2;
+  MUST_BE_FALSE = 3;
+  MAY_BE_TRUE = 4;
+  MAY_BE_FALSE = 5;
+  GET_VALUE = 6;
+  GET_INITIAL_VALUES = 7;
+  GET_RANGE = 8;
+}
+
+message SolverQuery {
+  required uint64 time_stamp = 1;
+  required QueryReason reason = 7;
+  required QueryOperation operation = 8;
+  required uint64 solving_time = 6;
+
+  optional DebugInfo debug_info = 10;
+  
+  optional bool shadow = 9;
+  optional bool incremental = 11;
+
+  optional ExecutionState execution_state = 12;
+}
+
+message SolverQuerySet {
+  repeated SolverQuery solver_query = 1;
+}

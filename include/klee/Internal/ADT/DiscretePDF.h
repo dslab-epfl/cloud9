@@ -25,7 +25,7 @@ namespace klee {
     void remove(T item);
     bool inTree(T item);
     weight_type getWeight(T item);
-	
+  
     /* pick a tree element according to its
      * weight. p should be in [0,1).
      */

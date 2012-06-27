@@ -7,14 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
-#include "CoreStats.h"
 #include "Memory.h"
 #include "MemoryManager.h"
 
 #include "klee/ExecutionState.h"
 #include "klee/Expr.h"
+#include "klee/CoreStats.h"
 #include "klee/Solver.h"
 
 #include "llvm/Support/CommandLine.h"
@@ -35,7 +33,7 @@ MemoryObject *MemoryManager::allocate(ExecutionState *state, uint64_t size, bool
                                       bool isGlobal,
                                       const llvm::Value *allocSite) {
   if (size>10*1024*1024) {
-    klee_warning_once(0, "failing large alloc: %u bytes", (unsigned) size);
+    LOG(WARNING) << "Failing large alloc: " << size << " bytes at " << *state;
     return 0;
   }
   uint64_t address = (uint64_t)state->addressPool.allocate(size);
@@ -56,7 +54,7 @@ MemoryObject *MemoryManager::allocateFixed(uint64_t address, uint64_t size,
        it != ie; ++it) {
     MemoryObject *mo = *it;
     if (address+size > mo->address && address < mo->address+mo->size)
-      klee_error("Trying to allocate an overlapping object");
+      LOG(FATAL) << "Trying to allocate an overlapping object";
   }
 #endif
 

@@ -4,29 +4,29 @@
 #include <stdio.h>
 
 int main(int argc, char **argv) {
-	pid_t pid;
-	pthread_t tid;
+  pid_t pid;
+  pthread_t tid;
 
-	printf("I'm in the common area.\n");
+  printf("I'm in the common area.\n");
 
-	pid = fork();
+  pid = fork();
 
-	if (pid > 0) {
-		pid = getpid();
-		tid = pthread_self();
+  if (pid > 0) {
+    pid = getpid();
+    tid = pthread_self();
 
-		printf("I'm in the parent: %d, %d\n", pid, tid);
+    printf("I'm in the parent: %d, %d\n", pid, tid);
 
-		wait(NULL);
-		return 1;
-	} else if (pid == 0) {
-		pid = getpid();
-		tid = pthread_self();
+    wait(NULL);
+    return 1;
+  } else if (pid == 0) {
+    pid = getpid();
+    tid = pthread_self();
 
-		printf("I'm in the child: %d, %d\n", pid, tid);
-		return 0;
-	} else {
-		printf("Something bad happened.\n");
-		return 2;
-	}
+    printf("I'm in the child: %d, %d\n", pid, tid);
+    return 0;
+  } else {
+    printf("Something bad happened.\n");
+    return 2;
+  }
 }

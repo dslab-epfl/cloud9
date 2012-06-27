@@ -13,12 +13,18 @@
 #include "klee/Expr.h"
 #include "klee/Solver.h"
 
+#include "klee/data/ConstraintSolving.pb.h"
+
+#include <boost/shared_ptr.hpp>
+using boost::shared_ptr;
+
 #include <vector>
 
 namespace klee {
   class ExecutionState;
   class Solver;
   class STPSolver;
+  class StatsTracker;
 
   /// TimingSolver - A simple class which wraps a solver and handles
   /// tracking the statistics that we care about.
@@ -26,6 +32,8 @@ namespace klee {
   public:
     Solver *solver;
     STPSolver *stpSolver;
+    StatsTracker *statsTracker;
+
     bool simplifyExprs;
 
   public:
@@ -34,36 +42,41 @@ namespace klee {
     /// \param _simplifyExprs - Whether expressions should be
     /// simplified (via the constraint manager interface) prior to
     /// querying.
-    TimingSolver(Solver *_solver, STPSolver *_stpSolver, 
-                 bool _simplifyExprs = true) 
-      : solver(_solver), stpSolver(_stpSolver), simplifyExprs(_simplifyExprs) {}
+    TimingSolver(Solver *_solver, STPSolver *_stpSolver,
+                 StatsTracker *_statsTracker,
+                 bool _simplifyExprs = true)
+        : solver(_solver), stpSolver(_stpSolver),
+        statsTracker(_statsTracker), simplifyExprs(_simplifyExprs) {}
+
     ~TimingSolver() {
       delete solver;
     }
 
     void setTimeout(double t) {
-      stpSolver->setTimeout(t);
+      if (stpSolver)
+        stpSolver->setTimeout(t);
     }
 
-    bool evaluate(const ExecutionState&, ref<Expr>, Solver::Validity &result);
+    bool evaluate(data::QueryReason reason, const ExecutionState&,
+        ref<Expr>, Solver::Validity &result);
 
-    bool mustBeTrue(const ExecutionState&, ref<Expr>, bool &result);
+    bool mustBeTrue(data::QueryReason reason, const ExecutionState&, ref<Expr>, bool &result);
 
-    bool mustBeFalse(const ExecutionState&, ref<Expr>, bool &result);
+    bool mustBeFalse(data::QueryReason reason, const ExecutionState&, ref<Expr>, bool &result);
 
-    bool mayBeTrue(const ExecutionState&, ref<Expr>, bool &result);
+    bool mayBeTrue(data::QueryReason reason, const ExecutionState&, ref<Expr>, bool &result);
 
-    bool mayBeFalse(const ExecutionState&, ref<Expr>, bool &result);
+    bool mayBeFalse(data::QueryReason reason, const ExecutionState&, ref<Expr>, bool &result);
 
-    bool getValue(const ExecutionState &, ref<Expr> expr, 
+    bool getValue(data::QueryReason reason, const ExecutionState &, ref<Expr> expr,
                   ref<ConstantExpr> &result);
 
-    bool getInitialValues(const ExecutionState&, 
+    bool getInitialValues(data::QueryReason reason, const ExecutionState&,
                           const std::vector<const Array*> &objects,
                           std::vector< std::vector<unsigned char> > &result);
 
     std::pair< ref<Expr>, ref<Expr> >
-    getRange(const ExecutionState&, ref<Expr> query);
+    getRange(data::QueryReason reason, const ExecutionState&, ref<Expr> query);
   };
 
 }

@@ -182,6 +182,10 @@ namespace expr {
     /// given if the query is invalid.
     const std::vector<const Array*> Objects;
 
+    const std::string QueryID;
+    const std::string ParentID;
+    const bool Incremental;
+
   public:
     QueryCommand(const std::vector<ExprHandle> &_Constraints,
                  ExprHandle _Query,
@@ -192,7 +196,23 @@ namespace expr {
         Constraints(_Constraints),
         Query(_Query),
         Values(_Values),
-        Objects(_Objects) {}
+        Objects(_Objects),
+        Incremental(false) {}
+
+    QueryCommand(const std::vector<ExprHandle> &_Constraints,
+                 ExprHandle _Query,
+                 const std::vector<ExprHandle> &_Values,
+                 const std::vector<const Array*> &_Objects,
+                 const std::string _QueryID,
+                 const std::string _ParentID)
+      : CommandDecl(QueryCommandDeclKind),
+        Constraints(_Constraints),
+        Query(_Query),
+        Values(_Values),
+        Objects(_Objects),
+        QueryID(_QueryID),
+        ParentID(_ParentID),
+        Incremental(true) {}
 
     virtual void dump();
 
@@ -230,7 +250,7 @@ namespace expr {
     /// expressions.
     static Parser *Create(const std::string Name,
                           const llvm::MemoryBuffer *MB,
-                          ExprBuilder *Builder);
+                          ExprBuilder *Builder, bool incremental = false);
   };
 }
 }

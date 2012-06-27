@@ -100,19 +100,6 @@ public:
   // to record the symbolic path (as a stream of '0' and '1' bytes).
   virtual void setSymbolicPathWriter(TreeStreamWriter *tsw) = 0;
 
-  // supply a test case to replay from. this can be used to drive the
-  // interpretation down a user specified path. use null to reset.
-  virtual void setReplayOut(const struct KTest *out) = 0;
-
-  // supply a list of branch decisions specifying which direction to
-  // take on forks. this can be used to drive the interpretation down
-  // a user specified path. use null to reset.
-  virtual void setReplayPath(const std::vector<bool> *path) = 0;
-
-  // supply a set of symbolic bindings that will be used as "seeds"
-  // for the search. use null to reset.
-  virtual void useSeeds(const std::vector<struct KTest *> *seeds) = 0;
-
   virtual void runFunctionAsMain(llvm::Function *f,
                                  int argc,
                                  char **argv,
@@ -139,9 +126,6 @@ public:
                                    std::pair<std::string,
                                    std::vector<unsigned char> > >
                                    &res) = 0;
-
-  virtual void getCoveredLines(const ExecutionState &state,
-                               std::map<const std::string*, std::set<unsigned> > &res) = 0;
 };
 
 } // End klee namespace

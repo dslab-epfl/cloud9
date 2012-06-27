@@ -39,6 +39,8 @@
 #include "common.h"
 #include "multiprocess.h"
 
+// TODO(sbucur): Get rid of non-vector read/write calls
+
 ////////////////////////////////////////////////////////////////////////////////
 // Event Queue Utility
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +143,5 @@ ssize_t _block_readv(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
     size_t count, size_t offset);
 ssize_t _block_writev(block_buffer_t *buff, const struct iovec *iov, int iovcnt,
     size_t count, size_t offset);
-
 
 #endif /* BUFFERS_H_ */

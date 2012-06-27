@@ -1,0 +1,29 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+
+    <link rel="stylesheet" type="text/css" href="../source.css"/>
+    <title>{{ source_stats.file_name }}</title>
+  </head>
+
+  <body>
+    <h2>{{ source_stats.file_name }}</h2>
+    <table>
+      <colgroup>
+        <col class="line_no_column"/>
+        <col class="src_contents_column"/>
+      </colgroup>
+{% for annotated_line in lines %}
+      <tr>
+        <td><div class="line_no">{{ annotated_line.number }}</div></td>
+	<td><div class="src_contents {{
+                         'covered_line' if annotated_line.covered else
+                         'coverable_line' if annotated_line.coverable else
+                         '' }}">{{ annotated_line.contents|e }}</div></td>
+      </tr>
+{%- endfor %}
+    </table>
+  </body>
+</html>

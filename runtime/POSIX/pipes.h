@@ -43,6 +43,8 @@ typedef struct {
   stream_buffer_t *buffer;
 } pipe_end_t;
 
+struct stat;
+
 int _close_pipe(pipe_end_t *pipe);
 ssize_t _read_pipe(pipe_end_t *pipe, void *buf, size_t count);
 ssize_t _write_pipe(pipe_end_t *pipe, const void *buf, size_t count);

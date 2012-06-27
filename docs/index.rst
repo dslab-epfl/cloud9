@@ -1,14 +1,26 @@
-=================
-Cloud9 User Guide
-=================
+.. Cloud9 documentation master file, created by
+   sphinx-quickstart on Fri Nov  4 19:12:42 2011.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-* Installation
+Welcome to Cloud9's documentation!
+==================================
 
-  1. `Cloud9 Prerequisites <user/Prerequisites.html>`_
-  2. `Installing Cloud9 <user/Installation.html>`_
+Contents:
 
-* Getting Started
+.. toctree::
+   :maxdepth: 2
 
-  1. `Testing Complex Multi-Threaded Programs <user/TestingMultithreaded.html>`_
-  2. `Running Cloud9 in a Cluster <user/RunningInCluster.html>`_
-  3. `A General Guide to Compiling LLVM Targets <user/CompilingLLVM.html>`_
+   setup
+   using
+   symbolics
+   targets
+   developing
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

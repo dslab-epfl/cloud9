@@ -40,7 +40,7 @@
 #include <ostream>
 
 namespace klee {
-class KInstruction;
+struct KInstruction;
 }
 
 namespace cloud9 {
@@ -51,53 +51,57 @@ namespace worker {
  *
  */
 class SymbolicState {
-	friend class JobManager;
-	friend class OracleStrategy;
+  friend class JobManager;
+  friend class OracleStrategy;
 private:
-	klee::ExecutionState *kleeState;
-	WorkerTree::NodePin nodePin;
+  klee::ExecutionState *kleeState;
+  WorkerTree::NodePin nodePin;
+  SymbolicState *parent;
 
-	bool _active;
+  bool _active;
 
-	std::vector<klee::KInstruction*> _instrProgress;
-	unsigned int _instrPos;
-	unsigned long _instrSinceFork;
+  std::vector<klee::KInstruction*> _instrProgress;
+  unsigned int _instrPos;
+  unsigned long _instrSinceFork;
 
-	bool collectProgress;
+  bool collectProgress;
 
-	void rebindToNode(WorkerTree::Node *node) {
-		if (nodePin) {
-			(**nodePin).symState = NULL;
-		}
+  void rebindToNode(WorkerTree::Node *node) {
+    if (nodePin) {
+      (**nodePin).symState = NULL;
+    }
 
-		if (node) {
-			nodePin = node->pin(WORKER_LAYER_STATES);
-			(**node).symState = this;
-		} else {
-			nodePin.reset();
-		}
-	}
+    if (node) {
+      nodePin = node->pin(WORKER_LAYER_STATES);
+      (**node).symState = this;
+    } else {
+      nodePin.reset();
+    }
+  }
 
 public:
-	SymbolicState(klee::ExecutionState *state) :
-		kleeState(state),
-		nodePin(WORKER_LAYER_STATES),
-		_active(false),
-		_instrPos(0),
-		_instrSinceFork(0),
-		collectProgress(false) {
+  SymbolicState(klee::ExecutionState *state, SymbolicState *_parent) :
+    kleeState(state),
+    nodePin(WORKER_LAYER_STATES),
+    parent(_parent),
+    _active(false),
+    _instrPos(0),
+    _instrSinceFork(0),
+    collectProgress(false) {
       kleeState->setCloud9State(this);
-	}
+  }
 
-	virtual ~SymbolicState() {
-		rebindToNode(NULL);
-	}
+  virtual ~SymbolicState() {
+    rebindToNode(NULL);
+  }
 
-	klee::ExecutionState *getKleeState() const { return kleeState; }
+  klee::ExecutionState *getKleeState() const { return kleeState; }
 
-	WorkerTree::NodePin &getNode() { return nodePin; }
+  WorkerTree::NodePin &getNode() { return nodePin; }
 
-    klee::ExecutionState& operator*() {
+  SymbolicState *getParent() const { return parent; }
+
+  klee::ExecutionState& operator*() {
       return *kleeState;
     }
 
@@ -110,17 +114,17 @@ public:
  *
  */
 class ExecutionJob {
-	friend class JobManager;
+  friend class JobManager;
 private:
-	WorkerTree::NodePin nodePin;
+  WorkerTree::NodePin nodePin;
 
-	bool imported;
-	bool exported;
-	bool removing;
+  bool imported;
+  bool exported;
+  bool removing;
 
-	long replayInstr;
+  long replayInstr;
 
-	klee::ForkTag forkTag;
+  klee::ForkTag forkTag;
 
     void rebindToNode(WorkerTree::Node *node) {
         if (nodePin) {
@@ -135,31 +139,31 @@ private:
         }
     }
 public:
-	ExecutionJob() : nodePin(WORKER_LAYER_JOBS), imported(false),
-		exported(false), removing(false), replayInstr(0),
-		forkTag(klee::KLEE_FORK_DEFAULT) {}
+  ExecutionJob() : nodePin(WORKER_LAYER_JOBS), imported(false),
+    exported(false), removing(false), replayInstr(0),
+    forkTag(klee::KLEE_FORK_DEFAULT) {}
 
-	ExecutionJob(WorkerTree::Node *node, bool _imported) :
-		nodePin(WORKER_LAYER_JOBS), imported(_imported), exported(false),
-		removing(false), replayInstr(0), forkTag(klee::KLEE_FORK_DEFAULT) {
+  ExecutionJob(WorkerTree::Node *node, bool _imported) :
+    nodePin(WORKER_LAYER_JOBS), imported(_imported), exported(false),
+    removing(false), replayInstr(0), forkTag(klee::KLEE_FORK_DEFAULT) {
 
-		rebindToNode(node);
+    rebindToNode(node);
 
-		//CLOUD9_DEBUG("Created job at " << *node);
-	}
+    //CLOUD9_DEBUG("Created job at " << *node);
+  }
 
-	virtual ~ExecutionJob() {
-		//CLOUD9_DEBUG("Destroyed job at " << nodePin);
-		rebindToNode(NULL);
-	}
+  virtual ~ExecutionJob() {
+    //CLOUD9_DEBUG("Destroyed job at " << nodePin);
+    rebindToNode(NULL);
+  }
 
-	WorkerTree::NodePin &getNode() { return nodePin; }
+  WorkerTree::NodePin &getNode() { return nodePin; }
 
-	klee::ForkTag getForkTag() const { return forkTag; }
+  klee::ForkTag getForkTag() const { return forkTag; }
 
-	bool isImported() const { return imported; }
-	bool isExported() const { return exported; }
-	bool isRemoving() const { return removing; }
+  bool isImported() const { return imported; }
+  bool isExported() const { return exported; }
+  bool isRemoving() const { return removing; }
 };
 
 

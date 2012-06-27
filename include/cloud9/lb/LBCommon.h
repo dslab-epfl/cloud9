@@ -33,7 +33,6 @@
 #ifndef LBCOMMON_H_
 #define LBCOMMON_H_
 
-#include "cloud9/Logger.h"
 #include "cloud9/lb/Worker.h"
 
 #include <string>

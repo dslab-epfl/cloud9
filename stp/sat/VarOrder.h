@@ -118,23 +118,23 @@ namespace MINISAT {
     // Activity based decision:
     while (next == var_Undef || toLbool(assigns[next]) != l_Undef || !hasVarProp(next, p_decisionvar))
       if (heap.empty()){
-	next = var_Undef;
-	break;
+  next = var_Undef;
+  break;
       }else
-	next = heap.getmin();
+  next = heap.getmin();
     
     //printing
     if(BEEV::print_sat_varorder) {
       if (next != var_Undef) {
-	BEEV::Convert_MINISATVar_To_ASTNode_Print(next,
-						  decision_level,
-						  hasVarProp(next, p_polarity));
-	// fprintf(stderr,"var = %d, prop = %d, decision = %d, polarity = %d, frozen = %d\n", 
-	// 		next+1, properties[next], hasVarProp(next, p_decisionvar), 
-	// 		hasVarProp(next, p_polarity), hasVarProp(next, p_frozen));
+  BEEV::Convert_MINISATVar_To_ASTNode_Print(next,
+              decision_level,
+              hasVarProp(next, p_polarity));
+  // fprintf(stderr,"var = %d, prop = %d, decision = %d, polarity = %d, frozen = %d\n", 
+  //    next+1, properties[next], hasVarProp(next, p_decisionvar), 
+  //    hasVarProp(next, p_polarity), hasVarProp(next, p_frozen));
       }
       else
-	fprintf(stderr, "var = undef\n");
+  fprintf(stderr, "var = undef\n");
     }
     
     return next == var_Undef ? lit_Undef : Lit(next, hasVarProp(next, p_polarity));

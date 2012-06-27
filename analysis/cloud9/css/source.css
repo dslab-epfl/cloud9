@@ -1,0 +1,47 @@
+/* Source listing */
+
+.line_no_column {
+    width: 50px;
+    background: #eee;
+}
+
+.src_contents_column {
+    background: #fafafa;
+    width: 40em;
+}
+
+.line_no {
+    font-family: Courier, monospace;
+    font-size: 0.8em;
+    vertical-align: top;
+}
+
+.src_contents {
+    font-family: Courier, monospace;
+    white-space: pre-wrap;
+    font-size: 0.8em;
+    padding: 1px;
+}
+
+.coverable_line {
+    background: #ccc;
+}
+
+.covered_line {
+    background: #cfb;
+}
+
+h2 {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0px;
+}
+
+td {
+    padding: 0px;
+}
