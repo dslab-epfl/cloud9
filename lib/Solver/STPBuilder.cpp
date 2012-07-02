@@ -632,8 +632,8 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
 
     if (ConstantExpr *CE = dyn_cast<ConstantExpr>(de->right))
       if (optimizeDivides)
-  if (*width_out == 32) //only works for 32-bit division
-    return constructSDivByConstant( left, *width_out, 
+        if (*width_out == 32) //only works for 32-bit division
+          return constructSDivByConstant( left, *width_out, 
                                           CE->getZExtValue(32));
 
     // XXX need to test for proper handling of sign, not sure I
@@ -691,15 +691,15 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
 #if 0 //not faster per first benchmark
     if (optimizeDivides) {
       if (ConstantExpr *cre = de->right->asConstant()) {
-  uint64_t divisor = cre->asUInt64;
+        uint64_t divisor = cre->asUInt64;
 
-  //use fast division to compute modulo without explicit division for constant divisor
+        //use fast division to compute modulo without explicit division for constant divisor
         if( *width_out == 32 ) { //only works for 32-bit division
-    ExprHandle quotient = constructSDivByConstant( left, *width_out, divisor );
-    ExprHandle quot_times_divisor = constructMulByConstant( quotient, *width_out, divisor );
-    ExprHandle rem = vc_bvMinusExpr( vc, *width_out, left, quot_times_divisor );
-    return rem;
-  }
+          ExprHandle quotient = constructSDivByConstant( left, *width_out, divisor );
+          ExprHandle quot_times_divisor = constructMulByConstant( quotient, *width_out, divisor );
+          ExprHandle rem = vc_bvMinusExpr( vc, *width_out, left, quot_times_divisor );
+          return rem;
+        }
       }
     }
 #endif
