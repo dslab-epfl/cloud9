@@ -308,7 +308,7 @@ static bool EvaluateInputAST(const char *Filename,
     S = new Solver(new JSONLoggingSolver(S, LogOutput));
   }
 
-#if 0
+#if 1
   if (UseFastCexSolver)
     S = createFastCexSolver(S);
   S = createCexCachingSolver(S);

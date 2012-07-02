@@ -113,6 +113,7 @@ private:
   SpecialFunctionHandler *specialFunctionHandler;
   std::vector<TimerInfo*> timers;
   PTree *processTree;
+  ExecutionState *activeState;
 
   /// Used to track states that have been added during the current
   /// instructions step. 
@@ -469,6 +470,9 @@ public:
                                    &res);
 
   Expr::Width getWidthForLLVMType(llvm::Type *type) const;
+
+  void PrintDump(std::ostream &os);
+  void PrintDumpOnErrorSignal();
 
   /*** Cloud9 symbolic execution engine methods ***/
 

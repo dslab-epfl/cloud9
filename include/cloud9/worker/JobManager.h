@@ -317,6 +317,10 @@ public:
 
     delete os;
   }
+
+  void printExecutorDump(std::ostream &os) {
+    symbEngine->PrintDump(os);
+  }
 };
 
 }

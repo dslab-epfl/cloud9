@@ -57,6 +57,7 @@ private:
   StackTrace() { } // Cannot construct directly
 public:
   void dump(std::ostream &out) const;
+  void dumpInline(std::ostream &out) const;
 };
 
 }

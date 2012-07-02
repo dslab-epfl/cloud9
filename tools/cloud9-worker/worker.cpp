@@ -124,6 +124,7 @@ static void haltViaGDB(int pid) {
  */
 // Pulled out so it can be easily called from a debugger.
 extern "C" void haltExecution() {
+  theJobManager->printExecutorDump(std::cerr);
   theJobManager->requestTermination();
 }
 

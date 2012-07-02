@@ -363,49 +363,6 @@ void ExecutionState::removeFnAlias(std::string fn) {
 }
 
 /**/
-namespace c9 {
-
-std::ostream &printStateStack(std::ostream &os, const ExecutionState &state) {
-  for (ExecutionState::stack_ty::const_iterator it = state.stack().begin();
-      it != state.stack().end(); it++) {
-    if (it != state.stack().begin()) {
-      os << '(' << it->caller->info->assemblyLine << ',' << it->caller->info->file << ':' << it->caller->info->line << ')';
-      os << "]/[";
-    } else {
-      os << "[";
-    }
-    os << it->kf->function->getName().str();
-  }
-  os << '(' << state.pc()->info->assemblyLine << ',' << state.pc()->info->file << ':' << state.pc()->info->line << ')';
-  os << "]";
-
-  return os;
-}
-
-
-std::ostream &printStateConstraints(std::ostream &os, const ExecutionState &state) {
-  ExprPPrinter::printConstraints(os, state.constraints());
-
-  return os;
-}
-
-std::ostream &printStateMemorySummary(std::ostream &os,
-    const ExecutionState &state) {
-  const MemoryMap &mm = state.addressSpace().objects;
-
-  os << "{";
-  MemoryMap::iterator it = mm.begin();
-  MemoryMap::iterator ie = mm.end();
-  if (it != ie) {
-    os << "MO" << it->first->id << ":" << it->second;
-    for (++it; it != ie; ++it)
-      os << ", MO" << it->first->id << ":" << it->second;
-  }
-  os << "}";
-  return os;
-}
-
-}
 
 std::ostream &operator<<(std::ostream &os, const MemoryMap &mm) {
   os << "{";
@@ -421,6 +378,8 @@ std::ostream &operator<<(std::ostream &os, const MemoryMap &mm) {
 }
 
 std::ostream &operator<<(std::ostream &os, const ExecutionState &state) {
+  state.getStackTrace().dumpInline(os);
+  return os;
   return klee::c9::printStateStack(os, state);
 }
 

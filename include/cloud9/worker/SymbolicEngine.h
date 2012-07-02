@@ -126,6 +126,8 @@ public:
   void registerStateEventHandler(StateEventHandler *handler);
   void deregisterStateEventHandler(StateEventHandler *handler);
 
+  virtual void PrintDump(std::ostream &os) = 0;
+
   static bool classof(const klee::Interpreter* interpreter){ return true; }
 };
 

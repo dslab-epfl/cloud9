@@ -73,4 +73,47 @@ void StackTrace::dump(std::ostream &out) const {
   }
 }
 
+void StackTrace::dumpInline(std::ostream &out) const {
+  for (stack_t::const_iterator it = contents.begin(), ie = contents.end();
+      it != ie; ++it) {
+    Function *f = it->first.first->function;
+    const InstructionInfo &ii = *it->first.second->info;
+
+    if (it != contents.begin()) {
+      out << '(' << ii.assemblyLine << ',' << ii.file << ':' << ii.line << ')';
+      out << "]/[";
+    } else {
+      out << "[";
+    }
+    out << f->getName().str();
+  }
+
+  out << "]";
+
+  // os << '(' << state.pc()->info->assemblyLine << ',' << state.pc()->info->file << ':' << state.pc()->info->line << ')';
+}
+
+
+//std::ostream &printStateConstraints(std::ostream &os, const ExecutionState &state) {
+//  ExprPPrinter::printConstraints(os, state.constraints());
+//
+//  return os;
+//}
+//
+//std::ostream &printStateMemorySummary(std::ostream &os,
+//    const ExecutionState &state) {
+//  const MemoryMap &mm = state.addressSpace().objects;
+//
+//  os << "{";
+//  MemoryMap::iterator it = mm.begin();
+//  MemoryMap::iterator ie = mm.end();
+//  if (it != ie) {
+//    os << "MO" << it->first->id << ":" << it->second;
+//    for (++it; it != ie; ++it)
+//      os << ", MO" << it->first->id << ":" << it->second;
+//  }
+//  os << "}";
+//  return os;
+//}
+
 }

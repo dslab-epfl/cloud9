@@ -15,6 +15,8 @@
 #include "klee/Expr.h"
 #include "klee/Internal/ADT/ImmutableMap.h"
 
+#include <ostream>
+
 namespace klee {
   class ExecutionState;
   class MemoryObject;
@@ -32,6 +34,10 @@ namespace klee {
     bool operator()(const MemoryObject *a, const MemoryObject *b) const;
   };
   
+  struct MemoryObjectSizeLT {
+    bool operator()(const MemoryObject *a, const MemoryObject *b) const;
+  };
+
   typedef ImmutableMap<const MemoryObject*, ObjectHolder, MemoryObjectLT> MemoryMap;
   
   class AddressSpace {
@@ -96,8 +102,6 @@ namespace klee {
                  unsigned maxResolutions=0,
                  double timeout=0.);
 
-    void _testAddressSpace();
-
     /***/
 
     /// Add a binding to the address space.
@@ -136,6 +140,10 @@ namespace klee {
     /// \retval true The copy succeeded. 
     /// \retval false The copy failed because a read-only object was modified.
     bool copyInConcretes(AddressPool *pool);
+
+    void DumpMemoryObject(std::ostream &os, const MemoryObject *mo,
+                          const ObjectState *ostate) const;
+    void DumpContents(std::ostream &os) const;
   };
 } // End klee namespace
 

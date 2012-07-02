@@ -371,15 +371,37 @@ bool AddressSpace::copyInConcretes(AddressPool *pool) {
   return true;
 }
 
-void AddressSpace::_testAddressSpace() {
-  uint64_t prevAddr = 0;
+void AddressSpace::DumpMemoryObject(std::ostream &os, const MemoryObject *mo,
+                                    const ObjectState *ostate) const {
+  os << mo->address << "-" << mo->address + mo->size << " [" << mo->size << "] ";
 
-  for (MemoryMap::iterator it = objects.begin(); it != objects.end(); ++it) {
-    uint64_t crtAddr = it->first->address;
+  std::string alloc_info;
+  mo->getAllocInfo(alloc_info);
+  os << "allocated at " << alloc_info;
 
-    assert(crtAddr >= prevAddr);
+  os << std::endl;
+}
 
-    prevAddr = crtAddr;
+void AddressSpace::DumpContents(std::ostream &os) const {
+  std::vector<const MemoryObject*> memory_vector;
+
+  for (MemoryMap::iterator it = objects.begin(), ie = objects.end();
+      it != ie; ++it) {
+    const MemoryObject *mo = it->first;
+    const ObjectState *ostate = it->second;
+
+    DumpMemoryObject(os, mo, ostate);
+
+    memory_vector.push_back(mo);
+  }
+
+  std::sort(memory_vector.begin(), memory_vector.end(), MemoryObjectSizeLT());
+  os << std::endl;
+  os << "Largest memory blocks:" << std::endl;
+
+  for (int i = 0; i < 10; i++) {
+    DumpMemoryObject(os, memory_vector[i],
+                     objects.find(memory_vector[i])->second);
   }
 }
 
@@ -387,5 +409,9 @@ void AddressSpace::_testAddressSpace() {
 
 bool MemoryObjectLT::operator()(const MemoryObject *a, const MemoryObject *b) const {
   return a->address < b->address;
+}
+
+bool MemoryObjectSizeLT::operator()(const MemoryObject *a, const MemoryObject *b) const {
+  return a->size > b->size;
 }
 

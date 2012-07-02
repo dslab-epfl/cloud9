@@ -607,7 +607,7 @@ void Executor::executeFork(ExecutionState &state, KInstruction *ki, uint64_t rea
 }
 
 void Executor::stepInState(ExecutionState *state) {
-  assert(addedStates.count(state) == 0);
+  activeState = state;
 
   fireControlFlowEvent(state, ::cloud9::worker::STEP);
 
@@ -666,6 +666,8 @@ void Executor::stepInState(ExecutionState *state) {
   }
 
   updateStates(state);
+
+  activeState = NULL;
 }
 
 void Executor::run(ExecutionState &initialState) {

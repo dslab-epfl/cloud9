@@ -26,6 +26,7 @@
 
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Signals.h"
 #include "llvm/Target/TargetData.h"
 
 #include <glog/logging.h>
@@ -127,6 +128,7 @@ Executor::Executor(const InterpreterOptions &opts,
     symPathWriter(0),
     specialFunctionHandler(0),
     processTree(0),
+    activeState(0),
     atMemoryLimit(false),
     inhibitForking(false),
     haltExecution(false),
@@ -180,6 +182,7 @@ Executor::Executor(const InterpreterOptions &opts,
 
   memory = new MemoryManager();
 
+  PrintDumpOnErrorSignal();
 }
 
 
@@ -422,6 +425,29 @@ void Executor::doImpliedValueConcretization(ExecutionState &state,
       }
     }
   }
+}
+
+static void PrintExecutorDump(void *cookie) {
+  Executor *executor = (Executor*)cookie;
+  executor->PrintDump(std::cerr);
+}
+
+void Executor::PrintDump(std::ostream &os) {
+  if (activeState) {
+    // Print state stack trace
+    os << "State trace:" << std::endl;
+    activeState->getStackTrace().dump(os);
+
+    // Print memory map
+    os << "Memory map:" << std::endl;
+    activeState->addressSpace().DumpContents(os);
+  } else {
+    os << "No active state set" << std::endl;
+  }
+}
+
+void Executor::PrintDumpOnErrorSignal() {
+  llvm::sys::AddSignalHandler(PrintExecutorDump, (void*)this);
 }
 
 ///
