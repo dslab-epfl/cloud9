@@ -480,12 +480,20 @@ ExprHandle STPBuilder::constructActual(ref<Expr> e, int *width_out) {
 
     ref<ConstantExpr> Tmp = CE;
     ExprHandle Res = bvConst64(64, Tmp->Extract(0, 64)->getZExtValue());
+#if 1
+    for (unsigned i = (*width_out / 64) - 1; i; --i) {
+      Tmp = Tmp->LShr(ConstantExpr::alloc(64, Tmp->getWidth()));
+      Res = vc_bvConcatExpr(vc, bvConst64(std::min(64U, Tmp->getWidth()),
+                                          Tmp->Extract(0, 64)->getZExtValue()),
+                            Res);
+#else
     while (Tmp->getWidth() > 64) {
       Tmp = Tmp->Extract(64, Tmp->getWidth()-64);
       unsigned Width = std::min(64U, Tmp->getWidth());
       Res = vc_bvConcatExpr(vc, bvConst64(Width,
                                           Tmp->Extract(0, Width)->getZExtValue()),
                             Res);
+#endif
     }
     return Res;
   }
