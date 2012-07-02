@@ -127,15 +127,6 @@ public:
   static bool classof(const ExecutionTraceEntry* entry){  return entry->getKind()==Debug;  }
 };
 
-class ConstraintLogEntry: public DebugLogEntry {
-public:
-  ConstraintLogEntry(klee::ExecutionState *state);
-
-  virtual ~ConstraintLogEntry() { }
-
-  static bool classof(const ExecutionTraceEntry* entry){  return entry->getKind()==Constraint;  }
-};
-
 class EventEntry: public ExecutionTraceEntry {
 private:
   klee::StackTrace stackTrace;
