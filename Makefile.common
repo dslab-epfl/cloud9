@@ -26,9 +26,8 @@ LLVMCXX := $(CXX)
 
 
 LD.Flags += -L$(PROJ_SRC_ROOT)/stp/lib \
-            -L$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector \
-            -L$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector/picosat \
-            -Wl,--rpath=$(PROJ_SRC_ROOT)/../out/Default/obj.target/third_party/boolector
+            -L$(PROJ_SRC_ROOT)/../out/Default/lib.target \
+            -Wl,--rpath=$(PROJ_SRC_ROOT)/../out/Default/lib.target
 
 CXX.Flags += -DLLVM_23 -fexceptions -fno-omit-frame-pointer -DEXT_HASH_MAP
 CXX.Flags += -I$(PROJ_SRC_ROOT)/stp/include -I$(PROJ_SRC_ROOT)/../third_party/boolector

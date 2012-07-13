@@ -24,7 +24,7 @@ LINK_COMPONENTS = support
 
 include $(LEVEL)/Makefile.common
 
-LIBS += -lboost_thread-mt -lboost_system-mt -lglog -lprotobuf -lrt -lcrypto++ -lboolector -lpicosat
+LIBS += -lboost_thread-mt -lboost_system-mt -lglog -lprotobuf -lrt -lcrypto++ -lboolector
 
 ifeq ($(ENABLE_EXT_STP),1)
   LIBS += -lstp
