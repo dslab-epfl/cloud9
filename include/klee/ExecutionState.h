@@ -259,6 +259,8 @@ public:
   void setCloud9State(cloud9::worker::SymbolicState *state) { c9State = state; }
 
   StackTrace getStackTrace() const;
+
+  bool isExternalCallSafe() const;
 };
 
 }

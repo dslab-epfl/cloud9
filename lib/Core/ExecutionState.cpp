@@ -577,4 +577,23 @@ StackTrace ExecutionState::getStackTrace() const {
   return result;
 }
 
+// XXX: Ugly hack.
+// Whitelist external calls that go through the POSIX model.  We look at
+// the stack trace of the call, and see if there are any functions whose
+// source code is in our POSIX model.
+bool ExecutionState::isExternalCallSafe() const {
+  StackTrace stack_trace = getStackTrace();
+
+  for (StackTrace::stack_t::iterator it = stack_trace.contents.begin(),
+      ie = stack_trace.contents.end(); it != ie; ++it) {
+    const KInstruction *ki = (*it).first.second;
+    if (ki && ki->info) {
+      if (ki->info->file.find("runtime/POSIX") != std::string::npos)
+        return true;
+    }
+  }
+
+  return false;
+}
+
 }

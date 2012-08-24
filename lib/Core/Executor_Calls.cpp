@@ -315,6 +315,8 @@ void Executor::callUnmodelledFunction(ExecutionState &state,
   state.addressSpace().copyOutConcretes(&state.addressPool);
 
   if (!SuppressExternalWarnings) {
+    StackTrace stack_trace = state.getStackTrace();
+
     std::ostringstream os;
     os << state <<
         " Calling external: " << function->getName().str() << "(";
@@ -325,7 +327,10 @@ void Executor::callUnmodelledFunction(ExecutionState &state,
     }
     os << ")";
 
-    VLOG(1) << os.str().c_str();
+    if (state.isExternalCallSafe())
+      VLOG(1) << os.str().c_str();
+    else
+      LOG(INFO) << os.str().c_str();
   }
 
   bool success = externalDispatcher->executeCall(function, target->inst, args);
