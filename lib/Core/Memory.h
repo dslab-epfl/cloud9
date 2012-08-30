@@ -103,14 +103,18 @@ public:
 
   /// Get an identifying string for this allocation.
   template<class OStream>
-  void getAllocInfo(OStream &info) const {
+  void getAllocInfo(OStream &info, bool fast = false) const {
     info << "MO" << id << "[" << size << "]";
 
     if (allocSite) {
       info << " allocated at ";
       if (const Instruction *i = dyn_cast<Instruction>(allocSite)) {
-        info << i->getParent()->getParent()->getName() << "():";
-        info << *i;
+        info << i->getParent()->getParent()->getName();
+				if (fast) {
+					info << "()";
+				} else {
+					info << "():" << *i;
+				}
       } else if (const GlobalValue *gv = dyn_cast<GlobalValue>(allocSite)) {
         info << "global:" << gv->getName();
       } else {
@@ -121,7 +125,7 @@ public:
     }
   }
 
-  void getAllocInfo(std::string &result) const;
+  void getAllocInfo(std::string &result, bool fast = false) const;
 
   void setName(std::string name) const {
     this->name = name;

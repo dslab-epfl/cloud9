@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
+
 using namespace klee;
 
 ///
@@ -372,11 +374,11 @@ bool AddressSpace::copyInConcretes(AddressPool *pool) {
 }
 
 void AddressSpace::DumpMemoryObject(std::ostream &os, const MemoryObject *mo,
-                                    const ObjectState *ostate) const {
+                                    const ObjectState *ostate, bool fast) const {
   os << mo->address << "-" << mo->address + mo->size << " [" << mo->size << "] ";
 
-  std::string alloc_info;
-  mo->getAllocInfo(alloc_info);
+	std::string alloc_info;
+	mo->getAllocInfo(alloc_info, fast);
   os << "allocated at " << alloc_info;
 
   os << std::endl;
@@ -384,24 +386,33 @@ void AddressSpace::DumpMemoryObject(std::ostream &os, const MemoryObject *mo,
 
 void AddressSpace::DumpContents(std::ostream &os) const {
   std::vector<const MemoryObject*> memory_vector;
+  for (MemoryMap::iterator it = objects.begin(), ie = objects.end();
+      it != ie; ++it) {
+		const MemoryObject *mo = it->first;
+    const ObjectState *ostate = it->second;
+    memory_vector.push_back(mo);
+  }
+  std::sort(memory_vector.begin(), memory_vector.end(), MemoryObjectSizeLT());
+
+	int largest_count = std::min(50, (int)memory_vector.size());
+
+  os << "Largest " << largest_count 
+		 << " memory blocks:" << std::endl;
+
+  for (int i = 0; i < largest_count; i++) {
+    DumpMemoryObject(os, memory_vector[i],
+                     objects.find(memory_vector[i])->second, false);
+  }
+
+  os << std::endl;
+
+	os << "All memory blocks:" << std::endl;
 
   for (MemoryMap::iterator it = objects.begin(), ie = objects.end();
       it != ie; ++it) {
     const MemoryObject *mo = it->first;
     const ObjectState *ostate = it->second;
-
-    DumpMemoryObject(os, mo, ostate);
-
-    memory_vector.push_back(mo);
-  }
-
-  std::sort(memory_vector.begin(), memory_vector.end(), MemoryObjectSizeLT());
-  os << std::endl;
-  os << "Largest memory blocks:" << std::endl;
-
-  for (int i = 0; i < 10; i++) {
-    DumpMemoryObject(os, memory_vector[i],
-                     objects.find(memory_vector[i])->second);
+    DumpMemoryObject(os, mo, ostate, true);
   }
 }
 

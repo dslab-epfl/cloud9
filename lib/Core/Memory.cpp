@@ -72,10 +72,10 @@ int MemoryObject::counter = 0;
 MemoryObject::~MemoryObject() {
 }
 
-void MemoryObject::getAllocInfo(std::string &result) const {
+void MemoryObject::getAllocInfo(std::string &result, bool fast) const {
   llvm::raw_string_ostream info(result);
 
-  getAllocInfo(info);
+  getAllocInfo(info, fast);
   
   info.flush();
 }

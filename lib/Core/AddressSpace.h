@@ -142,7 +142,7 @@ namespace klee {
     bool copyInConcretes(AddressPool *pool);
 
     void DumpMemoryObject(std::ostream &os, const MemoryObject *mo,
-                          const ObjectState *ostate) const;
+                          const ObjectState *ostate, bool fast) const;
     void DumpContents(std::ostream &os) const;
   };
 } // End klee namespace
