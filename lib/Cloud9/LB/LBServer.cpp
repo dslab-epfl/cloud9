@@ -54,7 +54,7 @@ LBServer::~LBServer() {
 
 void LBServer::startAccept() {
   WorkerConnection::pointer conn = WorkerConnection::create(
-      acceptor.io_service(), lb);
+      acceptor.get_io_service(), lb);
 
   LOG(INFO) << "Listening for connections on port " <<
       acceptor.local_endpoint().port();

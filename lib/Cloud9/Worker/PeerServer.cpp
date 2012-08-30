@@ -97,7 +97,7 @@ void PeerServer::startAccept() {
       acceptor.local_endpoint().port();
 
 
-  PeerConnection::pointer newConn = PeerConnection::create(acceptor.io_service(),
+  PeerConnection::pointer newConn = PeerConnection::create(acceptor.get_io_service(),
       jobManager);
 
   acceptor.async_accept(newConn->getSocket(), boost::bind(&PeerServer::handleAccept,
