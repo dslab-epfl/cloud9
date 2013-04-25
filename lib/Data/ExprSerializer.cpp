@@ -31,16 +31,27 @@
  */
 
 #include "klee/data/ExprSerializer.h"
-#include "klee/data/Expr.pb.h"
+#include "klee/data/Support.h"
+
+#include "Expr.pb.h"
 
 #include <glog/logging.h>
 
 namespace klee {
 
+ExprSerializer::ExprSerializer(std::ostream &os)
+    : stream_(os), next_id_(1), set_flush_flag_(false) {
+  expr_set_ = new data::ExpressionSet();
+}
+
+ExprSerializer::~ExprSerializer() {
+  delete expr_set_;
+}
+
 void ExprSerializer::RecordExpr(const ref<Expr> e) {
   uint64_t expr_id = GetOrSerializeExpr(e);
 
-  expr_set_.add_expr_id(expr_id);
+  expr_set_->add_expr_id(expr_id);
 }
 
 
@@ -70,21 +81,47 @@ uint64_t ExprSerializer::GetOrSerializeArray(const Array *array) {
 }
 
 
-uint64_t ExprSerializer::GetOrSerializeUpdateNode(const UpdateNode *node) {
-  UpdateNodeMap::iterator it = serialized_update_nodes_.find(node);
+ExprSerializer::UpdateNodePosition ExprSerializer::GetOrSerializeUpdateList(
+    const UpdateList &update_list) {
+  assert(update_list.head && "Cannot serialize empty update list");
+
+  const UpdateNode *head_node = update_list.head;
+  UpdateNodeMap::iterator it = serialized_update_nodes_.find(head_node);
 
   if (it != serialized_update_nodes_.end()) {
     return it->second;
   }
 
-  uint64_t result = SerializeUpdateNode(node);
-  serialized_update_nodes_.insert(std::make_pair(node, result));
-  return result;
+  data::UpdateList *ser_update_list = expr_set_->mutable_data()->add_update();
+  ser_update_list->set_id(next_id_++);
+
+  uint32_t offset = 0;
+
+  for (const UpdateNode *update_node = head_node; update_node;
+      update_node = update_node->next) {
+    it = serialized_update_nodes_.find(update_node);
+
+    if (it != serialized_update_nodes_.end()) {
+      ser_update_list->set_next_update_id(it->second.first);
+      ser_update_list->set_next_update_offset(it->second.second);
+      break;
+    } else {
+      ser_update_list->add_index_expr_id(
+          GetOrSerializeExpr(update_node->index));
+      ser_update_list->add_value_expr_id(
+          GetOrSerializeExpr(update_node->value));
+      serialized_update_nodes_.insert(
+          std::make_pair(update_node, std::make_pair(ser_update_list->id(),
+                                                     offset++)));
+    }
+  }
+
+  return std::make_pair(ser_update_list->id(), 0);
 }
 
 
 uint64_t ExprSerializer::SerializeExpr(const ref<Expr> e) {
-  data::ExprNode *ser_expr_node = expr_set_.mutable_data()->add_expr();
+  data::ExprNode *ser_expr_node = expr_set_->mutable_data()->add_expr();
   ser_expr_node->set_id(next_id_++);
   ser_expr_node->set_kind((data::ExprKind)e->getKind());
 
@@ -108,11 +145,12 @@ uint64_t ExprSerializer::SerializeExpr(const ref<Expr> e) {
     ReadExpr *re = cast<ReadExpr>(e);
     ser_expr_node->add_child_expr_id(GetOrSerializeExpr(re->index));
 
-    data::UpdateList *ser_ul = ser_expr_node->mutable_update_list();
-    ser_ul->set_array_id(GetOrSerializeArray(re->updates.root));
-
-    if (re->updates.head)
-      ser_ul->set_update_node_id(GetOrSerializeUpdateNode(re->updates.head));
+    if (re->updates.head) {
+      UpdateNodePosition un_pos = GetOrSerializeUpdateList(re->updates);
+      ser_expr_node->set_update_list_id(un_pos.first);
+      ser_expr_node->set_update_list_offset(un_pos.second);
+    }
+    ser_expr_node->set_array_id(GetOrSerializeArray(re->updates.root));
     break;
   }
 
@@ -210,7 +248,7 @@ uint64_t ExprSerializer::SerializeExpr(const ref<Expr> e) {
 
 
 uint64_t ExprSerializer::SerializeArray(const Array *array) {
-  data::Array *ser_array = expr_set_.mutable_data()->add_array();
+  data::Array *ser_array = expr_set_->mutable_data()->add_array();
   ser_array->set_id(next_id_++);
   ser_array->set_name(array->name);
   ser_array->set_size(array->size);
@@ -228,33 +266,14 @@ uint64_t ExprSerializer::SerializeArray(const Array *array) {
 }
 
 
-uint64_t ExprSerializer::SerializeUpdateNode(const UpdateNode *node) {
-  data::UpdateNode *ser_update_node = expr_set_.mutable_data()->add_update();
-  ser_update_node->set_id(next_id_++);
-  ser_update_node->set_index_expr_id(GetOrSerializeExpr(node->index));
-  ser_update_node->set_value_expr_id(GetOrSerializeExpr(node->value));
-
-  if (node->next) {
-    ser_update_node->set_next_update_id(GetOrSerializeUpdateNode(node->next));
-  }
-
-  return ser_update_node->id();
-}
-
-
 void ExprSerializer::Flush() {
   if (set_flush_flag_) {
-    expr_set_.set_flush_previous_data(true);
+    expr_set_->set_flush_previous_data(true);
     set_flush_flag_ = false;
   }
 
-  std::string messageString = expr_set_.SerializeAsString();
-  uint32_t messageSize = messageString.size();
-  stream_.write((const char*)&messageSize, sizeof(messageSize));
-  stream_.write(messageString.c_str(), messageSize);
-  stream_.flush();
-
-  expr_set_.Clear();
+  WriteProtoMessage(*expr_set_, stream_, true);
+  expr_set_->Clear();
   ClearCache();
 }
 

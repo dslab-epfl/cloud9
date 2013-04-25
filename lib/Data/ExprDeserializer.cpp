@@ -35,6 +35,8 @@
 #include "klee/ExprBuilder.h"
 #include "klee/data/Support.h"
 
+#include "Expr.pb.h"
+
 #include "llvm/Support/CommandLine.h"
 
 #include <glog/logging.h>
@@ -45,23 +47,29 @@
 using namespace llvm;
 
 namespace {
-cl::opt<bool> UniqueArrays("deserialize-unique-arrays",
-                           cl::desc("Ensure there are no array duplicates at deserialization"),
-                           cl::init(true));
-
-cl::opt<bool> UniqueExpr("deserialize-unique-expr",
-                         cl::desc("Ensure structural uniqueness at deserialization"),
-                         cl::init(true));
-
-cl::opt<bool> UniqueUpdates("deserialize-unique-updates",
-                            cl::desc("Ensure structural uniqueness for array updates at deserialization"),
-                            cl::init(true));
 
 cl::opt<bool> DebugExprDeserialization("debug-expr-deserialization",
     cl::desc("Debug expression deserialization"), cl::init(false));
+
 }
 
 namespace klee {
+
+ExprDeserializer::ExprDeserializer(std::istream &is, ExprBuilder &expr_builder,
+                                   std::vector<Array*> arrays)
+  : stream_(is), expr_builder_(expr_builder) {
+  next_expression_set_ = new data::ExpressionSet();
+
+  for (std::vector<Array*>::iterator it = arrays.begin(), ie = arrays.end();
+      it != ie; ++it) {
+    Array* array = *it;
+    unique_arrays_.insert(std::make_pair(array->name, array));
+  }
+}
+
+ExprDeserializer::~ExprDeserializer() {
+  delete next_expression_set_;
+}
 
 ref<Expr> ExprDeserializer::ReadNextExpr() {
   if (expr_queue_.empty())
@@ -85,14 +93,14 @@ void ExprDeserializer::PopulateExprQueue() {
     if (message.empty())
       return;
 
-    next_expression_set_.ParseFromString(message);
-    if (next_expression_set_.flush_previous_data()) {
+    next_expression_set_->ParseFromString(message);
+    if (next_expression_set_->flush_previous_data()) {
       FlushDeserializationCache();
     }
 
-    DeserializeData(next_expression_set_.data());
-    for (int i = 0; i < next_expression_set_.expr_id_size(); i++) {
-      expr_queue_.push(GetOrDeserializeExpr(next_expression_set_.expr_id(i)));
+    DeserializeData(next_expression_set_->data());
+    for (int i = 0; i < next_expression_set_->expr_id_size(); i++) {
+      expr_queue_.push(GetOrDeserializeExpr(next_expression_set_->expr_id(i)));
     }
     LOG_IF(INFO, DebugExprDeserialization) << "Read new chunk of data of size "
         << message.size();
@@ -101,7 +109,6 @@ void ExprDeserializer::PopulateExprQueue() {
 
 
 void ExprDeserializer::FlushDeserializationCache() {
-  unused_expr_.clear();
   deserialized_arrays_.clear();
   deserialized_update_lists_.clear();
   deserialized_expr_nodes_.clear();
@@ -117,8 +124,8 @@ void ExprDeserializer::DeserializeData(const data::ExpressionData &expr_data) {
 
   // Second, populate the pending reconstructions
   for (int i = 0; i < expr_data.update_size(); i++) {
-    const data::UpdateNode &ser_update_node = expr_data.update(i);
-    pending_update_nodes_.insert(std::make_pair(ser_update_node.id(), &ser_update_node));
+    const data::UpdateList &ser_update_list = expr_data.update(i);
+    pending_update_lists_.insert(std::make_pair(ser_update_list.id(), &ser_update_list));
   }
 
   for (int i = 0; i < expr_data.expr_size(); i++) {
@@ -133,20 +140,12 @@ void ExprDeserializer::DeserializeData(const data::ExpressionData &expr_data) {
   }
 
   assert(pending_expr_nodes_.empty() && "Unused expression nodes");
-  assert(pending_update_nodes_.empty() && "Unused update nodes");
+  assert(pending_update_lists_.empty() && "Unused update nodes");
 }
 
 
 const Array* ExprDeserializer::DeserializeArray(
     const data::Array &ser_array) {
-
-  if (UniqueArrays) {
-    UniqueArrayMap::iterator uit = unique_arrays_.find(ser_array.name());
-    if (uit != unique_arrays_.end()) {
-      deserialized_arrays_.insert(std::make_pair(ser_array.id(), uit->second));
-      return uit->second;
-    }
-  }
 
   Array *array = NULL;
 
@@ -157,7 +156,8 @@ const Array* ExprDeserializer::DeserializeArray(
     for (std::string::const_iterator it = ser_array.contents().begin(),
         ie = ser_array.contents().end(); it != ie; ++it) {
       uint8_t value = (uint8_t)(*it);
-      constantValues.push_back(ConstantExpr::create(value, Expr::Int8));
+      constantValues.push_back(
+          cast<ConstantExpr>(expr_builder_.Constant(value, Expr::Int8)));
     }
 
     array = new Array(ser_array.name(), ser_array.size(),
@@ -167,8 +167,6 @@ const Array* ExprDeserializer::DeserializeArray(
   }
 
   deserialized_arrays_.insert(std::make_pair(ser_array.id(), array));
-  if (UniqueArrays)
-    unique_arrays_.insert(std::make_pair(ser_array.name(), array));
 
   LOG_IF(INFO, DebugExprDeserialization) << "Deserialized array '"
       << ser_array.name() << "' of ID=" << ser_array.id();
@@ -187,44 +185,39 @@ ref<Expr> ExprDeserializer::GetOrDeserializeExpr(uint64_t id) {
   ref<Expr> result = DeserializeExpr(*pit->second);
   pending_expr_nodes_.erase(id);
 
-  if (UniqueExpr) {
-    ExprHashSet::iterator uit = unique_expr_.find(result);
-    if (uit != unique_expr_.end()) {
-      deserialized_expr_nodes_.insert(std::make_pair(id, *uit));
-      unused_expr_.push_back(result);
-      return *uit;
-    }
-    unique_expr_.insert(result);
-  }
-
   deserialized_expr_nodes_.insert(std::make_pair(id, result));
 
   return result;
 }
 
 
-const UpdateNode *ExprDeserializer::GetOrDeserializeUpdateNode(const Array *array, uint64_t id) {
+const UpdateNode *ExprDeserializer::GetOrDeserializeUpdateNode(
+    const Array *array, uint64_t id, uint32_t offset) {
   ReverseUpdateListMap::iterator dit = deserialized_update_lists_.find(id);
   if (dit != deserialized_update_lists_.end())
-    return dit->second.head;
+    return GetUpdateNodeAtOffset(dit->second, offset);
 
-  PendingUpdateNodeMap::iterator pit = pending_update_nodes_.find(id);
-  assert(pit != pending_update_nodes_.end());
-  const UpdateNode *result = DeserializeUpdateNode(array, *pit->second);
-  pending_update_nodes_.erase(id);
+  PendingUpdateListMap::iterator pit = pending_update_lists_.find(id);
+  assert(pit != pending_update_lists_.end());
+  UpdateList result = DeserializeUpdateList(array, *pit->second);
+  pending_update_lists_.erase(id);
 
-  if (UniqueUpdates) {
-    UpdateListHashSet::iterator uit = unique_update_lists_.find(UpdateList(array, result));
-    if (uit != unique_update_lists_.end()) {
-      deserialized_update_lists_.insert(std::make_pair(id, *uit));
-      return uit->head;
-    }
-    unique_update_lists_.insert(UpdateList(array, result));
+  deserialized_update_lists_.insert(std::make_pair(id, result));
+
+  return GetUpdateNodeAtOffset(result, offset);
+}
+
+
+const UpdateNode *ExprDeserializer::GetUpdateNodeAtOffset(const UpdateList &ul,
+                                                          uint32_t offset) {
+  for (const UpdateNode *un = ul.head; un; un = un->next) {
+    if (offset == 0)
+      return un;
+    offset--;
   }
 
-  deserialized_update_lists_.insert(std::make_pair(id, UpdateList(array, result)));
-
-  return result;
+  assert(0 && "FIXME: Unreachable");
+  return NULL;
 }
 
 
@@ -241,12 +234,12 @@ ref<Expr> ExprDeserializer::DeserializeExpr(
         GetOrDeserializeExpr(ser_expr_node.child_expr_id(0)));
 
   case data::READ: {
-    const Array *array = GetArray(ser_expr_node.update_list().array_id());
+    const Array *array = GetArray(ser_expr_node.array_id());
     const UpdateNode *update_node = NULL;
-    if (ser_expr_node.update_list().has_update_node_id()) {
-      update_node = GetOrDeserializeUpdateNode(
-          GetArray(ser_expr_node.update_list().array_id()),
-          ser_expr_node.update_list().update_node_id());
+    if (ser_expr_node.has_update_list_id()) {
+      update_node = GetOrDeserializeUpdateNode(array,
+          ser_expr_node.update_list_id(),
+          ser_expr_node.update_list_offset());
     }
     return expr_builder_.Read(UpdateList(array, update_node),
         GetOrDeserializeExpr(ser_expr_node.child_expr_id(0)));
@@ -351,20 +344,26 @@ ref<Expr> ExprDeserializer::DeserializeExpr(
 }
 
 
-const UpdateNode *ExprDeserializer::DeserializeUpdateNode(const Array *array,
-    const data::UpdateNode &ser_update_node) {
+UpdateList ExprDeserializer::DeserializeUpdateList(const Array *array,
+    const data::UpdateList &ser_update_node) {
 
   const UpdateNode *next_node = NULL;
   if (ser_update_node.has_next_update_id()) {
-    next_node = GetOrDeserializeUpdateNode(array, ser_update_node.next_update_id());
+    next_node = GetOrDeserializeUpdateNode(array,
+                                           ser_update_node.next_update_id(),
+                                           ser_update_node.next_update_offset());
   }
 
-  ref<Expr> index = GetOrDeserializeExpr(ser_update_node.index_expr_id());
-  ref<Expr> value = GetOrDeserializeExpr(ser_update_node.value_expr_id());
+  UpdateList result(array, next_node);
 
-  UpdateNode *update_node = new UpdateNode(next_node, index, value);
+  for (int i = ser_update_node.index_expr_id_size() - 1; i >= 0; --i) {
+    ref<Expr> index = GetOrDeserializeExpr(ser_update_node.index_expr_id(i));
+    ref<Expr> value = GetOrDeserializeExpr(ser_update_node.value_expr_id(i));
 
-  return update_node;
+    result.extend(index, value);
+  }
+
+  return result;
 }
 
 }

@@ -37,8 +37,6 @@
 #include "klee/Expr.h"
 #include "klee/util/ExprHashMap.h"
 
-#include "klee/data/Expr.pb.h"
-
 #include <istream>
 #include <map>
 #include <queue>
@@ -46,14 +44,21 @@
 
 namespace klee {
 
+namespace data {
+class ExprNode;
+class UpdateList;
+class ExpressionData;
+class ExpressionSet;
+class Array;
+}
+
 class ExprBuilder;
 
 class ExprDeserializer {
 public:
-  ExprDeserializer(std::istream &is, ExprBuilder &expr_builder)
-    : stream_(is), expr_builder_(expr_builder) {
-
-  }
+  ExprDeserializer(std::istream &is, ExprBuilder &expr_builder,
+                   std::vector<Array*> arrays);
+  virtual ~ExprDeserializer();
 
   ref<Expr> ReadNextExpr();
 
@@ -65,7 +70,7 @@ private:
   typedef std::map<std::string, const Array*> UniqueArrayMap;
 
   typedef std::map<uint64_t, const data::ExprNode*> PendingExprMap;
-  typedef std::map<uint64_t, const data::UpdateNode*> PendingUpdateNodeMap;
+  typedef std::map<uint64_t, const data::UpdateList*> PendingUpdateListMap;
 
   void DeserializeData(const data::ExpressionData &expr_data);
 
@@ -73,22 +78,31 @@ private:
   void FlushDeserializationCache();
 
   const Array* GetArray(uint64_t id) {
-    return deserialized_arrays_.find(id)->second;
+    const Array* deser_array = deserialized_arrays_.find(id)->second;
+    UniqueArrayMap::iterator it = unique_arrays_.find(deser_array->name);
+    if (it != unique_arrays_.end())
+      return it->second;
+    return deser_array;
   }
+
   ref<Expr> GetOrDeserializeExpr(uint64_t id);
-  const UpdateNode *GetOrDeserializeUpdateNode(const Array *array, uint64_t id);
+  const UpdateNode *GetOrDeserializeUpdateNode(const Array *array,
+                                               uint64_t id, uint32_t offset);
+  const UpdateNode *GetUpdateNodeAtOffset(const UpdateList &ul,
+                                          uint32_t offset);
 
   const Array* DeserializeArray(const data::Array &ser_array);
   ref<Expr> DeserializeExpr(const data::ExprNode &ser_expr_node);
-  const UpdateNode *DeserializeUpdateNode(const Array *array, const data::UpdateNode &ser_update_node);
+  UpdateList DeserializeUpdateList(const Array *array,
+                                   const data::UpdateList &ser_update_node);
 
   std::istream &stream_;
   std::queue<ref<Expr> > expr_queue_;
   ExprBuilder &expr_builder_;
-  data::ExpressionSet next_expression_set_;
+  data::ExpressionSet *next_expression_set_;
 
   // Not yet serialized IDs, part of the current batch of data
-  PendingUpdateNodeMap pending_update_nodes_;
+  PendingUpdateListMap pending_update_lists_;
   PendingExprMap pending_expr_nodes_;
 
   // Mapping used for looking up IDs
@@ -96,13 +110,7 @@ private:
   ReverseUpdateListMap deserialized_update_lists_;
   ReverseExprMap deserialized_expr_nodes_;
 
-  // Sets used to ensure structural uniqueness. This avoids duplicates when rendering
-  ExprHashSet unique_expr_;
-  UpdateListHashSet unique_update_lists_;
   UniqueArrayMap unique_arrays_;
-
-  // Used to keep ref. counters up for yet-unused structures
-  std::vector<ref<Expr> > unused_expr_;
 };
 
 }

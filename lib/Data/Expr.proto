@@ -96,20 +96,14 @@ message Array {
   optional bytes contents = 4;
 }
 
-message UpdateNode {
+message UpdateList {
   required uint64 id = 1;
-  required uint64 index_expr_id = 2;
-  required uint64 value_expr_id = 3;
+  repeated uint64 index_expr_id = 2;
+  repeated uint64 value_expr_id = 3;
 
   // Missing for head updates
   optional uint64 next_update_id = 4;
-}
-
-message UpdateList {
-  required uint64 array_id = 1;
-
-  // Missing for no updates
-  optional uint64 update_node_id = 2;
+  optional uint32 next_update_offset = 5;
 }
 
 message ExprNode {
@@ -124,7 +118,9 @@ message ExprNode {
   repeated uint64 child_expr_id = 5;
 
   // For read operations
-  optional UpdateList update_list = 9;
+  optional uint64 update_list_id = 9;
+  optional uint32 update_list_offset = 11;
+  optional uint64 array_id = 10;
 
   // Optional decorators
   optional uint32 width = 1;
@@ -134,7 +130,7 @@ message ExprNode {
 
 message ExpressionData {
   repeated Array array = 1;
-  repeated UpdateNode update = 2;
+  repeated UpdateList update = 2;
   repeated ExprNode expr = 3;
 }
 
@@ -144,7 +140,7 @@ message PathConstraint {
 
 message ExpressionSet {
   // Structural information
-  required ExpressionData data = 1;
+  optional ExpressionData data = 1;
 
   repeated uint64 expr_id = 2;
 

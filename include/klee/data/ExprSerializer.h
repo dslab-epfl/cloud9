@@ -37,34 +37,35 @@
 #include "klee/Expr.h"
 #include "klee/util/ExprHashMap.h"
 
-#include "klee/data/Expr.pb.h"
-
 #include <ostream>
 #include <fstream>
 #include <map>
 
 namespace klee {
 
+namespace data {
+class ExpressionSet;
+}
+
 class ExprSerializer {
 public:
-  explicit ExprSerializer(std::ostream &os)
-    : stream_(os), next_id_(1), set_flush_flag_(false) {
-  }
+  explicit ExprSerializer(std::ostream &os);
+  virtual ~ExprSerializer();
 
   void RecordExpr(const ref<Expr> e);
 
   void Flush();
 private:
+  typedef std::pair<uint64_t, uint32_t> UpdateNodePosition;
   typedef std::map<const Array*, uint64_t> ArrayMap;
-  typedef std::map<const UpdateNode*, uint64_t> UpdateNodeMap;
+  typedef std::map<const UpdateNode*, UpdateNodePosition> UpdateNodeMap;
 
   uint64_t GetOrSerializeExpr(const ref<Expr> e);
   uint64_t GetOrSerializeArray(const Array *array);
-  uint64_t GetOrSerializeUpdateNode(const UpdateNode *node);
+  UpdateNodePosition GetOrSerializeUpdateList(const UpdateList &update_list);
 
   uint64_t SerializeExpr(const ref<Expr> e);
   uint64_t SerializeArray(const Array *array);
-  uint64_t SerializeUpdateNode(const UpdateNode *node);
 
   void ClearCache();
 
@@ -76,7 +77,7 @@ private:
   ArrayMap serialized_arrays_;
   UpdateNodeMap serialized_update_nodes_;
 
-  data::ExpressionSet expr_set_;
+  data::ExpressionSet *expr_set_;
   bool set_flush_flag_;
 };
 
