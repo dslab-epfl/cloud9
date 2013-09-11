@@ -64,7 +64,7 @@ int main(int argc, char **argv, char **envp) {
   LOG(INFO) << "Processing '" << InputFileName << "'";
 
   ExprBuilder *expr_builder = createDefaultExprBuilder();
-  ExprDeserializer expr_deserializer(is, *expr_builder);
+  ExprDeserializer expr_deserializer(is, *expr_builder, std::vector<Array*>());
 
   ref<Expr> current_expr = expr_deserializer.ReadNextExpr();
 
